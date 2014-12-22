@@ -7,3 +7,5 @@
 *.cmx
 *.cmxs
 *.cmxa
+.DS_Store
+
