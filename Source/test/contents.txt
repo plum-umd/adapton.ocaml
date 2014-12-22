@@ -1,0 +1,1 @@
+This directory contains correctness and benchmarking tests of Adapton.

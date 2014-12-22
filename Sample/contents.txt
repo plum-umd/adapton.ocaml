@@ -1,0 +1,1 @@
+This directory contains some sample apps that make use of Adapton. It is also a good place to load external repos.

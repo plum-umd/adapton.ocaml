@@ -1,0 +1,1 @@
+This directory contains source code for the core set of incremental computations. All other libraries are based on this. It implements dependency graphs and function memoization.

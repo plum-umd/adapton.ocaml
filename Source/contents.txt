@@ -1,0 +1,1 @@
+This directory contains all the libraries that make up the Adapton incremental computation engine
