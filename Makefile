@@ -1,7 +1,12 @@
-all: Adapton experiments.native
+all: Adapton experiments
 
 Adapton:
 	ocamlbuild Source/Adapton.cma
 
-experiments.native:
+experiments:
 	ocamlbuild Source/test/experiments.native
+	cp _build/Source/test/experiments.native bin
+
+clean:
+	rm bin/*.native
+	ocamlbuild -clean
