@@ -1,0 +1,2 @@
+<**/*.cm*> or <**/*.top> or <**/*.mli> or <**/*.native> or <**/*.byte>: package(unix,core)
+true: thread,pp(camlp4of)

@@ -75,8 +75,8 @@
     which are defined in the usual (eager) fashion.
 *)
 
-open AdaptonInternal.Primitives
-open AdaptonInternal.GrifolaType
+open Primitives
+open GrifolaType
 
 module type SpreadTreeType = sig
   module ArtLib : ArtLibType
@@ -452,7 +452,7 @@ struct
           ( match list with
           | `Nil -> tree, `Nil
           | `Cons (hd, tl) ->
-            let ffs = AdaptonInternal.Primitives.ffs in
+            let ffs = Primitives.ffs in
             let hd_lev = ffs (St.Data.hash 0 hd) in
             if tree_lev <= hd_lev && hd_lev <= parent_lev then
               let right, rest = tree_of_list_rec hd_lev (-1) (`Leaf `Nil) tl in
@@ -532,7 +532,7 @@ struct
         ( match list with
         | `Nil -> nmopt, tree, `Nil
         | `Cons (hd, tl) -> (
-          let ffs = AdaptonInternal.Primitives.ffs in
+          let ffs = Primitives.ffs in
           let hd_lev = ffs (St.Data.hash 0 hd) in
           if not (tree_lev <= hd_lev && hd_lev <= parent_lev) then
             nmopt, tree, list
@@ -570,7 +570,7 @@ struct
           ( match list with
           | `Nil -> rope, `Nil
           | `Cons (hd, tl) ->
-            let ffs = AdaptonInternal.Primitives.ffs in
+            let ffs = Primitives.ffs in
             let hd_lev = ffs (St.Data.hash 0 hd) in
             if rope_lev <= hd_lev && hd_lev <= parent_lev then (
               let right, rest = rope_of_list_rec hd_lev (-1) (`One hd) tl in

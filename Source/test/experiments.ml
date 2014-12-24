@@ -7,7 +7,7 @@
 *)
 
 let default_outfile = "Results/BenchmarkAdapton/experiments.csv"
-module Viz = AdaptonInternal.Viz
+module Viz = Viz
 
 (** ---------------------------------------------------------------------- *)
 (** Flags and Params that are common to all experiments: *)
@@ -58,9 +58,9 @@ let stats_print (handle:out_channel)
     (inputsize:int) (initial_dcg_size:int) 
     (change_pos:int) (demand_count:int) 
     (demand_percent:float)
-    (stats:AdaptonUtil.Statistics.t) : unit
+    (stats:Statistics.t) : unit
     =
-  let module Stats = AdaptonUtil.Statistics in
+  let module Stats = Statistics in
   let percent x = ((float_of_int x) /. (float_of_int initial_dcg_size)) *. 100.0 in
   Printf.fprintf handle 
     (* "|%d|%d|%s|%s|%d| %d|%.1f| %d|%.1f|\t %f| %d| %d| %d|\t %d|%.1f| %d|%.1f| %d|%.1f|  %d|%.1f| %d|\n%!" *)
@@ -92,8 +92,8 @@ let stats_print (handle:out_channel)
 
 module type ListRepType = sig
   type t
-  module Data : AdaptonInternal.Primitives.ResultType (* XXX *) with type t = int
-  module Memotables : AdaptonInternal.Primitives.MemotablesType
+  module Data : Primitives.ResultType (* XXX *) with type t = int
+  module Memotables : Primitives.MemotablesType
   type elm
 
   val of_list : Data.t list -> t
@@ -187,9 +187,9 @@ module Make_experiment ( ListApp : ListAppType ) = struct
   let name = ListApp.name
   let demand_list = ListApp.ListRep.take
 
-  module T = AdaptonUtil.Types
-  module Stats = AdaptonUtil.Statistics
-  module Log = AdaptonInternal.Log
+  module T = Types
+  module Stats = Statistics
+  module Log = Log
 
   let gen_list n acc =
     let rec gen_list size acc =
@@ -589,20 +589,19 @@ end (* Make_experiment *)
 
 (* ------------------------------------------------------------------------------- *)
 
-module Key = AdaptonInternal.Key
-module Int = AdaptonUtil.Types.Int
+module Key = Key
+module Int = Types.Int
 
 module SpreadTreeRep 
-  (ArtLib : AdaptonInternal.GrifolaType.ArtLibType) 
+  (ArtLib : GrifolaType.ArtLibType) 
   (* : ListRepType *) =
 struct
   module ArtLib = ArtLib
-  module St = AdaptonUtil.SpreadTree.MakeSpreadTree(ArtLib)(Key)(Int)
-  module Seq = AdaptonUtil.SpreadTree.MakeSeq(St)
+  module St = SpreadTree.MakeSpreadTree(ArtLib)(Key)(Int)
+  module Seq = SpreadTree.MakeSeq(St)
   module Data = Int
   module Memotables = ArtLib.Memotables
-  module KvMap = AdaptonUtil.SpreadTree.
-    MakeKvMap(ArtLib)(Key)(struct include Int let compare = compare end)(St)
+  module KvMap = SpreadTree.MakeKvMap(ArtLib)(Key)(struct include Int let compare = compare end)(St)
 
   type t   = St.List.Art.t
   type elm = Data.t
@@ -630,17 +629,16 @@ struct
 end
 
 module RepOfSpreadTree
-  (St : AdaptonUtil.SpreadTree.SpreadTreeType) 
+  (St : SpreadTree.SpreadTreeType) 
   (* : ListRepType *) =
 struct  
   (* module St = AdaptonUtil.SpreadTree.MakeSpreadTree(ArtLib)(Key)(Int) *)
   module ArtLib = St.ArtLib    
   module Name = St.Name
-  module Seq = AdaptonUtil.SpreadTree.MakeSeq(St)
+  module Seq = SpreadTree.MakeSeq(St)
   
   module Memotables = ArtLib.Memotables
-  module KvMap = AdaptonUtil.SpreadTree.
-    MakeKvMap(ArtLib)(Name)(struct include Int let compare = compare end)(St)
+  module KvMap = SpreadTree.MakeKvMap(ArtLib)(Name)(struct include Int let compare = compare end)(St)
 
   type t      = KvMap.KvSt.List.Art.t
   module Data = KvMap.KvSt.Data
@@ -671,8 +669,8 @@ end
 
 (* ------------------------------------------------------------------------------- *)
 
-module AKListRepGrifola = struct
-  module Grifola = AdaptonZoo.Grifola.Default
+(* module AKListRepGrifola = struct
+  module Grifola = Grifola.Default
   module AKList  = AdaptonUtil.AKList.Make( Grifola.ATypeImpl )
   module IL = AKList.Make( Int )
   module Memotables = Grifola.Memotables
@@ -716,10 +714,10 @@ module AKListRepGrifola = struct
 
   let elm_update (_,key,tl) x = (x,key,tl)
 end
-
+ *)
 (* ------------------------------------------------------------------------------- *)
 
-module AKListRep ( A : AdaptonUtil.Signatures.AType ) = struct
+(* module AKListRep ( A : AdaptonUtil.Signatures.AType ) = struct
   module Data = Int
   module AKList = AdaptonUtil.AKList.Make( A )
   module IL = AKList.Make( Data )
@@ -763,10 +761,10 @@ module AKListRep ( A : AdaptonUtil.Signatures.AType ) = struct
 
   let elm_update (_,key,tl) x = (x,key,tl)
 end
-
+ *)
 (* ------------------------------------------------------------------------------- *)
 
-module AListRep ( A : AdaptonUtil.Signatures.AType ) = struct
+(* module AListRep ( A : AdaptonUtil.Signatures.AType ) = struct
   module Data = Int
   module AList = AdaptonUtil.AList.Make( A )
   module IL = AList.Make( Data )
@@ -811,12 +809,12 @@ module AListRep ( A : AdaptonUtil.Signatures.AType ) = struct
 
   let elm_update (_,tl) x = (x,tl)
 end
-
+ *)
 (* ------------------------------------------------------------------------------- *)
 
 module Mergesorts = struct
 
-  module AList_mergesort (N : sig val name : string end) ( A : AdaptonUtil.Signatures.AType ) = struct
+(*   module AList_mergesort (N : sig val name : string end) ( A : AdaptonUtil.Signatures.AType ) = struct
     let name = "AList_mergesort_" ^ N.name
     module ListRep = AListRep ( A )
     let compute inp =
@@ -837,10 +835,10 @@ module Mergesorts = struct
     let trusted = List.sort Pervasives.compare
     let flush = ListRep.IL.flush
   end
-
+ *)
   module Rope_mergesort 
     ( N : sig val name : string end ) 
-    ( AL : AdaptonInternal.GrifolaType.ArtLibType ) = 
+    ( AL : GrifolaType.ArtLibType ) = 
   struct
     let name = "Rope_mergesort_" ^ N.name
     let int_compare : int -> int -> int = Pervasives.compare
@@ -859,7 +857,7 @@ module Mergesorts = struct
     ( N : sig val name : string end ) 
     ( Gran : sig val rope_art_threshold : int 
                  val list_art_threshold : int end )
-    ( AL : AdaptonInternal.GrifolaType.ArtLibType ) = 
+    ( AL : GrifolaType.ArtLibType ) = 
   struct
     let name = "Rope_mergesort_" ^ N.name
     let int_compare : int -> int -> int = Pervasives.compare
@@ -885,7 +883,7 @@ module Iteration = struct
     ( N : sig val name : string end ) 
     ( Gran : sig val rope_art_threshold : int 
                  val list_art_threshold : int end )
-    ( AL : AdaptonInternal.GrifolaType.ArtLibType ) = 
+    ( AL : GrifolaType.ArtLibType ) = 
   struct
     let name = "Rope_iter_" ^ N.name
     module ListRep = SpreadTreeRep ( AL )
@@ -911,7 +909,7 @@ module List_transf = struct
   let mapf x = int_of_float ((log (1. +. float_of_int x)) +. log 1.5)
   let filterf x = ((x mod 2) = 0)
 
-  module AList_map (N : sig val name : string end) ( A : AdaptonUtil.Signatures.AType ) = struct
+(*   module AList_map (N : sig val name : string end) ( A : AdaptonUtil.Signatures.AType ) = struct
     let name = "AList_map_" ^ N.name
     module ListRep = AListRep ( A )
     let compute inp = ListRep.IL.memo_map (module ListRep.IL) mapf inp
@@ -942,11 +940,11 @@ module List_transf = struct
     let trusted x = List.filter filterf x
     let flush = ListRep.IL.flush
   end 
+ *)
 end
-
 module Reduction = struct
 
-  module AList_min (N : sig val name : string end) ( A : AdaptonUtil.Signatures.AType ) = struct
+(*   module AList_min (N : sig val name : string end) ( A : AdaptonUtil.Signatures.AType ) = struct
     let name = "AList_min_" ^ N.name
     module ListRep = AListRep ( A )
     let min_of_ints x y = (
@@ -981,10 +979,10 @@ module Reduction = struct
       | _ -> [ List.fold_left (fun x y -> min_of_ints () x y) max_int x ]
     let flush = ListRep.IL.flush
   end
-
+ *)
   module Rope_reduce_monoid
     ( N : sig val name : string end ) 
-    ( AL : AdaptonInternal.GrifolaType.ArtLibType )
+    ( AL : GrifolaType.ArtLibType )
     ( Gran : sig val rope_art_threshold : int 
                  val list_art_threshold : int end )
     ( Monoid : sig val name : string 
@@ -994,7 +992,7 @@ module Reduction = struct
     let name = "Rope_" ^ Monoid.name ^ "_" ^ N.name
     module ListRep = SpreadTreeRep ( AL )
     let min_of_ints x y = (
-      incr AdaptonUtil.Statistics.Counts.unit_cost ;
+      incr Statistics.Counts.unit_cost ;
       Monoid.bin x y
     )
     let compute inp =
@@ -1013,7 +1011,7 @@ module Reduction = struct
 
   module Rope_min 
     ( N : sig val name : string end ) 
-    ( AL : AdaptonInternal.GrifolaType.ArtLibType ) 
+    ( AL : GrifolaType.ArtLibType ) 
     ( Gran : sig val rope_art_threshold : int 
                  val list_art_threshold : int end ) = 
   struct
@@ -1027,7 +1025,7 @@ module Reduction = struct
 
   module Rope_sum 
     ( N : sig val name : string end ) 
-    ( AL : AdaptonInternal.GrifolaType.ArtLibType ) 
+    ( AL : GrifolaType.ArtLibType ) 
     ( Gran : sig val rope_art_threshold : int 
                  val list_art_threshold : int end ) = 
   struct
@@ -1043,10 +1041,10 @@ module Reduction = struct
     ( N : sig val name : string end ) 
     ( Gran : sig val rope_art_threshold : int 
                  val list_art_threshold : int end )
-    ( AL : AdaptonInternal.GrifolaType.ArtLibType ) = 
+    ( AL : GrifolaType.ArtLibType ) = 
   struct
     let name = "AVL_of_rope_" ^ N.name
-    module St = AdaptonUtil.SpreadTree.MakeSpreadTree(AL)(Key)(Int)
+    module St = SpreadTree.MakeSpreadTree(AL)(Key)(Int)
     module ListRep = RepOfSpreadTree ( St )
     let compute inp =
       let rope_of_list = ListRep.KvMap.KvSeq.rope_of_list in
@@ -1067,7 +1065,7 @@ end
 
 module Filters = struct
 
-  module AList_filter ( A : AdaptonUtil.Signatures.AType ) = struct
+(*   module AList_filter ( A : AdaptonUtil.Signatures.AType ) = struct
     module ListRep = AListRep ( A )
     let compute inp =
       ListRep.IL.memo_filter (fun x -> x mod 3 == 0) inp
@@ -1093,7 +1091,7 @@ module Filters = struct
 
     let flush = ListRep.IL.flush
   end
-
+ *)
 end
 
 (* ----------------------------------------------------------------------------------------------------- *)
@@ -1101,30 +1099,30 @@ end
 (* ----------------------------------------------------------------------------------------------------- *)
 
 module Engines = struct
-  module Oldrep = AdaptonZoo.Adapton
-  module Grifola_name = AdaptonZoo.Grifola.Make(
+(*   module Oldrep = AdaptonZoo.Adapton
+ *)  module Grifola_name = Grifola.Make(
     struct
-      include AdaptonZoo.Grifola.Default_params
+      include Grifola.Default_params
     end )
-  module Grifola_arg = AdaptonZoo.Grifola.Make(
+  module Grifola_arg = Grifola.Make(
     struct
-      include AdaptonZoo.Grifola.Default_params
+      include Grifola.Default_params
       let disable_names = true
     end )
-  module Grifola_arggen = AdaptonZoo.Grifola.Make(
+  module Grifola_arggen = Grifola.Make(
     struct
-      include AdaptonZoo.Grifola.Default_params
+      include Grifola.Default_params
       let disable_names = true
       let generative_ids = true
     end )
-  module Grifola_noninc = AdaptonZoo.Grifola.Make(
+  module Grifola_noninc = Grifola.Make(
     struct
-      include AdaptonZoo.Grifola.Default_params
+      include Grifola.Default_params
       let disable_mfns = true
     end )
-  module Grifola_nocheck = AdaptonZoo.Grifola.Make(
+  module Grifola_nocheck = Grifola.Make(
     struct
-      include AdaptonZoo.Grifola.Default_params
+      include Grifola.Default_params
       let check_receipt = false
     end )
 end
@@ -1137,7 +1135,7 @@ end
 module Experiments = struct 
   open Engines
   
-  module Old_representation = struct        
+(*   module Old_representation = struct        
     module AList_mergesort_oldrep : ExperimentType =
       Make_experiment(Mergesorts.AList_mergesort(struct let name = "oldrep" end)(Adapton))
     module AKList_mergesort_oldrep : ExperimentType =
@@ -1149,7 +1147,7 @@ module Experiments = struct
       Make_experiment(Reduction.AKList_min(struct let name = "oldrep" end)(Adapton))
   end
   include Old_representation
-        
+*)        
   module Grifola_representation = struct
     
     module Rope_mergesort = struct
@@ -1232,7 +1230,7 @@ module Experiments = struct
     module Rope_sum_0_0       = Rope_sum(Gran_0_0) 
     module Rope_mergesort_0_0 = Rope_mergesort_gran(Gran_0_0)
 
-    (* AKList_mergesort_grifola_* *)
+(*    (* AKList_mergesort_grifola_* *)
     module AKList_mergesort_grifola_name : ExperimentType =
       Make_experiment(Mergesorts.AKList_mergesort(struct let name = "grifola_name" end)(Grifola_name.ATypeImpl))
     module AKList_mergesort_grifola_arg : ExperimentType =
@@ -1248,14 +1246,14 @@ module Experiments = struct
       Make_experiment(Mergesorts.AList_mergesort(struct let name = "grifola" end)(Grifola_name.ATypeImpl))    
     module AList_mergesort_grifola_nocheck : ExperimentType = 
       Make_experiment(Mergesorts.AList_mergesort(struct let name = "grifola_nocheck" end)(Grifola_nocheck.ATypeImpl))
-        
+*)        
     module AVL_name = Reduction.AVL_of_rope(struct let name = "grifola_name" end)(Gran_0_0)(Grifola_name.ArtLib)
     module AVL_arggen = Reduction.AVL_of_rope(struct let name = "grifola_arggen" end)(Gran_0_0)(Grifola_arggen.ArtLib)
 
     module AVL_of_rope_grifola_name   : ExperimentType = Make_experiment(AVL_name)
     module AVL_of_rope_grifola_arggen : ExperimentType = Make_experiment(AVL_arggen)
 
-    module AKList_min_grifola_name : ExperimentType =
+(*    module AKList_min_grifola_name : ExperimentType =
       Make_experiment(Reduction.AKList_min(struct let name = "grifola_name" end)(Grifola_name.ATypeImpl))    
     module AList_min_grifola_arggen : ExperimentType = 
       Make_experiment(Reduction.AList_min(struct let name = "grifola_arggen" end)(Grifola_arggen.ATypeImpl))
@@ -1269,7 +1267,7 @@ module Experiments = struct
       Make_experiment(List_transf.AKList_map(struct let name = "grifola_name" end)(Grifola_name.ATypeImpl))    
     module AList_map_grifola_arggen : ExperimentType = 
       Make_experiment(List_transf.AList_map(struct let name = "grifola_arggen" end)(Grifola_arggen.ATypeImpl))
-
+*)
   end
   include Grifola_representation
 end
@@ -1302,6 +1300,7 @@ let all_experiments : (module ExperimentType) list = [
   (module Experiments.AVL_of_rope_grifola_name : ExperimentType) ;
   (module Experiments.AVL_of_rope_grifola_arggen : ExperimentType) ;
 
+(*  
   (* TUESDAY Nov 11 2014: Benchmarks for overhead comparison: *)
   (* A*List min versions *)
   (module Experiments.AList_min_grifola_arggen      : ExperimentType) ;
@@ -1328,6 +1327,7 @@ let all_experiments : (module ExperimentType) list = [
 
   (module Experiments.AList_min_oldrep            : ExperimentType) ;
   (module Experiments.AKList_min_oldrep           : ExperimentType) ;
+*)
 ]
 
 module Default_perf_params : ParamsType = struct

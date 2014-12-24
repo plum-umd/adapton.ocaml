@@ -1,6 +1,6 @@
 (** Convenience modules for built-in and other useful types. *)
 
-open AdaptonInternal.Primitives
+open Primitives
 
 module Int = struct
     type t = int

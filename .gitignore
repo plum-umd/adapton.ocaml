@@ -8,4 +8,10 @@
 *.cmxs
 *.cmxa
 .DS_Store
+_build
+*.native
+*.byte
+*.d.native
+*.p.byte
+
 

@@ -21,8 +21,10 @@
     - Grifola implements the new API (see module type GrifolaType).
 **)
 
-open AdaptonInternal
 open Primitives
+(* open AdaptonUtil *)
+
+module Statistics = Statistics
 
 module Key    = Key    (* re-export from AdaptonInternal *)
 module Symbol = Symbol (* re-export from AdaptonInternal *)
@@ -386,7 +388,7 @@ module Make (Params:AParamsType) = struct
   *)
   let global_seqno = ref 0
   let _ = Viz.global_seqno_hook := (fun () -> !global_seqno)
-  let next_id = AdaptonUtil.Types.Counter.make 1 (* 0 is for root node. *)
+  let next_id = Types.Counter.make 1 (* 0 is for root node. *)
 
   type stack_frame = {
     stkf_edge_src          : meta_node ;
@@ -462,7 +464,7 @@ module Make (Params:AParamsType) = struct
     | None -> root_meta
 
   let make_meta_with key sym =
-    let id = AdaptonUtil.Types.Counter.next next_id in
+    let id = Types.Counter.next next_id in
     let meta = {
       mutators=Mutators.create 0;
       id=id;
@@ -1483,7 +1485,7 @@ module Make (Params:AParamsType) = struct
 
   end (* Make *)
 
-  module Eviction : AdaptonInternal.Primitives.EvictionType = struct
+  module Eviction : Primitives.EvictionType = struct
 
     let max_node_limit = ref None
 
@@ -1589,7 +1591,7 @@ module Make (Params:AParamsType) = struct
           | _ -> failwith "unrecognized eviction policy name"
   end
 
-  module ATypeImpl : AdaptonUtil.Signatures.AType = struct
+(*   module ATypeImpl : AdaptonUtil.Signatures.AType = struct
     module M = struct
       type atype
       type 'a thunk = 'a node
@@ -1650,7 +1652,7 @@ module Make (Params:AParamsType) = struct
         end )
     end
   end
-
+ *)
   module ArtLib : GrifolaType.ArtLibType = struct
     type lib_id
     module Memotables = Memotables
@@ -1669,7 +1671,7 @@ module Make (Params:AParamsType) = struct
       module Name = Name
       module Art1 = Art1
       module Art2 = Art2
-      module Art = MakeArt(Name)(AdaptonUtil.Types.Tuple2(Art1.Data)(Art2.Data))        
+      module Art = MakeArt(Name)(Types.Tuple2(Art1.Data)(Art2.Data))        
       
       let mfn_fst = Art1.mk_mfn (Name.gensym "fst") (module Art) (fun r art -> fst (Art.force art))
       let mfn_snd = Art2.mk_mfn (Name.gensym "snd") (module Art) (fun r art -> snd (Art.force art))
@@ -1766,10 +1768,10 @@ let old_params = [
   end) : AParamsType ));
 ]
 
-let variants =
+(* let variants =
   List.map (fun (name, params) ->
     let module M = Make((val params : AParamsType)) in
     (name, (module M.ATypeImpl : AdaptonUtil.Signatures.AType ))
   ) params
-
+ *)
 module Default = Make( Default_params )
