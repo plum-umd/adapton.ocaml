@@ -1,1 +1,0 @@
-This directory contains compiled programs built from code in src and Sample.

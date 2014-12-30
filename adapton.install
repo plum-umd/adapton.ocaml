@@ -1,0 +1,6 @@
+lib: [
+  "lib/adapton.a"
+  "lib/adapton.cma"
+  "lib/adapton.cmo"
+  "lib/adapton.cmi"
+  ]

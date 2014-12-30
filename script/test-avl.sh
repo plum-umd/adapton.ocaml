@@ -8,7 +8,7 @@ touch $FILE
 echo "Unix Time, Seed, Version, Test, Size, Mod Pos, Mod Pos %, Demand, Demand %, Time, Unit Cost, Heap, Stack, dirty, dirty %, clean, clean %, evaluate,  evaluate %, create, create %, tables" >> $FILE
 
 # test runner
-TESTER=../bin/experiments.native
+TESTER=../bin/test_adapton
 
 # these loops should be arranged in increasing priority for the variable
 # and/or increasing chance to fail
@@ -27,7 +27,7 @@ for len in 1000; do # 2000 3000 4000 5000 6000 7000 8000 9000 10000; do
         #change is the particular change that is done to the list
         #for change in "--r" "--rr" "--di" "--id" "--ss"; do
           fullver=AVL_of_rope_grifola_$ver
-          echo $fullver @ $len @ $samp
+          echo "Running: $fullver @ $len @ $samp"
           args1="--sample-num $samp --n $len --demand $dem"
           args2="--experiment $fullver"
           args3= #"--0 $change" #one change type at a time

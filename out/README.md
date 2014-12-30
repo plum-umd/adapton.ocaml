@@ -1,1 +1,0 @@
-This directory is a good place to save the output from executed programs, like test results.
