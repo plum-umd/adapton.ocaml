@@ -1,6 +1,6 @@
 FILE=../out/avlropesort.csv
 
-# files must be touched first to give a minimum set of permissions, and creation if non-existant
+# files must be touched first to give a minimum set of permissions, and creation if needed
 touch $FILE
 
 # the titles for the csv columns
@@ -8,7 +8,7 @@ touch $FILE
 echo "Unix Time, Seed, Version, Test, Size, Mod Pos, Mod Pos %, Demand, Demand %, Time, Unit Cost, Heap, Stack, dirty, dirty %, clean, clean %, evaluate,  evaluate %, create, create %, tables" >> $FILE
 
 # test runner
-TESTER=../bin/test_adapton
+TESTER=../experiments.native
 
 # these loops should be arranged in increasing priority for the variable
 # and/or increasing chance to fail

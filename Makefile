@@ -1,24 +1,25 @@
-#Using ocamlbuild to take care of dependencies, so all targets are .PHONYs
-.PHONY: lib test install clean
+#Using myocamlbuild to take care of dependencies, so all targets are .PHONYs
+.PHONY: lib test opam-pin opam-remove clean clean-all
+
+#coordinate this with adapton.install for opam use
+LIBS=a cma cmo cmi cmx cmxa
 
 lib:
-	ocamlbuild Source/adapton.a
-	ocamlbuild Source/adapton.cma
-	ocamlbuild Source/adapton.cmo
-	ocamlbuild Source/adapton.cmi
+	for ext in $(LIBS); do \
+		ocamlbuild Source/adapton.$$ext; \
+	done
 
-test: lib
+#ocamlbuild will put an alias to binaries in the root directory
+test:
 	ocamlbuild Source/test/experiments.native
-	cp _build/Source/test/experiments.native bin/test_adapton
 
-install: lib
-	cp _build/Source/adapton.a lib
-	cp _build/Source/adapton.cma lib
-	cp _build/Source/adapton.cmo lib
-	cp _build/Source/adapton.cmi lib
+opam-pin:
+	opam pin add adapton .
+
+opam-remove:
+	opam pin remove adapton
 
 clean:
-	rm -f bin/* lib/*
 	ocamlbuild -clean
 
 #clean up more for push to repo

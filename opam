@@ -1,6 +1,6 @@
 opam-version: "1.2"
 name: "adapton"
-version: "0.1"
+version: "0.1-dev"
 maintainer: "Kyle Headley <kheadley@umd.edu>"
 authors: "Matthew Hammer <hammer@cs.umd.edu>"
 build: [
@@ -8,7 +8,11 @@ build: [
 ]
 homepage: "https://github.com/plum-umd/adapton.ocaml"
 dev-repo: "https://github.com/plum-umd/adapton.ocaml.git"
-bug-reports: "https://github.com/plum-umd/adapton.ocaml"
-install: [make "install"]
+bug-reports: "https://github.com/plum-umd/adapton./issues"
+#using adapton.install
+#install: [make "install"]
 remove: ["ocamlfind" "remove" "adapton"]
-depends: "ocamlfind" {build}
+depends: [
+  "ocamlfind" {build}
+  "core"
+  ]
