@@ -2,6 +2,7 @@
 
 #coordinate these with the Makefile
 lib: [
+  "META"
   "_build/Source/adapton.a"
   "_build/Source/adapton.cma"
   "_build/Source/adapton.cmo"
