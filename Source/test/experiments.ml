@@ -1,12 +1,9 @@
-(*
-  1. make experiments
-  
-  2. make experiments OCAMLBUILD_EXTRAFLAGS='-ppflag "camlp4of -DADAPTON_NOCACHEDVAL "'
-
-  3. make experiments OCAMLBUILD_EXTRAFLAGS='-ppflag "camlp4of -DADAPTON_LOG "'
+(* 
+  this is an old makefile example left for p4 reference, availability unknown
+  make experiments OCAMLBUILD_EXTRAFLAGS='-ppflag "camlp4of -DADAPTON_LOG "'
 *)
 
-let default_outfile = "Results/BenchmarkAdapton/experiments.csv"
+let default_outfile = "out/experiments.csv"
 module Viz = Viz
 module Statistics = AdaptonStatistics
 module Types = AdaptonTypes
@@ -54,6 +51,33 @@ end
 (** ---------------------------------------------------------------------- *)
 (** Define the CSV output format: *)
 
+(* the cvs file headers, keep this coordinated with the next function *)
+let stats_labels_print (handle:out_channel) =
+  Printf.fprintf handle
+    "%s,%s,%s,%s,%s, %s,%s, %s,%s,\t %s, %s, %s, %s,\t %s,%s, %s,%s, %s,%s,  %s,%s, %s\n%!"
+    
+    "Unix Time"
+    "Seed"
+    "Version"
+    "Test"
+    "Size"
+    "Mod Pos" "Mod Pos %"
+    "Demand" "Demand %"
+    (* tab *)
+    "Time"
+    "Unit Cost"
+    "Heap"
+    "Stack"
+    (* tab *)
+    "dirty" "dirty %"
+    "clean" "clean %"
+    "evaluate" "evaluate %"
+    
+    "create" "create %"
+    "tables" ;
+  flush handle 
+
+(* the csv file data, keep this coordinated with the previous function *)
 let stats_print (handle:out_channel)
     (sample_num:int)
     (sysname:string) (interaction_desc:string)
@@ -179,8 +203,9 @@ module Make_experiment ( ListApp : ListAppType ) = struct
                 src.Viz.force_tgts
             end
         end
-    end passes    
-      ELSE
+    end
+    passes    
+  ELSE
   let output_graphstate ?label:(label="") out = ()
   ENDIF
 
@@ -269,11 +294,11 @@ module Make_experiment ( ListApp : ListAppType ) = struct
         let rem_msg elm =
           Printf.sprintf "di-delete %s @ %d; demand %d"
             (ListApp.ListRep.string_of_elm elm) pos demand_count in
-      (* Delete element. *)
+        (* Delete element. *)
         let (elm,_), deleteStats = Stats.measure begin fun () ->
           let elm = ListApp.ListRep.delete_elm l' in
           if Params.Flags.print_changes then Printf.fprintf stdout "%s: %s\n%!" name (rem_msg elm) ;
-	  elm, (demand_list computation (Some demand_count))
+	        elm, (demand_list computation (Some demand_count))
         end
         in
         print_inout (rem_msg elm) ;
@@ -286,12 +311,12 @@ module Make_experiment ( ListApp : ListAppType ) = struct
         let ins_msg elm =
           Printf.sprintf "di-insert %s @ %d; demand %d"
             (ListApp.ListRep.string_of_elm elm) pos demand_count in
-      (* Reinsert element. *)
+        (* Reinsert element. *)
         let _, insertStats = Stats.measure begin fun () ->
-	(* Demand list. *)
+          (* Demand list. *)
           ListApp.ListRep.insert_elm l' elm ;
           if Params.Flags.print_changes then Printf.fprintf stdout "%s: %s\n%!" name (ins_msg elm) ;
-	  demand_list computation (Some demand_count)
+          demand_list computation (Some demand_count)
         end
         in
         print_inout (ins_msg elm) ;
@@ -309,12 +334,12 @@ module Make_experiment ( ListApp : ListAppType ) = struct
         let ins_msg elm =
           Printf.sprintf "id-insert %s @ %d; demand %d"
             (ListApp.ListRep.string_of_elm new_elm) pos demand_count in
-      (* Insert a (pathological!) element. *)
+        (* Insert a (pathological!) element. *)
         let _, insertStats = Stats.measure begin fun () ->
-	(* Demand list. *)
+	        (* Demand list. *)
           ListApp.ListRep.insert_elm l' new_elm ;
           if Params.Flags.print_changes then Printf.fprintf stdout "%s: %s\n%!" name (ins_msg new_elm) ;
-	  demand_list computation (Some demand_count)
+          demand_list computation (Some demand_count)
         end
         in
         print_inout (ins_msg new_elm) ;
@@ -331,7 +356,7 @@ module Make_experiment ( ListApp : ListAppType ) = struct
         let (elm,_), deleteStats = Stats.measure begin fun () ->
           let elm = ListApp.ListRep.delete_elm l' in
           if Params.Flags.print_changes then Printf.fprintf stdout "%s: %s\n%!" name (rem_msg elm) ;
-	  elm, (demand_list computation (Some demand_count))
+          elm, (demand_list computation (Some demand_count))
         end
         in
         print_inout (rem_msg elm) ;
@@ -356,7 +381,7 @@ module Make_experiment ( ListApp : ListAppType ) = struct
           let elm = ListApp.ListRep.elm_update elm new_int in
           let _ = ListApp.ListRep.insert_elm l' elm in
           if Params.Flags.print_changes then Printf.fprintf stdout "%s: %s\n%!" name (replace_msg new_elm) ;
-	  demand_list computation (Some demand_count)
+          demand_list computation (Some demand_count)
         end
         in
         print_inout (replace_msg new_elm) ;
@@ -382,7 +407,7 @@ module Make_experiment ( ListApp : ListAppType ) = struct
           let elm = ListApp.ListRep.elm_update elm new_int in
           let _ = ListApp.ListRep.insert_elm l' elm in
           if Params.Flags.print_changes then Printf.fprintf stdout "%s: %s\n%!" name (replace_msg 1 new_elm) ;
-	  let _ = demand_list computation (Some demand_count) in
+          let _ = demand_list computation (Some demand_count) in
           old
         end in
         print_inout (replace_msg 1 new_elm) ;
@@ -399,7 +424,7 @@ module Make_experiment ( ListApp : ListAppType ) = struct
           let elm = ListApp.ListRep.elm_update elm old in
           let _ = ListApp.ListRep.insert_elm l' elm in
           if Params.Flags.print_changes then Printf.fprintf stdout "%s: %s\n%!" name (replace_msg 2 new_elm) ;
-	  demand_list computation (Some demand_count)
+          demand_list computation (Some demand_count)
         end in
         print_inout (replace_msg 2 new_elm) ;
         if Params.Flags.check_output then assert_correct_output (replace_msg 2 new_elm) pos l' ;        
@@ -426,7 +451,7 @@ module Make_experiment ( ListApp : ListAppType ) = struct
           let _ = ListApp.ListRep.insert_elm l' elm2 in
           let _ = ListApp.ListRep.insert_elm l' elm1 in
           if Params.Flags.print_changes then Printf.fprintf stdout "%s: %s\n%!" name (msg elm1 elm2) ;
-	  ignore ( demand_list computation (Some demand_count) );
+          ignore ( demand_list computation (Some demand_count) );
           elm1, elm2
         end in
         print_inout (msg elm1 elm2) ;
@@ -449,7 +474,7 @@ module Make_experiment ( ListApp : ListAppType ) = struct
           let _ = ListApp.ListRep.insert_elm l' elm2 in
           let _ = ListApp.ListRep.insert_elm l' elm1 in
           if Params.Flags.print_changes then Printf.fprintf stdout "%s: %s\n%!" name (msg elm1 elm2) ;
-	  ignore ( demand_list computation (Some demand_count) ) ;
+          ignore ( demand_list computation (Some demand_count) ) ;
           elm1, elm2
         end
         in
@@ -482,7 +507,8 @@ module Make_experiment ( ListApp : ListAppType ) = struct
           done;
           (* HACK -- print the final 'live works' right away, with the value in the heap position *)
           if true then (
-            Printf.fprintf handle "%d,%d,%s,%s,%d, %d,%.1f, %d,%.1f,\t %f, %d, %d\n%!"
+            Printf.fprintf handle
+              "%d,%d,%s,%s,%d, %d,%.1f, %d,%.1f,\t %f, %d, %d, %d,\t %d,%.1f, %d,%.1f, %d,%.1f, %d,%.1f, %d\n%!"
               (int_of_float (Unix.time())) (* sanity check, resolution in seconds (since 19700101) *)
               Params.sample_num name
               "final"
@@ -491,8 +517,14 @@ module Make_experiment ( ListApp : ListAppType ) = struct
             (* tab *)
               0.0 0
               (Gc.stat ()).Gc.live_words
-          )
-          ;
+              0
+              (* tab *)
+              0 0.0
+              0 0.0
+              0 0.0
+              0 0.0
+              0;
+          );
           ListApp.flush ();
           Pervasives.flush handle;
           if Params.vary_demand then begin
@@ -524,6 +556,9 @@ module Make_experiment ( ListApp : ListAppType ) = struct
     (* Initially, tables should all be empty: *)
     Memotables.print_stats stdout ;
     output_graphstate ~label:"Empty graph" graphout ;
+
+    (* make file header *)
+    stats_labels_print handle;
 
     (* Do the run(s), for the number of lists requested: *)
     for i = 0 to Params.num_lists - 1 do      
@@ -634,7 +669,6 @@ module RepOfSpreadTree
   (St : SpreadTree.SpreadTreeType) 
   (* : ListRepType *) =
 struct  
-  (* module St = AdaptonUtil.SpreadTree.MakeSpreadTree(ArtLib)(Key)(Int) *)
   module ArtLib = St.ArtLib    
   module Name = St.Name
   module Seq = SpreadTree.MakeSeq(St)
@@ -766,65 +800,9 @@ end
  *)
 (* ------------------------------------------------------------------------------- *)
 
-(* module AListRep ( A : AdaptonUtil.Signatures.AType ) = struct
-  module Data = Int
-  module AList = AdaptonUtil.AList.Make( A )
-  module IL = AList.Make( Data )
-  module Memotables = A.Memotables
-
-  type t = IL.t
-  type elm = Data.t * IL.t
-
-  let next l = match IL.force l with
-    | `Nil -> None
-    | `Cons(_,tl) -> Some tl
-
-  let of_list ints = IL.of_list ints
-
-  let take l optional_max0 =
-    let rec demand_list l optional_max =
-      match (IL.force l), optional_max with
-        | `Nil, None   -> []
-        | _   , Some 0 -> []
-        | `Nil, Some n ->
-            let n0 = match optional_max0 with Some n -> n | None -> failwith "impossible" in
-	    Printf.fprintf stdout "Warning: reached end of list before demanding all elements: demanded %d of %d\n%!" (n0-n) n0 ;
-            []
-
-        | `Cons(x, t), Some n ->
-            x :: (demand_list t (Some (n-1)))
-        | `Cons(x, t), None ->
-            x :: (demand_list t None)
-    in
-    demand_list l optional_max0
-
-  let delete_elm list =
-    let (h,tl) = IL.remove' 0 list in (h,tl)
-
-  let insert_elm list (h,tl) =
-    IL.insert' 0 h list tl
-
-  let data_of_elm (h,_) = h
-  let string_of_elm (h,tl) = Printf.sprintf "%d" h
-
-  let elm_of_int x = (x,IL.const `Nil)
-
-  let elm_update (_,tl) x = (x,tl)
-end
- *)
-(* ------------------------------------------------------------------------------- *)
-
 module Mergesorts = struct
 
-(*   module AList_mergesort (N : sig val name : string end) ( A : AdaptonUtil.Signatures.AType ) = struct
-    let name = "AList_mergesort_" ^ N.name
-    module ListRep = AListRep ( A )
-    let compute inp =
-      ListRep.IL.memo_mergesort Pervasives.compare inp
-    let trusted = List.sort Pervasives.compare
-    let flush = ListRep.IL.flush
-  end
-
+(* 
   module AKList_mergesort (N : sig val name : string end) ( A : AdaptonUtil.Signatures.AType ) = struct
     let name = "AKList_mergesort_" ^ N.name
     module ListRep = AKListRep ( A )
@@ -911,27 +889,12 @@ module List_transf = struct
   let mapf x = int_of_float ((log (1. +. float_of_int x)) +. log 1.5)
   let filterf x = ((x mod 2) = 0)
 
-(*   module AList_map (N : sig val name : string end) ( A : AdaptonUtil.Signatures.AType ) = struct
-    let name = "AList_map_" ^ N.name
-    module ListRep = AListRep ( A )
-    let compute inp = ListRep.IL.memo_map (module ListRep.IL) mapf inp
-    let trusted x = List.map mapf x
-    let flush = ListRep.IL.flush
-  end 
-
+(*   
   module AKList_map (N : sig val name : string end) ( A : AdaptonUtil.Signatures.AType ) = struct
     let name = "AKList_map_" ^ N.name
     module ListRep = AKListRep ( A )
     let compute inp = ListRep.IL.memo_map (module ListRep.IL) mapf (Key.nondet()) inp
     let trusted x = List.map mapf x
-    let flush = ListRep.IL.flush
-  end 
-
-  module AList_filter (N : sig val name : string end) ( A : AdaptonUtil.Signatures.AType ) = struct
-    let name = "AList_filter_" ^ N.name
-    module ListRep = AListRep ( A )
-    let compute inp = ListRep.IL.memo_filter filterf inp
-    let trusted x = List.filter filterf x
     let flush = ListRep.IL.flush
   end 
 
@@ -946,24 +909,7 @@ module List_transf = struct
 end
 module Reduction = struct
 
-(*   module AList_min (N : sig val name : string end) ( A : AdaptonUtil.Signatures.AType ) = struct
-    let name = "AList_min_" ^ N.name
-    module ListRep = AListRep ( A )
-    let min_of_ints x y = (
-      incr AdaptonUtil.Statistics.Counts.unit_cost ;
-      if x < y then x else y
-    )
-    let fold = ListRep.IL.memo_tfold min_of_ints
-    let compute inp = ListRep.IL.thunk (fun () ->
-      let x : int = ListRep.IL.AData.force (fold inp) in
-      `Cons(x, ListRep.IL.const `Nil )
-    )
-    let trusted x = match x with 
-      | [] -> [] 
-      | _ -> [ List.fold_left min_of_ints max_int x ]
-    let flush = ListRep.IL.flush
-  end
-
+(*   
   module AKList_min (N : sig val name : string end) ( A : AdaptonUtil.Signatures.AType ) = struct
     let name = "AKList_min_" ^ N.name
     module ListRep = AKListRep ( A )
@@ -1065,44 +1011,12 @@ module Reduction = struct
 
 end
 
-module Filters = struct
-
-(*   module AList_filter ( A : AdaptonUtil.Signatures.AType ) = struct
-    module ListRep = AListRep ( A )
-    let compute inp =
-      ListRep.IL.memo_filter (fun x -> x mod 3 == 0) inp
-    let trusted = List.filter (fun x -> x mod 3 == 0)
-    let flush = ListRep.IL.flush
-  end
-
-  module AList_filter_map_append ( A : AdaptonUtil.Signatures.AType ) = struct
-    module ListRep = AListRep ( A )
-    let pred = (<) 5
-    let fn = succ
-
-    let compute xs =
-      let filter_pred = ListRep.IL.memo_filter pred in
-      let map_fn = ListRep.IL.memo_map (module ListRep.IL) fn in
-      let append = ListRep.IL.memo_append in
-      let ys' = map_fn (filter_pred xs) in
-      append ys' ys'
-
-    let trusted xs =
-      let ys = List.map fn (List.filter pred xs) in
-      List.append ys ys
-
-    let flush = ListRep.IL.flush
-  end
- *)
-end
-
 (* ----------------------------------------------------------------------------------------------------- *)
 (* ----------------------------------------------------------------------------------------------------- *)
 (* ----------------------------------------------------------------------------------------------------- *)
 
 module Engines = struct
-(*   module Oldrep = AdaptonZoo.Adapton
- *)  module Grifola_name = Grifola.Make(
+  module Grifola_name = Grifola.Make(
     struct
       include Grifola.Default_params
     end )
@@ -1116,11 +1030,6 @@ module Engines = struct
       include Grifola.Default_params
       let disable_names = true
       let generative_ids = true
-    end )
-  module Grifola_noninc = Grifola.Make(
-    struct
-      include Grifola.Default_params
-      let disable_mfns = true
     end )
   module Grifola_nocheck = Grifola.Make(
     struct
@@ -1137,25 +1046,9 @@ end
 module Experiments = struct 
   open Engines
   
-(*   module Old_representation = struct        
-    module AList_mergesort_oldrep : ExperimentType =
-      Make_experiment(Mergesorts.AList_mergesort(struct let name = "oldrep" end)(Adapton))
-    module AKList_mergesort_oldrep : ExperimentType =
-      Make_experiment(Mergesorts.AKList_mergesort(struct let name = "oldrep" end)(Adapton))
-    
-    module AList_min_oldrep : ExperimentType =
-      Make_experiment(Reduction.AList_min(struct let name = "oldrep" end)(Adapton))
-    module AKList_min_oldrep : ExperimentType =
-      Make_experiment(Reduction.AKList_min(struct let name = "oldrep" end)(Adapton))
-  end
-  include Old_representation
-*)        
   module Grifola_representation = struct
     
     module Rope_mergesort = struct
-      module ListApp_noninc = Mergesorts.Rope_mergesort(struct let name = "noninc" end)(Grifola_noninc.ArtLib)
-      module Exp_noninc : ExperimentType = Make_experiment(ListApp_noninc)
-      
       module ListApp_name = Mergesorts.Rope_mergesort(struct let name = "name" end)(Grifola_name.ArtLib)
       module Exp_name : ExperimentType = Make_experiment(ListApp_name)
       
@@ -1186,9 +1079,6 @@ module Experiments = struct
     end
 
     module Rope_min ( Gran : GranType ) = struct
-      module ListApp_noninc = Reduction.Rope_min(struct let name = "noninc_"^(Gran.string) end)(Grifola_noninc.ArtLib)(Gran)
-      module Exp_noninc : ExperimentType = Make_experiment(ListApp_noninc)
-
       module ListApp_name = Reduction.Rope_min(struct let name = "name_"^(Gran.string) end)(Grifola_name.ArtLib)(Gran)
       module Exp_name : ExperimentType = Make_experiment(ListApp_name)
       
@@ -1200,9 +1090,6 @@ module Experiments = struct
     end
 
     module Rope_sum ( Gran : GranType ) = struct
-      module ListApp_noninc = Reduction.Rope_sum(struct let name = "noninc_"^(Gran.string) end)(Grifola_noninc.ArtLib)(Gran)
-      module Exp_noninc : ExperimentType = Make_experiment(ListApp_noninc)
-
       module ListApp_name = Reduction.Rope_sum(struct let name = "name_"^(Gran.string) end)(Grifola_name.ArtLib)(Gran)
       module Exp_name : ExperimentType = Make_experiment(ListApp_name)
       
@@ -1214,9 +1101,6 @@ module Experiments = struct
     end
 
     module Rope_mergesort_gran ( Gran : GranType ) = struct      
-      module ListApp_noninc = Mergesorts.Rope_mergesort_nm(struct let name = ("noninc_"^Gran.string) end)(Gran)(Grifola_noninc.ArtLib)
-      module Exp_noninc : ExperimentType = Make_experiment(ListApp_noninc)
-
       module ListApp_name = Mergesorts.Rope_mergesort_nm(struct let name = ("name_"^Gran.string) end)(Gran)(Grifola_name.ArtLib)
       module Exp_name : ExperimentType = Make_experiment(ListApp_name)
       
@@ -1277,13 +1161,11 @@ end
 let all_experiments : (module ExperimentType) list = [
 
   (* Rope min versions *)
-  (module Experiments.Rope_min_0_0.Exp_noninc         : ExperimentType) ;
   (module Experiments.Rope_min_0_0.Exp_name           : ExperimentType) ;
   (module Experiments.Rope_min_0_0.Exp_arg            : ExperimentType) ;
   (module Experiments.Rope_min_0_0.Exp_arggen         : ExperimentType) ;
 
   (* Rope sum versions *)
-  (module Experiments.Rope_sum_0_0.Exp_noninc         : ExperimentType) ;
   (module Experiments.Rope_sum_0_0.Exp_name           : ExperimentType) ;
   (module Experiments.Rope_sum_0_0.Exp_arg            : ExperimentType) ;
   (module Experiments.Rope_sum_0_0.Exp_arggen         : ExperimentType) ;
@@ -1294,42 +1176,12 @@ let all_experiments : (module ExperimentType) list = [
   (module Experiments.Rope_iter_0_0.Exp_arggen         : ExperimentType) ;
 
   (* Rope mergesort *)
-  (module Experiments.Rope_mergesort.Exp_noninc       : ExperimentType) ;
   (module Experiments.Rope_mergesort.Exp_name         : ExperimentType) ;
   (module Experiments.Rope_mergesort.Exp_arggen       : ExperimentType) ;
   
   (* TUESDAY Nov 11 2014: Benchmarks for overhead comparison: *)
   (module Experiments.AVL_of_rope_grifola_name : ExperimentType) ;
   (module Experiments.AVL_of_rope_grifola_arggen : ExperimentType) ;
-
-(*  
-  (* TUESDAY Nov 11 2014: Benchmarks for overhead comparison: *)
-  (* A*List min versions *)
-  (module Experiments.AList_min_grifola_arggen      : ExperimentType) ;
-  (module Experiments.AKList_min_grifola_name       : ExperimentType) ;  
-  (* A*List map versions *)
-  (module Experiments.AList_map_grifola_arggen     : ExperimentType) ;
-  (module Experiments.AKList_map_grifola_name      : ExperimentType) ;  
-  (* A*List filter versions *)
-  (module Experiments.AList_filter_grifola_arggen  : ExperimentType) ;
-  (module Experiments.AKList_filter_grifola_name   : ExperimentType) ;  
-
-  (* AKList mergesort versions *)
-  (module Experiments.AKList_mergesort_grifola_name     : ExperimentType) ;
-  (module Experiments.AKList_mergesort_grifola_arg      : ExperimentType) ;
-  (module Experiments.AKList_mergesort_grifola_arggen   : ExperimentType) ;
-  (module Experiments.AKList_mergesort_grifola_noninc   : ExperimentType) ;
-  (module Experiments.AKList_mergesort_grifola_nocheck  : ExperimentType) ;
-  (module Experiments.AKList_mergesort_oldrep           : ExperimentType) ;  
-
-  (* AList mergesort versions *)
-  (module Experiments.AList_mergesort_oldrep            : ExperimentType) ;
-  (module Experiments.AList_mergesort_grifola           : ExperimentType) ;
-  (module Experiments.AList_mergesort_grifola_nocheck   : ExperimentType) ;
-
-  (module Experiments.AList_min_oldrep            : ExperimentType) ;
-  (module Experiments.AKList_min_oldrep           : ExperimentType) ;
-*)
 ]
 
 module Default_perf_params : ParamsType = struct
@@ -1488,43 +1340,3 @@ let _ =
     let module E = (val exp : ExperimentType) in 
     E.run (module Commandline_params)
   ) requested_experiments
-
-
-(*
-let _ =  
- in
-
-  let statsout = open_out_gen [Open_creat;Open_append] 0o666 "Results/BenchmarkAdapton/experiments.csv"
-
-  if true then Performance_experiments..run ("AKList_mergesort_grifola", statsout,open_out "graphmovie-none") ;
-  if true then Performance_experiments.AList_mergesort_grifola.run  ("AList_mergesort_grifola", statsout,open_out "graphmovie-none") ;
-  if true then Performance_experiments.AKList_mergesort_grifola_nocheck.run  ("AKList_mergesort_grifola_nocheck", statsout,open_out "graphmovie-none") ;
-  if true then Performance_experiments.AList_mergesort_grifola_nocheck.run  ("AList_mergesort_grifola_nocheck", statsout,open_out "graphmovie-none") ;
-  
-  IFDEF ADAPTON_LOG THEN (
-    if true then Debugging_experiments.AKList_mergesort.run ("AKList_mergesort", statsout,open_out "graphmovie-AKList_mergesort") ;
-    if true then Debugging_experiments.AKList_mergesort_grifola.run ("AKList_mergesort_grifola", statsout,open_out "graphmovie-AKList_mergesort_grifola") ;
-    if true then Debugging_experiments.AList_mergesort_rc_sanitize.run ("AList_mergesort_rc_sanitize", statsout,open_out "graphmovie-AList_mergesort_rc_sanitize") ;
-    if true then Debugging_experiments.AList_filter_map_append_fifo.run ("AList_filter_map_append_fifo", statsout,open_out "graphmovie-AList_filter_map_append_fifo") ;    
-    if true then Debugging_experiments.AList_mergesort_oldrep.run ("AList_mergesort_oldrep", statsout,open_out "graphmovie-AList_mergesort_oldrep") ;
-    if true then Debugging_experiments.AList_mergesort_rc_nosanitize.run ("AList_mergesort_rc_nosanitize", statsout,open_out "graphmovie-AList_mergesort_rc_nosanitize") ;
-    if true then Debugging_experiments.AList_mergesort_rc_sanitize.run ("AList_mergesort_rc_sanitize", statsout,open_out "graphmovie-AList_mergesort_rc_sanitize") ;
-    if true then Debugging_experiments.AList_mergesort_fifo_norc.run ("AList_mergesort_fifo_norc", statsout,open_out "graphmovie-AList_mergesort_fifo_norc") ;
-    if true then Debugging_experiments.AList_mergesort_fifo_rc.run ("AList_mergesort_fifo_rc", statsout,open_out "graphmovie-AList_mergesort_fifo_rc") ;    
-    if true then Debugging_experiments.AList_filter_fifo_rc.run ("AList_filter_fifo_rc", statsout,open_out "graphmovie-AList_filter_fifo_rc") ;    
-    if true then Debugging_experiments.AList_filter_fifo_rc.run ("AList_filter_fifo_rc", statsout,open_out "graphmovie-AList_filter_fifo_rc") ;
-  ) ENDIF ;
-
-  IFDEF ADAPTON_MEASURE_OLD_REP THEN (
-    IFDEF ADAPTON_NOCACHEDVAL THEN (
-      if true then Performance_experiments.AKList_mergesort_oldrep.run  ("AKList_mergesort_oldrep_inexact", statsout,open_out "graphmovie-none") ;
-      if true then Performance_experiments.AList_mergesort_oldrep.run   ("AList_mergesort_oldrep_inexact", statsout,open_out "graphmovie-none") ;
-    ) ELSE (
-      if true then Performance_experiments.AKList_mergesort_oldrep.run  ("AKList_mergesort_oldrep", statsout,open_out "graphmovie-none") ;
-      if true then Performance_experiments.AList_mergesort_oldrep.run   ("AList_mergesort_oldrep", statsout,open_out "graphmovie-none") ;
-    ) ENDIF ;
-  ) ENDIF ;  
-  
-  close_out statsout;
-  ()
-*)

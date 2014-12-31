@@ -1,11 +1,5 @@
-FILE=../out/avlropesort.csv
-
-# files must be touched first to give a minimum set of permissions, and creation if needed
-touch $FILE
-
-# the titles for the csv columns
-# remember to adjust this if the output data was changed (or delete it if you intend to append to the file)
-echo "Unix Time, Seed, Version, Test, Size, Mod Pos, Mod Pos %, Demand, Demand %, Time, Unit Cost, Heap, Stack, dirty, dirty %, clean, clean %, evaluate,  evaluate %, create, create %, tables" >> $FILE
+# output file
+FILE=../out/avl_of_rope.csv
 
 # test runner
 TESTER=../experiments.native
