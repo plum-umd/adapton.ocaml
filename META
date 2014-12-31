@@ -1,0 +1,9 @@
+#for use with ocamlfind
+
+#coordinate this with 'Makefile', 'adapton.install'
+
+requires = "core"
+description = "Adapton incremental computation engine"
+version = "0.1-dev"
+archive(byte) = "adapton_lib.cma"
+archive(native) = "adapton_lib.cmxa"

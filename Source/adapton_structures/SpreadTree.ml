@@ -77,6 +77,8 @@
 
 open Primitives
 open GrifolaType
+module Types = AdaptonTypes
+module Statistics = AdaptonStatistics
 
 module type SpreadTreeType = sig
   module ArtLib : ArtLibType

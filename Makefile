@@ -6,7 +6,7 @@ LIBS=a cma cmo cmi cmx cmxa
 
 lib:
 	for ext in $(LIBS); do \
-		ocamlbuild Source/adapton.$$ext; \
+		ocamlbuild Source/adapton_lib.$$ext; \
 	done
 
 #ocamlbuild will put an alias to binaries in the root directory
@@ -18,6 +18,8 @@ opam-pin:
 
 opam-remove:
 	opam pin remove adapton
+
+opam-reload: opam-remove opam-pin
 
 clean:
 	ocamlbuild -clean

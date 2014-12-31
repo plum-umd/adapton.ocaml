@@ -1,2 +1,2 @@
-true: for-pack(Adapton_core)
+true: for-pack(Adapton_lib.Adapton_core)
 <Grifola.*>: package(core)

@@ -8,6 +8,8 @@
 
 let default_outfile = "Results/BenchmarkAdapton/experiments.csv"
 module Viz = Viz
+module Statistics = AdaptonStatistics
+module Types = AdaptonTypes
 
 (** ---------------------------------------------------------------------- *)
 (** Flags and Params that are common to all experiments: *)

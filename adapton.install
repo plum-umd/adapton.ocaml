@@ -1,13 +1,13 @@
 #opam install directives
 
-#coordinate these with the Makefile
+#coordinate these with 'Makefile'
 lib: [
   "META"
-  "_build/Source/adapton.a"
-  "_build/Source/adapton.cma"
-  "_build/Source/adapton.cmo"
-  "_build/Source/adapton.cmi"
-  "_build/Source/adapton.cmx"
-  "_build/Source/adapton.cmxa"
+  "_build/Source/adapton_lib.a"
+  "_build/Source/adapton_lib.cmo"
+  "_build/Source/adapton_lib.cmi"
+  "_build/Source/adapton_lib.cma"
+  "_build/Source/adapton_lib.cmx"
+  "_build/Source/adapton_lib.cmxa"
   ]
   
