@@ -3,12 +3,6 @@ adapton.ocaml
 
 (Nominal) Adapton in OCaml.  Yit's mecurial repo is here: https://bitbucket.org/khooyp/adapton.ocaml
 
-Currently this library cannot export some key modules:
-  Primitives
-  Types
-  Statistics
-so code requiring these must be run within the project, see myocamlbuild for dependency issues.
-
 To run a first experiment:
 
   make test
@@ -33,6 +27,8 @@ To use externally:
       with ocamlbuild, in _tags:
         <true>: package(adapton)
 
+  for example: Source/Trivial
+
 To use in toplevel:
 
   make opam-pin (once)
@@ -46,6 +42,17 @@ To use in toplevel:
 
   same availability as in source
 
-After Changing source:
+Toplevel example:
 
+    module AInt = Adapton.Grifola.Default.ArtLib.MakeArt(Adapton.Key)(Adapton.AdaptonTypes.Int);;
+    let a = AInt.cell(Adapton.Key.nondet()) 3;;
+    let ax2 = AInt.thunk(Adapton.Key.nondet())(fun()->(AInt.force a)*2);;
+    AInt.force ax2;;
+    AInt.set a 7;;
+    AInt.force ax2;;
+
+After Changing source:
   make opam-reload
+
+
+

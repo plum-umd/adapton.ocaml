@@ -6,12 +6,6 @@ MemoN
 MemoNK
 Symbol
 WeakSet
-
-#these last ones should be included, but the compiler won't do it
-#the compililation of an exteranl file complains that there is
-#no implemention included for them. There is implementation
-#included for the others.
-
-#Primitives
-#AdaptonTypes
-#AdaptonStatistics
+Primitives
+AdaptonTypes
+AdaptonStatistics

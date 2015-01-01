@@ -74,7 +74,7 @@
     defined and used separately from the usual cases of the structure,
     which are defined in the usual (eager) fashion.
 *)
-
+open Adapton_core
 open Primitives
 open GrifolaType
 module Types = AdaptonTypes
