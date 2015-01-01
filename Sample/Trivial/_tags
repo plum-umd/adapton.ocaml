@@ -1,2 +1,2 @@
 true: thread
-true: package(core,adapton)
+true: package(adapton)

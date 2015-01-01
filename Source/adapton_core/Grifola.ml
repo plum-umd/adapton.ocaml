@@ -22,11 +22,10 @@
 **)
 
 open Primitives
-(* open AdaptonUtil *)
 
 module Statistics = AdaptonStatistics
-module Key    = Key    (* re-export from AdaptonInternal *)
-module Symbol = Symbol (* re-export from AdaptonInternal *)
+module Key    = Key    (* re-export *)
+module Symbol = Symbol (* re-export *)
 module Viz    = Viz
 
 module type AParamsType = sig
@@ -1590,68 +1589,6 @@ module Make (Params:AParamsType) = struct
           | _ -> failwith "unrecognized eviction policy name"
   end
 
-(*   module ATypeImpl : AdaptonUtil.Signatures.AType = struct
-    module M = struct
-      type atype
-      type 'a thunk = 'a node
-      let is_incremental = true
-      let is_lazy = true
-      let id = node_id
-      let hash = node_hash
-      let equal = node_equal
-      let string = node_string
-      let sanitize = node_sanitize
-      let force = node_force
-      let viznode node = (node_meta node).viznode
-      module Eviction = Eviction
-      module Memotables = Memotables
-      let refresh () = ()
-      let flush () = flush ()
-      let tweak_gc () = ()
-    end
-    include M
-    module Make (Data:DatType) = struct
-      include MakeArt(Key)(Data)
-      include M
-      type data = Data.t
-      let memo _ = 
-        failwith "TODO"
-      let const x = 
-        let nondet_nm = Key.nondet () in 
-        cell nondet_nm x
-      let cell x = const x
-      let thunk f = 
-        let nondet_nm = Key.nondet () in 
-        thunk nondet_nm f
-      let update_const = set
-      let update_thunk _ = failwith "update_thunk: deprecated."
-      include MemoN.Make
-      ( struct
-        type data = Data.t
-        type t = Data.t node
-        let memo (type a) (module A : ResultType with type t = a) f =
-          (mk_mfn (Key.nondet ()) (module A : DatType with type t = a)
-             (fun mfn -> f mfn.mfn_art)
-          ).mfn_art
-        end )
-      include MemoNK.Make
-      ( struct
-        type data = Data.t
-        type t = Data.t node
-        let memo_keyed (type a)
-            (module A : ResultType with type t = a)
-            ?symbol:(symbol=Symbol.unknown)
-            (body:((Key.t -> a -> t) as 'memoized_body) -> a -> data)
-            : (Key.t -> a ->t)
-            =
-          (mk_mfn (Key.pair (Key.gensym symbol) (Key.nondet ())) 
-             (module A : DatType with type t = a)
-             (fun mfn -> body mfn.mfn_nart)
-          ).mfn_nart
-        end )
-    end
-  end
- *)
   module ArtLib : GrifolaType.ArtLibType = struct
     type lib_id
     module Memotables = Memotables
