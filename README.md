@@ -25,9 +25,10 @@ To use externally:
     compile your project using opam package 'adapton'.
 
       with ocamlbuild, in _tags:
+        <true>: thread
         <true>: package(adapton)
 
-    for example: Source/Trivial
+    for example: Sample/Trivial
 
 To use in toplevel:
 

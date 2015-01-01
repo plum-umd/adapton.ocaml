@@ -4,6 +4,7 @@
 *)
 
 let default_outfile = "out/experiments.csv"
+open Adapton_core
 module Viz = Viz
 module Statistics = AdaptonStatistics
 module Types = AdaptonTypes
