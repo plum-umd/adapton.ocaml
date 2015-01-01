@@ -5,17 +5,17 @@ adapton.ocaml
 
 To run a first experiment:
 
-  make test
-  cd script
-  ./test-avl.sh
+    make test
+    cd script
+    ./test-avl.sh
 
-  out/avlropesort.csv contains result data.
+    out/avlropesort.csv contains result data.
 
 To use externally:
 
-  make opam-pin (once)
+    make opam-pin (once)
 
-  in your source:
+    in your source:
 
     open Adapton_lib
 
@@ -27,32 +27,28 @@ To use externally:
       with ocamlbuild, in _tags:
         <true>: package(adapton)
 
-  for example: Source/Trivial
+    for example: Source/Trivial
 
 To use in toplevel:
 
-  make opam-pin (once)
-
-  ocaml
-  #use "topfind";;
-  #camlp4o;; <-- optional?
-  #thread;;
-  #require "Adapton";;
-  open Adapton_lib;;
-
-  same availability as in source
+    make opam-pin (once)
 
 Toplevel example:
 
-    module AInt = Adapton.Grifola.Default.ArtLib.MakeArt(Adapton.Key)(Adapton.AdaptonTypes.Int);;
-    let a = AInt.cell(Adapton.Key.nondet()) 3;;
-    let ax2 = AInt.thunk(Adapton.Key.nondet())(fun()->(AInt.force a)*2);;
+    ocaml
+    #use "topfind";;
+    #thread;;
+    #require "Adapton";;
+    open Adapton_lib;;
+    module AInt = Adapton.Grifola.Default.MakeArt(Adapton.Key)(Adapton.Types.Int);;
+    let a = AInt.cell(AInt.Name.nondet()) 3;;
+    let ax2 = AInt.thunk(AInt.Name.nondet())(fun()->(AInt.force a)*2);;
     AInt.force ax2;;
     AInt.set a 7;;
     AInt.force ax2;;
 
 After Changing source:
-  make opam-reload
+    make opam-reload
 
 
 

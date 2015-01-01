@@ -1,1 +1,1 @@
-This directory contains common data structures optimised for use with the core lib. 
+This directory contains common data structures optimised for incremental use with Adapton. 
