@@ -1,3 +1,3 @@
-<adapton.*>: for-pack(Adapton_lib)
+<Adapton.*>: for-pack(Adapton_lib)
 <adapton_core.*>: for-pack(Adapton_lib)
 <adapton_structures.*>: for-pack(Adapton_lib)
