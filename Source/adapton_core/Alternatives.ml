@@ -7,12 +7,12 @@ to produce non-adapton results
 open Primitives
 
 (* a minimal alternative to Grifola.Make, recalculating at each force *)
-module LazyNonInc = struct
+module EagerNonInc = struct
   (* TODO: consider using the name as the id instead of a count *)
   let counter = ref 0
-  let next_count = 
-    let ret = counter in
-    counter := !counter+1;
+  let next_count ()= 
+    let ret = !counter in
+    counter := ret+1;
     ret
 
   module MakeArt
@@ -25,12 +25,12 @@ module LazyNonInc = struct
     module Name = Name
     module Data = Data
 
-    type 'a lazy_node = {
+    type 'a eager_node = {
       id : int;
       mutable fn : unit->'a;
     }
 
-    type t = Data.t lazy_node
+    type t = Data.t eager_node
 
     type 'arg mfn = { mfn_data : 'arg -> Data.t ;      (* Pure recursion. *)
                       mfn_art  : 'arg -> t ;           (* Create a memoized articulation, classically. *)
@@ -42,9 +42,9 @@ module LazyNonInc = struct
     let force { fn; _ } = (* incr Statistics.Counts.evaluate; *) fn()
     let sanitize n = n
 
-    let cell _ x = { id = !next_count; fn = (fun()->x) }
+    let cell _ x = { id = next_count(); fn = (fun()->x) }
     let set n x = n.fn <- (fun()->x)     
-    let thunk _ f = { id = !next_count; fn = f }
+    let thunk _ f = { id = next_count(); fn = f }
 
 
     let mk_mfn (type a)
