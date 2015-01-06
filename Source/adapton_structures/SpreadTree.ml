@@ -914,6 +914,62 @@ struct
     in
     fun xs ys -> mfn.LArt.mfn_data (xs,ys)
 
+  let list_split
+      ( compare_nm : St.Name.t )
+      ( compare : St.Data.t -> St.Data.t -> int)
+      : St.List.Data.t -> St.Data.t -> (St.List.Data.t * St.List.Data.t) =
+    let module M = St.ArtLib.MakeArt(Name)(Types.Tuple2(St.List.Data)(St.List.Data)) in
+    let fnn = St.Name.pair (St.Name.gensym "list_split") compare_nm in
+    let mfn = M.mk_mfn fnn
+      (module Types.Tuple4(St.List.Data)(St.Data)(St.List.Data)(St.List.Data))
+      (fun r (list, c, l1, l2) ->
+        let split_list list c l1 l2 = r.M.mfn_data (list, c, l1, l2) in
+        ( match list with
+        | `Nil -> (l1,l2)
+        | `Cons(x,xs) -> 
+          if compare x c <= 0 then
+            split_list xs c (`Cons(x,l1)) l2
+          else
+            split_list xs c l1 (`Cons(x,l2))
+        | `Art(a) -> split_list (LArt.force a) c l1 l2
+        | `Name(nms, xs) -> 
+          let nm1, nms = Name.fork nms in
+          let nm2, nms = Name.fork nms in
+          let nm3, nm4 = Name.fork nms in
+          split_list xs c
+            (`Name(nm1, `Art(LArt.cell nm2 l1)))
+            (`Name(nm3, `Art(LArt.cell nm4 l2)))
+      ))
+    in
+    fun list c -> mfn.M.mfn_data (list, c, `Nil, `Nil)
+
+  let list_mergesort
+      ( compare_nm : St.Name.t )
+      ( compare : St.Data.t -> St.Data.t -> int )
+      : St.List.Data.t -> St.List.Data.t = 
+    let fnn = St.Name.pair (St.Name.gensym "list_mergesort") compare_nm in
+    let merge = list_merge compare_nm compare in
+    let split = list_split compare_nm compare in
+    let mfn = St.List.Art.mk_mfn fnn
+      (module St.List.Data)
+      (fun r list ->
+        let list_mergesort = r.LArt.mfn_data in
+        let rec pick_center list = 
+          match list with
+          | `Nil -> None
+          | `Cons(x,_) -> Some(x)
+          | `Art(a) -> pick_center (LArt.force a)
+          | `Name(_,xs) -> pick_center xs
+        in
+        match pick_center list with
+        | None -> `Nil
+        | Some(c) ->
+        let l1, l2 = split list c in
+        merge (list_mergesort l1)(list_mergesort l2)
+      )
+    in
+    fun list -> mfn.LArt.mfn_data list
+
   let rope_mergesort
       ( compare_nm : St.Name.t )
       ( compare : St.Data.t -> St.Data.t -> int )
@@ -974,7 +1030,7 @@ struct
     in
     fun rope -> mfn.LArt.mfn_data rope
 
-  let list_mergesort_nm ~rope_art_threshold ~list_art_threshold
+  let list_to_rope_mergesort_nm ~rope_art_threshold ~list_art_threshold
       ( compare_nm : St.Name.t )
       ( compare : St.Data.t -> St.Data.t -> int )
       : St.List.Data.t -> St.List.Data.t =
@@ -988,7 +1044,7 @@ struct
       let rope = rope_of_list_nm ~art_threshold:rope_art_threshold list in
       sort rope
 
-  let list_mergesort 
+  let list_to_rope_mergesort 
       ( compare_nm : St.Name.t )
       ( compare : St.Data.t -> St.Data.t -> int )
       : St.List.Data.t -> St.List.Data.t =

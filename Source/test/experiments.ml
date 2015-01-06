@@ -817,6 +817,25 @@ module Mergesorts = struct
     let flush = ListRep.IL.flush
   end
  *)
+
+  (* TODO: add the _nm version of this *)
+  module List_mergesort 
+    ( N : sig val name : string end ) 
+    ( AL : GrifolaType.ArtLibType ) = 
+  struct
+    let name = "List_mergesort_" ^ N.name
+    let int_compare : int -> int -> int = Pervasives.compare
+    module ListRep = SpreadTreeRep ( AL )
+    let compute inp =
+      let nm = Key.fork (Key.nondet ()) in
+      let mergesort = ListRep.Seq.list_mergesort (fst nm) int_compare in
+      ListRep.St.List.Art.thunk (snd nm) ( fun () ->        
+        mergesort (ListRep.St.List.Art.force inp)
+      )
+    let trusted = List.sort int_compare
+    let flush = AL.Eviction.flush
+  end
+
   module Rope_mergesort 
     ( N : sig val name : string end ) 
     ( AL : GrifolaType.ArtLibType ) = 
@@ -826,7 +845,7 @@ module Mergesorts = struct
     module ListRep = SpreadTreeRep ( AL )
     let compute inp =
       let nm = Key.fork (Key.nondet ()) in
-      let mergesort = ListRep.Seq.list_mergesort (fst nm) int_compare in
+      let mergesort = ListRep.Seq.list_to_rope_mergesort (fst nm) int_compare in
       ListRep.St.List.Art.thunk (snd nm) ( fun () ->        
         mergesort (ListRep.St.List.Art.force inp)
       )
@@ -846,7 +865,7 @@ module Mergesorts = struct
     let compute inp =
       (* TODO: Cache & Reuse memotables!! *)
       let nm = Key.fork (Key.nondet ()) in
-      let mergesort = ListRep.Seq.list_mergesort_nm 
+      let mergesort = ListRep.Seq.list_to_rope_mergesort_nm 
         ~rope_art_threshold:Gran.rope_art_threshold 
         ~list_art_threshold:Gran.list_art_threshold 
         (fst nm) int_compare 
@@ -1064,6 +1083,20 @@ module Experiments = struct
       module Exp_noninc : ExperimentType = Make_experiment(ListApp_noninc)
     end
 
+    module List_mergesort = struct
+      module ListApp_name = Mergesorts.List_mergesort(struct let name = "name" end)(Grifola_name.ArtLib)
+      module Exp_name : ExperimentType = Make_experiment(ListApp_name)
+      
+      module ListApp_arg = Mergesorts.List_mergesort(struct let name = "arg" end)(Grifola_arg.ArtLib)
+      module Exp_arg : ExperimentType = Make_experiment(ListApp_arg)
+
+      module ListApp_arggen = Mergesorts.List_mergesort(struct let name = "arggen" end)(Grifola_arggen.ArtLib)
+      module Exp_arggen : ExperimentType = Make_experiment(ListApp_arggen)
+
+      module ListApp_noninc = Mergesorts.List_mergesort(struct let name = "eagernoninc" end)(EagerNonInc.ArtLib)
+      module Exp_noninc : ExperimentType = Make_experiment(ListApp_noninc)
+    end
+
     module Gran_0_0 = struct let string = "0-0"
                              let rope_art_threshold = 1 
                              let list_art_threshold = 1 end
@@ -1182,6 +1215,11 @@ let all_experiments : (module ExperimentType) list = [
   (module Experiments.Rope_mergesort.Exp_name         : ExperimentType) ;
   (module Experiments.Rope_mergesort.Exp_arggen       : ExperimentType) ;
   (module Experiments.Rope_mergesort.Exp_noninc       : ExperimentType) ;
+  
+  (* List mergesort *)
+  (module Experiments.List_mergesort.Exp_name         : ExperimentType) ;
+  (module Experiments.List_mergesort.Exp_arggen       : ExperimentType) ;
+  (module Experiments.List_mergesort.Exp_noninc       : ExperimentType) ;
   
   (* TUESDAY Nov 11 2014: Benchmarks for overhead comparison: *)
   (module Experiments.AVL_of_rope_grifola_name : ExperimentType) ;

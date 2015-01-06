@@ -1,1 +1,3 @@
 <*.cm*>: for-pack(As2)
+true: thread
+true: package(adapton)
