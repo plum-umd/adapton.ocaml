@@ -1,0 +1,98 @@
+    The purpose of this file is to prep notes that may not be
+    ready for a entry in the repository issues tracker. We should
+    make some attempt to coordinate the two, with a issue number
+    here once it gets tracked, and a line from here in the tracker
+    to label it.
+
+    I'd prefer to keep this file small and use it only during the
+    transition from personal note-taking to repo issue tracking.
+
+Project: Move Adapton to new repository
+=======================================
+Main goals:
+1) Mininal code base
+2) experiments.ml works
+3) Create opam package
+4) Run code from package
+===== Complete =====
+
+===== Continuing =====
+
+STATUS:
+
+  AS2 not working
+  Gran not working (_nm functions?)
+
+TODO:
+
+Major:
+  (issue 2)Update AS2 to Grifola
+  (issue 3)implement basic list mergesort (with contract-reduce)
+  (issue 4)create an oo interface to encapsulate data types (discussed below)
+
+
+Minor:
+  Use _tags for internal dependency
+  (issue 5)move install script to makefile (findlib install [deps])
+  Remove non-working code
+  (issue 6)fix title line of experiments
+  (issue 7)include a 'compare' item to the datatypes
+
+Determine:
+  mutual recursion strategy (probably just 'let rec')
+  a better articulation strategy for datastructures
+
+
+========== Discussion ==========
+
+Singleton questions:
+
+  do .thunk and .cell really need names?
+    they can be beneficial, but it may be better to create
+    a namespace for any complex programming
+
+  can the name just be a hash of the code plus inputs?
+    no, the point is location in datastructure
+
+OO Interface:
+  thunk as primitives, memo as constructor
+  all thunks have hypothetical mode
+  cell = thunk fun->default
+
+  class 'a IResult:
+    n#get():'a                      forces computation
+    n#try(val:'a):()                will ignore computation and pass val to dependents
+    n#reset():()                    returns computation to default
+    n#type():DatType with t = 'a    gets the type module
+
+  since modules that need to be included are all datatypes,
+  we can be more explicit about it:
+
+  IComp ~out ~in f : 
+    (type a) (type b)
+    ~out:(DatType with type t = a) ->
+    ~in:(DatType with type t = b) option ->
+    (r -> b -> a) as r ->
+    b -> class a IResult
+
+  cell:  IComp ~out:AInt ~in:AUnit (fun r -> 3:int) ()
+  thunk: IComp ~out:AInt ~in:AUnit (fun r -> ... a:int) ()
+  memo:  IComp ~out:AInt ~in:Tuple2(a#type(), b#type()) (fun r (a,b) -> ... c:int)
+
+  find a way to link the ~out type to the function's output type
+    but we'd have an issue keeping the memotables together
+
+  find a way to link the ~in type to the functions's input
+    the issue is in creating arbitrary length parameter lists
+    avoid code that constructs/deconstructs these arguments
+
+  figure out how to integrate names with this
+    name the func
+    name the recursive calls
+    name the result
+
+Progress:
+  The constructor above is just a simple wrapper on the regular
+  Adapton memo function. First priority is combining type and value
+  into an object to reduce code complexity.
+
