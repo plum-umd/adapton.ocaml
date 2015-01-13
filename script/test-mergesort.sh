@@ -10,22 +10,22 @@ TESTER=../experiments.native
 # this allows the benchmark file to begin with the most important information
 # in case it has to be stopped, or you'd like to peak in at the progress
 
-#len is the length of the list
-for len in 1 4 10 15 173 1000; do # 2000 3000 4000 5000 6000 7000 8000 9000 10000; do
-  #samp, the sample number, is the random seed that is used to create the initial data to be modified
+#len - length of the list, must be a multiple of --num-changes, which has a default of 10
+for len in 1 4 10 50 170 1000; do # 2000 3000 4000 5000 6000 7000 8000 9000 10000; do
+  #samp - sample number, is the random seed that is used to create the initial data to be modified
   for samp in 1; do # 2 3 4 5 6 7; do
-    #dem is the amount of the list that is demended
+    #dem - amount of the list that is demended
     for dem in 10.0 100.0; do
-      #ver is the adapton version that is being tested, as well as the test set.
+      #ver - adapton version that is being tested, as well as the test set.
       for ver in Rope_mergesort_name List_mergesort_name List_mergesort_eagernoninc; do 
-        #change is the particular change that is done to the list
+        #change - particular change that is done to the list, default is all
         #for change in "--r" "--rr" "--di" "--id" "--ss"; do
           fullver=$ver
           echo "Running: $fullver @ $len @ $samp"
           args1="--sample-num $samp --n $len --demand $dem"
           args2="--experiment $fullver"
-          args3= #"--0 $change" #one change type at a time
-          args4="--test-flags"
+          args3="--num-changes 10" # --0 $change" #one change type at a time, on new copy of list
+          args4="--test-flags" #check for correctness
           $TESTER $args1 $args2 $args3 $args4 --outfile $FILE
         #done
       done

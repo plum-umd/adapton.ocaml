@@ -37,6 +37,7 @@ Minor:
   Remove non-working code
   (issue 6)fix title line of experiments
   (issue 7)include a 'compare' item to the datatypes
+  (issue 8)get the logging to work
 
 Determine:
   mutual recursion strategy (probably just 'let rec')
@@ -69,10 +70,10 @@ OO Interface:
   cell = thunk fun->default
 
   class 'a IResult:
-    n#get():'a                      forces computation
-    n#try(val:'a):()                will ignore computation and pass val to dependents
-    n#reset():()                    returns computation to default
-    n#type():DatType with t = 'a    gets the type module
+    #get():'a                      forces computation
+    #try(val:'a):()                will ignore computation and pass val to dependents
+    #reset():()                    returns computation to default
+    #type():DatType with t = 'a    gets the type module
 
   since modules that need to be included are all datatypes,
   we can be more explicit about it:
@@ -95,13 +96,16 @@ OO Interface:
     the issue is in creating arbitrary length parameter lists
     avoid code that constructs/deconstructs these arguments
 
-  figure out how to integrate names with this
+  figure out how to integrate names with the above
     name the func
     name the recursive calls
     name the result
+    others?
 
 Progress:
   The constructor above is just a simple wrapper on the regular
   Adapton memo function. First priority is combining type and value
-  into an object to reduce code complexity.
+  into an object to reduce code complexity. Eventually, we want to
+  hide the type metadata completely. We may still need to expose it
+  for object creation.
 
