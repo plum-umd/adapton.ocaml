@@ -43,6 +43,7 @@ Determine:
   a better articulation strategy for datastructures
 
 
+
 ========== Discussion ==========
 
 Singleton questions:
@@ -53,6 +54,14 @@ Singleton questions:
 
   can the name just be a hash of the code plus inputs?
     no, the point is location in datastructure
+
+  can or should there be one memotable per structure? how do you set that up?
+
+  what's the difference between DatType memos and memo funcions
+
+  how do you set up thunks to simulate a recursive call (is it even important)
+
+  why do mfn's have all the modules available?
 
 OO Interface:
   thunk as primitives, memo as constructor

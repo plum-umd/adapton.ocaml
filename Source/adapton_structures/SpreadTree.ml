@@ -331,6 +331,10 @@ struct
   module TArt = St.Tree.Art
   module RArt = St.Rope.Art
 
+  (* List of List Articulation *)
+  module SToL = MakeSpreadTree(St.ArtLib)(Name)(St.List.Data)
+  module LoLArt = SToL.List.Art
+
   let mut_elms_of_list
       ( name : Name.t )
       ( list : 'a list )
@@ -378,6 +382,13 @@ struct
     | `Cons(_, tl) -> next_art tl
     | `Name(_, rest) -> next_art rest
     | `Art a -> Some a
+
+  let rec next_cons x =
+    match x with
+    | `Nil -> None
+    | `Cons(x,xs) -> Some(x,xs)
+    | `Art(a) -> next_cons(LArt.force a)
+    | `Name(_, xs) -> next_cons xs
 
   let rec ith_art list count = 
     ( match count with
@@ -769,6 +780,89 @@ struct
     in
     fun rope -> mfn.RArt.mfn_data rope
 
+  (* packs each element as a single item list inside a list of lists *)
+  let list_to_singletons (nm : St.Name.t)
+      : St.List.Data.t -> SToL.List.Data.t =
+    let fnn = St.Name.pair (St.Name.gensym "list_to_singletons") nm in
+    let mfn = LoLArt.mk_mfn fnn
+      (module St.List.Data)
+      (fun r list ->
+        let singletons list = r.LoLArt.mfn_data list in
+        match list with
+        | `Nil -> `Nil
+        | `Cons(x,xs) -> 
+          `Cons(`Cons(x,`Nil), singletons xs)
+        | `Art(a) -> singletons (LArt.force a)
+        | `Name(nms, xs) ->
+          let nm1, nms = Name.fork nms in
+          let nm2, nms = Name.fork nms in
+          let nm3, nm4 = Name.fork nms in
+          match next_cons xs with
+          | None -> `Nil
+          | Some(x,xs) ->
+            (* see rust code for potential improvement, passing names through *)
+            let art_elm = `Name(nm1, `Art(LArt.thunk nm2 (fun () -> `Cons(x,`Nil)) )) in
+            `Name(nm3, `Art(LoLArt.thunk nm4 (fun ()->`Cons(art_elm, r.LoLArt.mfn_data xs))))
+      )
+    in
+    fun list -> mfn.LoLArt.mfn_data list
+
+  (* TODO: bring out some internal funs *)
+  (* repeatedly applies the contraction function probabilistically until we reach a single value *)
+  let list_contract
+      (nm : St.Name.t)
+      (contract_f : SToL.Data.t -> SToL.Data.t -> SToL.Data.t)
+      : St.List.Data.t -> St.List.Data.t =
+    let fnns = St.Name.pair (St.Name.gensym "lol_contract") nm in
+    let fnn1, fnns = Name.fork fnns in
+    let fnn2, fnn3 = Name.fork fnns in
+    let singletons = list_to_singletons fnn1 in
+    (* Probabilistically apply contraction function *)
+    let mfn_contr = LoLArt.mk_mfn fnn2
+      (module SToL.List.Data)
+      (fun r lol ->
+        let contr list = r.LoLArt.mfn_data list in
+        match lol with
+        | `Nil -> `Nil
+        | `Cons(x,xs) -> 
+          if ffs (SToL.Data.hash 0 x) > 1 then
+            `Cons(x, contr xs)
+          else
+            let rec next_cons l =
+              (match l with
+              | `Nil -> (`Nil, `Nil)
+              | `Cons(y,ys) -> (y,ys)
+              | `Art(a) -> next_cons (LoLArt.force a)
+              | `Name(_, xs) -> next_cons xs
+              )
+            in
+            let y, ys = next_cons xs in
+            `Cons(contract_f x y, contr ys)
+        | `Art(a) -> contr (LoLArt.force a)
+        | `Name(nms, xs) ->
+          let nm1, nm2 = Name.fork nms in
+          `Name(nm1, `Art(r.LoLArt.mfn_nart nm2 xs))
+      )
+    in
+    (* See if there's one element and return it, otherwise, recursively contract *)
+    let mfn_reduce = LArt.mk_mfn fnn3
+      (module SToL.List.Data)
+      (fun r lol ->
+        let reduce list = r.LArt.mfn_data list in
+        match lol with
+        | `Nil -> `Nil
+        | `Cons(x,`Nil) -> x
+        | `Cons(x,xs) -> reduce (mfn_contr.LoLArt.mfn_data lol)
+        | `Art(a) -> reduce (LoLArt.force a)
+        | `Name(nms, xs) -> 
+          let nm1, nm2 = Name.fork nms in
+          `Name(nm1, `Art(r.LArt.mfn_nart nm2 xs))
+      )
+    in
+    fun list -> 
+    let lol = singletons list in
+    mfn_reduce.LArt.mfn_data lol
+
   let list_reduce 
       (op_nm : St.Name.t) 
       (op : St.Data.t -> St.Data.t -> St.Data.t) 
@@ -788,7 +882,7 @@ struct
         | `Art art -> list_reduce (St.List.Art.force art)
         | `Name (nm, xs) -> 
           (* TODO: Use iterative (multi-round) contraction here.. *)
-          ADataOption.force (r.ADataOption.mfn_nart nm list)
+          ADataOption.force (r.ADataOption.mfn_nart nm xs)
         ))          
     in
     fun list -> mfn.ADataOption.mfn_data list
@@ -914,12 +1008,13 @@ struct
     in
     fun xs ys -> mfn.LArt.mfn_data (xs,ys)
 
-  let list_split
+  (* prep for quicksort - untested *)
+  let list_split_on_pivot
       ( compare_nm : St.Name.t )
       ( compare : St.Data.t -> St.Data.t -> int)
       : St.List.Data.t -> St.Data.t -> (St.List.Data.t * St.List.Data.t) =
     let module M = St.ArtLib.MakeArt(Name)(Types.Tuple2(St.List.Data)(St.List.Data)) in
-    let fnn = St.Name.pair (St.Name.gensym "list_split") compare_nm in
+    let fnn = St.Name.pair (St.Name.gensym "list_split_on_pivot") compare_nm in
     let mfn = M.mk_mfn fnn
       (module Types.Tuple4(St.List.Data)(St.Data)(St.List.Data)(St.List.Data))
       (fun r (list, c, l1, l2) ->
@@ -944,31 +1039,13 @@ struct
     fun list c -> mfn.M.mfn_data (list, c, `Nil, `Nil)
 
   let list_mergesort
-      ( compare_nm : St.Name.t )
+      ( nm : St.Name.t )
       ( compare : St.Data.t -> St.Data.t -> int )
       : St.List.Data.t -> St.List.Data.t = 
-    let fnn = St.Name.pair (St.Name.gensym "list_mergesort") compare_nm in
-    let merge = list_merge compare_nm compare in
-    let split = list_split compare_nm compare in
-    let mfn = St.List.Art.mk_mfn fnn
-      (module St.List.Data)
-      (fun r list ->
-        let list_mergesort = r.LArt.mfn_data in
-        let rec pick_center list = 
-          match list with
-          | `Nil -> None
-          | `Cons(x,_) -> Some(x)
-          | `Art(a) -> pick_center (LArt.force a)
-          | `Name(_,xs) -> pick_center xs
-        in
-        match pick_center list with
-        | None -> `Nil
-        | Some(c) ->
-        let l1, l2 = split list c in
-        merge (list_mergesort l1)(list_mergesort l2)
-      )
-    in
-    fun list -> mfn.LArt.mfn_data list
+    let fnn = St.Name.pair (St.Name.gensym "list_mergesort") nm in
+    let merge = list_merge fnn compare in
+    let contract = list_contract fnn merge in
+    fun list -> contract list
 
   let rope_mergesort
       ( compare_nm : St.Name.t )

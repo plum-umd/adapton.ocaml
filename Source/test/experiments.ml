@@ -818,7 +818,6 @@ module Mergesorts = struct
   end
  *)
 
-  (* TODO: add the _nm version of this *)
   module List_mergesort 
     ( N : sig val name : string end ) 
     ( AL : GrifolaType.ArtLibType ) = 
