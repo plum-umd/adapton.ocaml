@@ -11,7 +11,7 @@ TESTER=../experiments.native
 # in case it has to be stopped, or you'd like to peak in at the progress
 
 #len is the length of the list
-for len in 1000 2000 3000; do # 2000 3000 4000 5000 6000 7000 8000 9000 10000; do
+for len in 1 4 10 15 173 1000; do # 2000 3000 4000 5000 6000 7000 8000 9000 10000; do
   #samp, the sample number, is the random seed that is used to create the initial data to be modified
   for samp in 1; do # 2 3 4 5 6 7; do
     #dem is the amount of the list that is demended
@@ -25,7 +25,8 @@ for len in 1000 2000 3000; do # 2000 3000 4000 5000 6000 7000 8000 9000 10000; d
           args1="--sample-num $samp --n $len --demand $dem"
           args2="--experiment $fullver"
           args3= #"--0 $change" #one change type at a time
-          $TESTER $args1 $args2 $args3 --outfile $FILE
+          args4="--test-flags"
+          $TESTER $args1 $args2 $args3 $args4 --outfile $FILE
         #done
       done
     done

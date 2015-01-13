@@ -800,7 +800,7 @@ struct
           match next_cons xs with
           | None -> `Nil
           | Some(x,xs) ->
-            (* see rust code for potential improvement, passing names through *)
+            (* TODO: see rust code for potential improvement, passing names through *)
             let art_elm = `Name(nm1, `Art(LArt.thunk nm2 (fun () -> `Cons(x,`Nil)) )) in
             `Name(nm3, `Art(LoLArt.thunk nm4 (fun ()->`Cons(art_elm, r.LoLArt.mfn_data xs))))
       )
@@ -823,22 +823,32 @@ struct
       (fun r lol ->
         let contr list = r.LoLArt.mfn_data list in
         match lol with
-        | `Nil -> `Nil
+        | `Nil -> 
+          `Nil
         | `Cons(x,xs) -> 
-          if ffs (SToL.Data.hash 0 x) > 1 then
-            `Cons(x, contr xs)
+          (* 
+            to guarentee contraction, we must determine if we're near
+            the end of the list, and force contract at two items left
+            TODO: optimise this lookahead
+          *)
+          let rec next_cons l =
+           (match l with
+           | `Nil -> (`Nil, `Nil)
+           | `Cons(y,ys) -> (y,ys)
+           | `Art(a) -> next_cons (LoLArt.force a)
+           | `Name(_, xs) -> next_cons xs
+           )
+          in
+          let y,ys = next_cons xs in
+          let z,_ = next_cons ys in
+          if z = `Nil then
+            `Cons(contract_f x y, `Nil)
+          else if ffs (SToL.Data.hash 0 x) > 1 then
+            `Cons(contract_f x y, contr ys) 
           else
-            let rec next_cons l =
-              (match l with
-              | `Nil -> (`Nil, `Nil)
-              | `Cons(y,ys) -> (y,ys)
-              | `Art(a) -> next_cons (LoLArt.force a)
-              | `Name(_, xs) -> next_cons xs
-              )
-            in
-            let y, ys = next_cons xs in
-            `Cons(contract_f x y, contr ys)
-        | `Art(a) -> contr (LoLArt.force a)
+            `Cons(x, contr xs)
+        | `Art(a) ->
+          contr (LoLArt.force a)
         | `Name(nms, xs) ->
           let nm1, nm2 = Name.fork nms in
           `Name(nm1, `Art(r.LoLArt.mfn_nart nm2 xs))
@@ -850,10 +860,14 @@ struct
       (fun r lol ->
         let reduce list = r.LArt.mfn_data list in
         match lol with
-        | `Nil -> `Nil
-        | `Cons(x,`Nil) -> x
-        | `Cons(x,xs) -> reduce (mfn_contr.LoLArt.mfn_data lol)
-        | `Art(a) -> reduce (LoLArt.force a)
+        | `Nil ->
+          `Nil
+        | `Cons(x,`Nil) ->
+          x
+        | `Cons(x,xs) ->
+          reduce (mfn_contr.LoLArt.mfn_data lol)
+        | `Art(a) ->
+          reduce (LoLArt.force a)
         | `Name(nms, xs) -> 
           let nm1, nm2 = Name.fork nms in
           `Name(nm1, `Art(r.LArt.mfn_nart nm2 xs))
