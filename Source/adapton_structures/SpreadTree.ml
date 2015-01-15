@@ -1045,6 +1045,9 @@ struct
     in
     fun xs ys -> mfn.LArt.mfn_data (xs,ys)
 
+ *)
+
+  (* TODO: this still needs updating *)
   let list_merge_nm ~art_threshold 
       ( compare_nm : St.Name.t )
       ( compare : St.Data.t -> St.Data.t -> int )
@@ -1075,7 +1078,7 @@ struct
           )))
     in
     fun xs ys -> mfn.LArt.mfn_data (xs,ys)
- *)
+
   (* prep for quicksort - untested *)
   let list_split_on_pivot
       ( compare_nm : St.Name.t )
