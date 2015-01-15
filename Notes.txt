@@ -96,10 +96,15 @@ OO Interface:
     the issue is in creating arbitrary length parameter lists
     avoid code that constructs/deconstructs these arguments
 
+  decide if these inputs should be premade modules or raw types
+    the former allows namespace control
+    the latter simplifies use
+
   figure out how to integrate names with the above
     name the func
     name the recursive calls
     name the result
+    forking outside function call vs pairing inside function call 
     others?
 
 Progress:

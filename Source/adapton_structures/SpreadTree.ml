@@ -781,101 +781,110 @@ struct
     fun rope -> mfn.RArt.mfn_data rope
 
   (* packs each element as a single item list inside a list of lists *)
-  let list_to_singletons (nm : St.Name.t)
+  let list_to_singletons
       : St.List.Data.t -> SToL.List.Data.t =
-    let fnn = St.Name.pair (St.Name.gensym "list_to_singletons") nm in
+    let fnn = St.Name.gensym "list_to_singletons" in
     let mfn = LoLArt.mk_mfn fnn
-      (module St.List.Data)
-      (fun r list ->
-        let singletons list = r.LoLArt.mfn_data list in
+      (module Types.Tuple2(Types.Option(Name))(St.List.Data))
+      (fun r (nm_opt, list) ->
+        let single xs = r.LoLArt.mfn_data (nm_opt, xs) in
+        let single_n nm xs = r.LoLArt.mfn_data (Some(nm), xs) in
+        let single_cons (x, xs) =
+          match nm_opt with
+          | None -> `Cons(`Cons(x, `Nil), single xs)
+          | Some(nms) ->
+            let nm1, nms = Name.fork nms in
+            let nm2, nms = Name.fork nms in
+            let nm3, nm4 = Name.fork nms in
+            (* TODO: the creation of the inner list should be done with a list creator to properly articulate the list *)
+            `Name(nm1, `Cons(
+              `Name(nm2,(`Cons(x, `Art(LArt.cell nm3 `Nil)))),
+              `Art(r.LoLArt.mfn_nart nm4 (None, xs))
+            ))
+        in
         match list with
         | `Nil -> `Nil
-        | `Cons(x,xs) -> 
-          `Cons(`Cons(x,`Nil), singletons xs)
-        | `Art(a) -> singletons (LArt.force a)
-        | `Name(nms, xs) ->
-          let nm1, nms = Name.fork nms in
-          let nm2, nms = Name.fork nms in
-          let nm3, nm4 = Name.fork nms in
-          match next_cons xs with
-          | None -> `Nil
-          | Some(x,xs) ->
-            (* TODO: see rust code for potential improvement, passing names through *)
-            let art_elm = `Name(nm1, `Art(LArt.thunk nm2 (fun () -> `Cons(x,`Nil)) )) in
-            `Name(nm3, `Art(LoLArt.thunk nm4 (fun ()->`Cons(art_elm, r.LoLArt.mfn_data xs))))
+        | `Cons(x,xs) -> single_cons (x, xs)
+        | `Art(a) -> single (LArt.force a)
+        | `Name(nm, xs) -> single_n nm xs
       )
     in
-    fun list -> mfn.LoLArt.mfn_data list
+    fun list -> mfn.LoLArt.mfn_data (None, list)
 
   (* TODO: bring out some internal funs *)
   (* repeatedly applies the contraction function probabilistically until we reach a single value *)
   let list_contract
-      (nm : St.Name.t)
+      (f_nm : St.Name.t)
       (contract_f : SToL.Data.t -> SToL.Data.t -> SToL.Data.t)
       : St.List.Data.t -> St.List.Data.t =
-    let fnns = St.Name.pair (St.Name.gensym "lol_contract") nm in
-    let fnn1, fnns = Name.fork fnns in
-    let fnn2, fnn3 = Name.fork fnns in
-    let singletons = list_to_singletons fnn1 in
+    let fnns = St.Name.pair (St.Name.gensym "list_contract") f_nm in
+    let fnn1, fnn2 = Name.fork fnns in
+    let singletons = list_to_singletons in
     (* Probabilistically apply contraction function *)
-    let mfn_contr = LoLArt.mk_mfn fnn2
-      (module SToL.List.Data)
-      (fun r lol ->
-        let contr list = r.LoLArt.mfn_data list in
+    let mfn_contr = LoLArt.mk_mfn fnn1
+      (module Types.Tuple2(Types.Option(Name))(SToL.List.Data))
+      (fun r (nm_opt, lol) ->
+        (* common recursion, used with `Art *)
+        let contr xs = r.LoLArt.mfn_data (nm_opt, xs) in
+        (* recursion with a new name, used with `Name *)
+        let contr_n nm xs = r.LoLArt.mfn_data (nm, xs) in
+        (* memoised recursion with data, used to wrap data with names *)
+        let contr_cons (x, xs) =
+          match nm_opt with
+          | None -> `Cons(x, contr xs)
+          | Some(nm) ->
+            let nm1, nm2 = Name.fork nm in
+            `Name(nm1, `Cons(x, `Art(r.LoLArt.mfn_nart nm2 (None, xs))))
+        in
         match lol with
-        | `Nil -> 
-          `Nil
-        | `Cons(x,xs) -> 
-          (* 
-            to guarentee contraction, we must determine if we're near
-            the end of the list, and force contract at two items left
-            TODO: optimise this lookahead
-          *)
-          let rec next_cons l =
-           (match l with
-           | `Nil -> (`Nil, `Nil)
-           | `Cons(y,ys) -> (y,ys)
-           | `Art(a) -> next_cons (LoLArt.force a)
-           | `Name(_, xs) -> next_cons xs
-           )
-          in
-          let y,ys = next_cons xs in
-          let z,_ = next_cons ys in
-          if z = `Nil then
-            `Cons(contract_f x y, `Nil)
-          else if ffs (SToL.Data.hash 0 x) > 1 then
-            `Cons(contract_f x y, contr ys) 
-          else
-            `Cons(x, contr xs)
-        | `Art(a) ->
-          contr (LoLArt.force a)
-        | `Name(nms, xs) ->
-          let nm1, nm2 = Name.fork nms in
-          `Name(nm1, `Art(r.LoLArt.mfn_nart nm2 xs))
+        | `Nil -> `Nil
+        | `Cons(x,xs) ->
+          if ffs (SToL.Data.hash 0 x) > 1 then
+            contr_cons(x, xs)
+          else 
+            (match xs with
+            | `Nil -> contr_cons(x, `Nil)
+            | `Cons(y,ys) -> contr_cons((contract_f x y), ys)
+            | `Art(a) -> contr (`Cons(x, LoLArt.force a))
+            | `Name(nm, ys) -> contr_n (Some(nm)) (`Cons(x,ys))
+            )
+        | `Art(a) -> contr (LoLArt.force a)
+        | `Name(nm, xs) -> contr_n (Some(nm)) xs
       )
     in
-    (* See if there's one element and return it, otherwise, recursively contract *)
-    let mfn_reduce = LArt.mk_mfn fnn3
+    (* 
+      reduce by applying contract_f to make progress,
+      then calling mfn_contr to handle the rest
+    *)
+    let mfn_reduce = LArt.mk_mfn fnn2
       (module SToL.List.Data)
       (fun r lol ->
+        let contr xs = mfn_contr.LoLArt.mfn_data (None, xs) in
         let reduce list = r.LArt.mfn_data list in
+        let reduce_n nm list = r.LArt.mfn_nart nm list in
+        (*
+          Here we are using recursion as a loop. Later Names
+          are maintained by the contract function, and the
+          first items are contracted once here. This allows
+          us to take advantage of available names for
+          articulated recursion
+        *)
         match lol with
-        | `Nil ->
-          `Nil
-        | `Cons(x,`Nil) ->
-          x
+        | `Nil -> `Nil
         | `Cons(x,xs) ->
-          reduce (mfn_contr.LoLArt.mfn_data lol)
-        | `Art(a) ->
-          reduce (LoLArt.force a)
-        | `Name(nms, xs) -> 
-          let nm1, nm2 = Name.fork nms in
-          `Name(nm1, `Art(r.LArt.mfn_nart nm2 xs))
+          (match xs with
+          | `Nil -> x
+          | `Cons(y,ys) -> reduce (`Cons(contract_f x y, contr ys))
+          | `Art(a) -> reduce (`Cons(x, LoLArt.force a))
+          | `Name(nm, ys) -> LArt.force (reduce_n nm (`Cons(x,ys)))
+          )
+        | `Art(a) -> reduce (LoLArt.force a)
+        | `Name(nm, xs) -> LArt.force (reduce_n nm xs)
       )
     in
     fun list -> 
-    let lol = singletons list in
-    mfn_reduce.LArt.mfn_data lol
+      let lol = singletons list in
+      mfn_reduce.LArt.mfn_data lol
 
   let list_reduce 
       (op_nm : St.Name.t) 
@@ -964,10 +973,55 @@ struct
     fun rope -> mfn.ADataOption.mfn_data rope
 
   let list_merge
+      (compare_nm : St.Name.t)
+      (compare : St.Data.t -> St.Data.t -> int)
+      : St.List.Data.t -> St.List.Data.t -> St.List.Data.t =
+    let fnn = St.Name.pair (St.Name.gensym "list_merge") compare_nm in
+    let mfn = LArt.mk_mfn fnn
+      (module Types.Tuple4
+        (Types.Option(Name)) (Types.Option(Name))
+        (St.List.Data) (St.List.Data)
+      )
+      (fun r (nm_opt1,nm_opt2,list1,list2) ->
+        let merge xs ys = r.LArt.mfn_data (nm_opt1,nm_opt2,xs,ys) in
+        let merge_nms nm1 nm2 xs ys = r.LArt.mfn_data (nm1,nm2,xs,ys) in
+        let merge_cons1 x l1 l2 = 
+          match nm_opt1 with
+          | None -> `Cons(x, merge l1 l2)
+          | Some(nms) -> 
+            let nm1,nm2 = Name.fork nms in
+            `Name(nm1, `Cons(x, `Art(r.LArt.mfn_nart nm2 (None, nm_opt2, l1, l2))))
+        in
+        let merge_cons2 y l1 l2 = 
+          match nm_opt2 with
+          | None -> `Cons(y, merge l1 l2)
+          | Some(nms) -> 
+            let nm1,nm2 = Name.fork nms in
+            `Name(nm1, `Cons(y, `Art(r.LArt.mfn_nart nm2 (nm_opt1, None, l1, l2))))
+        in
+        match list1, list2 with
+        | `Nil, _ -> list2
+        | _, `Nil -> list1
+        | `Art(a1), _ -> merge (LArt.force a1) list2
+        | _, `Art(a2) -> merge list1 (LArt.force a2)
+        | `Name(nm1, xs1), _ -> merge_nms (Some(nm1)) nm_opt2 xs1 list2
+        | _, `Name(nm2, xs2) -> merge_nms nm_opt1 (Some(nm2)) list1 xs2
+        | `Cons(x,xs), `Cons(y,ys) -> 
+          incr Statistics.Counts.unit_cost ;
+          if compare x y <= 0 then 
+            merge_cons1 x xs list2
+          else
+            merge_cons2 y list1 ys
+      )
+    in
+    fun xs ys -> mfn.LArt.mfn_data (None,None,xs,ys)
+
+(* first implementation of merge, kept temporarily as a reference   
+  let list_merge_original
       ( compare_nm : St.Name.t )
       ( compare : St.Data.t -> St.Data.t -> int )
       : St.List.Data.t -> St.List.Data.t -> St.List.Data.t =
-    let fnn = St.Name.pair (St.Name.gensym "list_merge") compare_nm in
+    let fnn = St.Name.pair (St.Name.gensym "list_merge_o") compare_nm in
     let mfn = St.List.Art.mk_mfn fnn
       (module (Types.Tuple2(St.List.Data)(St.List.Data)))
       (fun r (list1,list2) ->
@@ -1021,7 +1075,7 @@ struct
           )))
     in
     fun xs ys -> mfn.LArt.mfn_data (xs,ys)
-
+ *)
   (* prep for quicksort - untested *)
   let list_split_on_pivot
       ( compare_nm : St.Name.t )
