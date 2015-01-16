@@ -7,7 +7,7 @@ to produce non-adapton results
 open Primitives
 
 (* a minimal alternative to Grifola.Make, recalculating at each force *)
-module EagerNonInc = struct
+module LazyRecalc = struct
   (* TODO: consider using the name as the id instead of a count *)
   let counter = ref 0
   let next_count ()= 
@@ -25,12 +25,12 @@ module EagerNonInc = struct
     module Name = Name
     module Data = Data
 
-    type 'a eager_node = {
+    type 'a node = {
       id : int;
       mutable fn : unit->'a;
     }
 
-    type t = Data.t eager_node
+    type t = Data.t node
 
     type 'arg mfn = { mfn_data : 'arg -> Data.t ;      (* Pure recursion. *)
                       mfn_art  : 'arg -> t ;           (* Create a memoized articulation, classically. *)

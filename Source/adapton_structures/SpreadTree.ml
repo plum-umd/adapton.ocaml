@@ -616,54 +616,6 @@ struct
       (* assert (list_is_empty rest) ; *)
       rope
 
-  (* TODO: Debug this: Esp, granularity control parameters. *)
-  let rope_of_list_nm : art_threshold:int -> St.List.Data.t -> St.Rope.Data.t =
-    (*let module M = St.ArtLib.MakeArt(Name)(Types.Tuple2(St.Rope.Data)(St.List.Data)) in*)
-    let module P = St.ArtLib.MakeArtTuple2(Name)(St.Rope.Art)(St.List.Art) in
-    fun ~art_threshold ->
-      let rope_of_list_nm_rec = (
-        let mfn = P.Art.mk_mfn (St.Name.gensym "rope_of_list_rec")
-          (module Types.Tuple4(Types.Int)(Types.Int)(St.Rope.Data)(St.List.Data))
-          (fun r (parent_lev, rope_lev, rope, list) ->
-            let rope_of_list_nm_rec pl tl t l = r.P.Art.mfn_data (pl,tl,t,l) in
-            ( match list with
-            | `Nil -> rope, `Nil
-            | `Cons (hd, tl) -> rope_of_list_nm_rec parent_lev rope_lev (`Two(rope,`One hd)) tl
-            | `Art art -> rope_of_list_nm_rec parent_lev rope_lev rope (St.List.Art.force art)
-            | `Name(nm, list) ->             
-              let nm_lev = Name.height nm in
-              if false (* nm_lev < art_threshold *) then (
-                (* TODO: Fix Performance bug here. *)
-                if rope_lev <= nm_lev && nm_lev <= parent_lev then (
-                  let right, rest = rope_of_list_nm_rec nm_lev (-1) (`Zero) list in
-                  let rope = `Two(rope,right) in
-                  let rope,rest = rope_of_list_nm_rec parent_lev nm_lev rope rest in
-                  (`Name(nm, rope)), rest
-                )
-                else
-                  rope, list
-              ) 
-              else (
-                if rope_lev <= nm_lev && nm_lev <= parent_lev then (
-                  let nm1, nm = Name.fork nm in
-                  let right, rest = P.Art.force (r.P.Art.mfn_nart nm1 (nm_lev,-1,`Zero,list)) in
-                  let rope = `Two(rope, right) in
-                  let nm2, nm  = Name.fork nm in
-                  let nm3, nm4 = Name.fork nm in
-                  let art = r.P.Art.mfn_nart nm2 (parent_lev,nm_lev,rope,rest) in
-                  let rope,rest = P.Art.force art in
-                  (`Name(nm3, `Art (P.fst nm4 art)), rest)
-                ) else (
-                  rope, list
-                ))))
-        in
-        fun list ->           
-          let rope, rest = mfn.P.Art.mfn_data (max_int, -1, `Zero, list) in
-          (* assert (list_is_empty rest) ; *)
-          rope
-      ) in
-      rope_of_list_nm_rec
-
   let list_of_rope : St.Rope.Data.t -> St.List.Data.t -> St.List.Data.t =
     let mfn = LArt.mk_mfn (St.Name.gensym "list_of_rope")      
       (module Types.Tuple2(St.Rope.Data)(St.List.Data))
@@ -679,28 +631,6 @@ struct
         ))
     in
     fun rope list -> mfn.LArt.mfn_data (rope, list)
-
-
-  let list_of_rope_nm : art_threshold:int -> St.Rope.Data.t -> St.List.Data.t -> St.List.Data.t =
-    fun ~art_threshold ->      
-      let mfn = LArt.mk_mfn (St.Name.gensym "list_of_rope")      
-        (module Types.Tuple2(St.Rope.Data)(St.List.Data))
-        (fun r (rope, rest) ->
-          let list_of_rope rope list = r.LArt.mfn_data (rope, list) in
-          ( match rope with
-          | `Zero          -> rest
-          | `One x         -> `Cons(x, rest)
-          | `Two(x,y)      -> list_of_rope x (list_of_rope y rest)
-          | `Art art       -> list_of_rope (RArt.force art) rest
-          | `Name(nm,rope) -> 
-            if Name.height nm < art_threshold then
-              `Name(nm, list_of_rope rope rest)
-            else
-              let nm1,nm2 = Name.fork nm in
-              `Name(nm1, `Art(r.LArt.mfn_nart nm2 (rope, rest)))
-          ))
-      in
-      fun rope list -> mfn.LArt.mfn_data (rope, list)
 
 (*
   let rec tree_append ( left : St.Tree.Data.t ) ( right : St.Tree.Data.t ) =
@@ -1016,69 +946,6 @@ struct
     in
     fun xs ys -> mfn.LArt.mfn_data (None,None,xs,ys)
 
-(* first implementation of merge, kept temporarily as a reference   
-  let list_merge_original
-      ( compare_nm : St.Name.t )
-      ( compare : St.Data.t -> St.Data.t -> int )
-      : St.List.Data.t -> St.List.Data.t -> St.List.Data.t =
-    let fnn = St.Name.pair (St.Name.gensym "list_merge_o") compare_nm in
-    let mfn = St.List.Art.mk_mfn fnn
-      (module (Types.Tuple2(St.List.Data)(St.List.Data)))
-      (fun r (list1,list2) ->
-        let list_merge xs ys = r.LArt.mfn_data (xs,ys) in
-        ( match list1, list2 with
-        | `Nil, _ -> list2
-        | _, `Nil -> list1
-        | `Cons(x, xs), `Cons(y, ys) ->
-          incr Statistics.Counts.unit_cost ;
-          if compare x y <= 0 then 
-            `Cons(x, (list_merge xs list2))
-          else
-            `Cons(y, (list_merge list1 ys))
-        
-        | `Art a, _ -> list_merge (LArt.force a) list2
-        | _, `Art a -> list_merge list1 (LArt.force a)
-        | `Name(nm, xs), ys | xs, `Name(nm, ys) -> 
-          let nm1, nm2 = Name.fork nm in
-          `Name(nm1, `Art( r.LArt.mfn_nart nm2 (xs, ys) ))
-        ))
-    in
-    fun xs ys -> mfn.LArt.mfn_data (xs,ys)
-
- *)
-
-  (* TODO: this still needs updating *)
-  let list_merge_nm ~art_threshold 
-      ( compare_nm : St.Name.t )
-      ( compare : St.Data.t -> St.Data.t -> int )
-      : St.List.Data.t -> St.List.Data.t -> St.List.Data.t =
-    let fnn = St.Name.pair (St.Name.gensym "list_merge") compare_nm in
-    let mfn = St.List.Art.mk_mfn fnn
-      (module (Types.Tuple2(St.List.Data)(St.List.Data)))
-      (fun r (list1,list2) ->
-        let list_merge xs ys = r.LArt.mfn_data (xs,ys) in
-        ( match list1, list2 with
-        | `Nil, _ -> list2
-        | _, `Nil -> list1
-        | `Cons(x, xs), `Cons(y, ys) ->
-          incr Statistics.Counts.unit_cost ;
-          if compare x y <= 0 then 
-            `Cons(x, (list_merge xs list2))
-          else
-            `Cons(y, (list_merge list1 ys))
-        
-        | `Art a, _ -> list_merge (LArt.force a) list2
-        | _, `Art a -> list_merge list1 (LArt.force a)
-        | `Name(nm, xs), ys | xs, `Name(nm, ys) -> 
-          if Name.height nm < art_threshold then 
-            `Name(nm, list_merge xs ys)
-          else (
-            let nm1, nm2 = Name.fork nm in
-            `Name(nm1, `Art( r.LArt.mfn_nart nm2 (xs, ys) ))
-          )))
-    in
-    fun xs ys -> mfn.LArt.mfn_data (xs,ys)
-
   (* prep for quicksort - untested *)
   let list_split_on_pivot
       ( compare_nm : St.Name.t )
@@ -1143,54 +1010,6 @@ struct
         ))
     in
     fun rope -> mfn.LArt.mfn_data rope
-
-  let rope_mergesort_nm ~art_threshold
-      ( compare_nm : St.Name.t )
-      ( compare : St.Data.t -> St.Data.t -> int )
-      : St.Rope.Data.t -> St.List.Data.t =
-    let fnn = St.Name.pair (St.Name.gensym "rope_mergesort_nm") compare_nm in    
-    let merge = 
-      if true then 
-        list_merge_nm ~art_threshold compare_nm compare 
-      else 
-        list_merge compare_nm compare 
-    in
-    let mfn = St.List.Art.mk_mfn fnn
-      (module St.Rope.Data)
-      (fun r rope ->
-        let rope_mergesort = r.LArt.mfn_data in
-        ( match rope with
-        | `Zero -> `Nil
-        | `One x -> `Cons(x, `Nil)
-        | `Two(x, y) ->
-          let x_sorted = rope_mergesort x in
-          let y_sorted = rope_mergesort y in
-          merge x_sorted y_sorted
-
-        | `Art art -> rope_mergesort (RArt.force art)
-        | `Name (nm, rope) ->
-          if Name.height nm < art_threshold then 
-            `Name(nm, rope_mergesort rope)
-          else
-            let nm1,nm2 = Name.fork nm in
-            `Name(nm1, `Art (r.LArt.mfn_nart nm2 rope))            
-        ))
-    in
-    fun rope -> mfn.LArt.mfn_data rope
-
-  let list_to_rope_mergesort_nm ~rope_art_threshold ~list_art_threshold
-      ( compare_nm : St.Name.t )
-      ( compare : St.Data.t -> St.Data.t -> int )
-      : St.List.Data.t -> St.List.Data.t =
-    let sort = 
-      if true then rope_mergesort_nm
-        ~art_threshold:list_art_threshold 
-        compare_nm compare 
-      else rope_mergesort compare_nm compare 
-    in    
-    fun list ->
-      let rope = rope_of_list_nm ~art_threshold:rope_art_threshold list in
-      sort rope
 
   let list_to_rope_mergesort 
       ( compare_nm : St.Name.t )

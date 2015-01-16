@@ -26,4 +26,4 @@ clean:
 
 #clean up more for push to repo
 clean-all: clean
-	rm -f out/* script/*.gmv
+	rm -f out/* *.gmv script/*.gmv

@@ -29,6 +29,8 @@ Major:
   (issue 2)Update AS2 to Grifola
   (issue 3)implement basic list mergesort (with contract-reduce)
   (issue 4)create an oo interface to encapsulate data types (discussed below)
+  Expand alternative Artlib modules
+  Test out granularity control
 
 
 Minor:
@@ -41,6 +43,7 @@ Minor:
 
 Determine:
   mutual recursion strategy (probably just 'let rec')
+    fine if the compiler allows it
   a better articulation strategy for datastructures
 
 
@@ -56,11 +59,22 @@ Singleton questions:
   can the name just be a hash of the code plus inputs?
     no, the point is location in datastructure
 
-  can or should there be one memotable per structure? how do you set that up?
+  can or should there be one memotable per structure?
+
+  how do you set up a new memotable?
+    create an artType - table of data
+    create a memoized function - table of code
+    more?
+
+  since tables are given names, is there a global table that memo matches memotables?
+    possibly, but unimplemented
 
   what's the difference between DatType memos and memo funcions
+    DatType is value or return type, functions are code with parameter and return type
 
-  how do you set up thunks to simulate a recursive call (is it even important)
+  how do you set up thunks to simulate a recursive call? (is it even important)
+    simulation with thunks is possible, but will not memo match properly
+    functional techniques and extra parameters should avoid this issue
 
   why do mfn's have all the modules available?
 
