@@ -17,7 +17,7 @@ for len in 10000 20000 30000 40000 50000 60000 70000 80000 90000 100000; do
     #dem - percent of the list that is demanded
     for dem in 10.0 100.0; do
       #ver - adapton version that is being tested, as well as the test set.
-      for ver in name arggen eagernoninc; do 
+      for ver in name arggen lazyrecalc; do 
         #change - particular change that is done to the list, default is all
         #for change in "--r" "--rr" "--di" "--id" "--ss"; do
           fullver=Rope_mergesort_$ver

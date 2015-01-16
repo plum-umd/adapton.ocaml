@@ -1018,6 +1018,8 @@ module Engines = struct
       include Grifola.Default_params
       let check_receipt = false
     end )
+  module EagerNonInc = Alternatives.EagerNonInc
+  module LazyNonInc = Alternatives.LazyNonInc
   module LazyRecalc = Alternatives.LazyRecalc
 end
 
@@ -1041,8 +1043,14 @@ module Experiments = struct
       module ListApp_arggen = Mergesorts.Rope_mergesort(struct let name = "arggen" end)(Grifola_arggen.ArtLib)
       module Exp_arggen : ExperimentType = Make_experiment(ListApp_arggen)
 
-      module ListApp_noninc = Mergesorts.Rope_mergesort(struct let name = "lazyrecalc" end)(LazyRecalc.ArtLib)
-      module Exp_noninc : ExperimentType = Make_experiment(ListApp_noninc)
+      module ListApp_lazy_recalc = Mergesorts.Rope_mergesort(struct let name = "lazyrecalc" end)(LazyRecalc.ArtLib)
+      module Exp_lazy_recalc : ExperimentType = Make_experiment(ListApp_lazy_recalc)
+
+      module ListApp_eager_noninc = Mergesorts.Rope_mergesort(struct let name = "eagernoninc" end)(EagerNonInc.ArtLib)
+      module Exp_eager_noninc : ExperimentType = Make_experiment(ListApp_eager_noninc)
+
+      module ListApp_lazy_noninc = Mergesorts.Rope_mergesort(struct let name = "lazynoninc" end)(LazyNonInc.ArtLib)
+      module Exp_lazy_noninc : ExperimentType = Make_experiment(ListApp_lazy_noninc)
     end
 
     module List_mergesort = struct
@@ -1055,8 +1063,8 @@ module Experiments = struct
       module ListApp_arggen = Mergesorts.List_mergesort(struct let name = "arggen" end)(Grifola_arggen.ArtLib)
       module Exp_arggen : ExperimentType = Make_experiment(ListApp_arggen)
 
-      module ListApp_noninc = Mergesorts.List_mergesort(struct let name = "lazyrecalc" end)(LazyRecalc.ArtLib)
-      module Exp_noninc : ExperimentType = Make_experiment(ListApp_noninc)
+      module ListApp_lazy_recalc = Mergesorts.List_mergesort(struct let name = "lazyrecalc" end)(LazyRecalc.ArtLib)
+      module Exp_lazy_recalc : ExperimentType = Make_experiment(ListApp_lazy_recalc)
     end
 
     module Rope_iter = struct
@@ -1107,11 +1115,11 @@ module Experiments = struct
 *)        
     module AVL_name = Reduction.AVL_of_rope(struct let name = "grifola_name" end)(Grifola_name.ArtLib)
     module AVL_arggen = Reduction.AVL_of_rope(struct let name = "grifola_arggen" end)(Grifola_arggen.ArtLib)
-    module AVL_noninc = Reduction.AVL_of_rope(struct let name = "eager_noninc" end)(LazyRecalc.ArtLib)
+    module AVL_lazy_recalc = Reduction.AVL_of_rope(struct let name = "lazy_recalc" end)(LazyRecalc.ArtLib)
 
     module AVL_of_rope_grifola_name   : ExperimentType = Make_experiment(AVL_name)
     module AVL_of_rope_grifola_arggen : ExperimentType = Make_experiment(AVL_arggen)
-    module AVL_of_rope_lazy_recalc   : ExperimentType = Make_experiment(AVL_noninc)
+    module AVL_of_rope_lazy_recalc   : ExperimentType = Make_experiment(AVL_lazy_recalc)
 
 (*    module AKList_min_grifola_name : ExperimentType =
       Make_experiment(Reduction.AKList_min(struct let name = "grifola_name" end)(Grifola_name.ATypeImpl))    
@@ -1152,17 +1160,19 @@ let all_experiments : (module ExperimentType) list = [
   (* Rope mergesort *)
   (module Experiments.Rope_mergesort.Exp_name         : ExperimentType) ;
   (module Experiments.Rope_mergesort.Exp_arggen       : ExperimentType) ;
-  (module Experiments.Rope_mergesort.Exp_noninc       : ExperimentType) ;
+  (module Experiments.Rope_mergesort.Exp_eager_noninc : ExperimentType) ;
+  (module Experiments.Rope_mergesort.Exp_lazy_noninc  : ExperimentType) ;
+  (module Experiments.Rope_mergesort.Exp_lazy_recalc  : ExperimentType) ;
   
   (* List mergesort *)
   (module Experiments.List_mergesort.Exp_name         : ExperimentType) ;
   (module Experiments.List_mergesort.Exp_arggen       : ExperimentType) ;
-  (module Experiments.List_mergesort.Exp_noninc       : ExperimentType) ;
+  (module Experiments.List_mergesort.Exp_lazy_recalc  : ExperimentType) ;
   
   (* TUESDAY Nov 11 2014: Benchmarks for overhead comparison: *)
-  (module Experiments.AVL_of_rope_grifola_name : ExperimentType) ;
-  (module Experiments.AVL_of_rope_grifola_arggen : ExperimentType) ;
-  (module Experiments.AVL_of_rope_lazy_recalc : ExperimentType) ;
+  (module Experiments.AVL_of_rope_grifola_name        : ExperimentType) ;
+  (module Experiments.AVL_of_rope_grifola_arggen      : ExperimentType) ;
+  (module Experiments.AVL_of_rope_lazy_recalc         : ExperimentType) ;
 ]
 
 module Default_perf_params : ParamsType = struct

@@ -42,8 +42,8 @@ Minor:
   (issue 8)get the logging to work
 
 Determine:
-  mutual recursion strategy (probably just 'let rec')
-    fine if the compiler allows it
+  mutual recursion strategy
+    compiler doesn't allow: let memo1 (params) = ... and memo2 (params) = ... in
   a better articulation strategy for datastructures
 
 
