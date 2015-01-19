@@ -776,7 +776,7 @@ struct
         match lol with
         | `Nil -> `Nil
         | `Cons(x,xs) ->
-          if ffs (SToL.Data.hash seed x) > 1 then
+          if ((SToL.Data.hash seed x) mod 2) = 0 then
             contr_cons(x, xs)
           else 
             (match xs with
