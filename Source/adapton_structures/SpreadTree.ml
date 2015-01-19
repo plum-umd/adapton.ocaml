@@ -336,15 +336,22 @@ struct
   module LoLArt = SToL.List.Art
 
   let mut_elms_of_list
-      ( name : Name.t )
-      ( list : 'a list )
-      ( data_of : 'a -> St.Data.t )
-      ( name_of : 'a -> Name.t ) : St.List.Art.t = 
-    let rec loop list = match list with
+    ( name : Name.t )
+    ( list : 'a list )
+    ( data_of : 'a -> St.Data.t )
+    ( name_of : 'a -> Name.t ) 
+    ( gran_level : int )
+    : St.List.Art.t
+  = 
+    let rec loop list =
+      match list with
       | [] -> `Nil
-      | x :: xs -> 
-        let nm1, nm2 = Name.fork (name_of x) in
-        `Cons((data_of x), `Name(nm1, `Art (St.List.Art.cell nm2 (loop xs))))
+      | x :: xs ->
+        if ffs (St.Data.hash 0 (data_of x)) >= gran_level then
+          let nm1, nm2 = Name.fork (name_of x) in
+          `Cons((data_of x), `Name(nm1, `Art (St.List.Art.cell nm2 (loop xs))))
+        else
+          `Cons((data_of x), (loop xs))
     in St.List.Art.cell name (loop list)
 
   let rec insert_elm list_art h nm_tl_opt =
@@ -752,24 +759,24 @@ struct
     let singletons = list_to_singletons in
     (* Probabilistically apply contraction function *)
     let mfn_contr = LoLArt.mk_mfn fnn1
-      (module Types.Tuple2(Types.Option(Name))(SToL.List.Data))
-      (fun r (nm_opt, lol) ->
+      (module Types.Tuple3(Types.Int)(Types.Option(Name))(SToL.List.Data))
+      (fun r (seed, nm_opt, lol) ->
         (* common recursion, used with `Art *)
-        let contr xs = r.LoLArt.mfn_data (nm_opt, xs) in
+        let contr xs = r.LoLArt.mfn_data (seed, nm_opt, xs) in
         (* recursion with a new name, used with `Name *)
-        let contr_n nm xs = r.LoLArt.mfn_data (nm, xs) in
+        let contr_n nm xs = r.LoLArt.mfn_data (seed, nm, xs) in
         (* memoised recursion with data, used to wrap data with names *)
         let contr_cons (x, xs) =
           match nm_opt with
           | None -> `Cons(x, contr xs)
           | Some(nm) ->
             let nm1, nm2 = Name.fork nm in
-            `Name(nm1, `Cons(x, `Art(r.LoLArt.mfn_nart nm2 (None, xs))))
+            `Name(nm1, `Cons(x, `Art(r.LoLArt.mfn_nart nm2 (seed, None, xs))))
         in
         match lol with
         | `Nil -> `Nil
         | `Cons(x,xs) ->
-          if ffs (SToL.Data.hash 0 x) > 1 then
+          if ffs (SToL.Data.hash seed x) > 1 then
             contr_cons(x, xs)
           else 
             (match xs with
@@ -787,11 +794,12 @@ struct
       then calling mfn_contr to handle the rest
     *)
     let mfn_reduce = LArt.mk_mfn fnn2
-      (module SToL.List.Data)
-      (fun r lol ->
-        let contr xs = mfn_contr.LoLArt.mfn_data (None, xs) in
-        let reduce list = r.LArt.mfn_data list in
-        let reduce_n nm list = r.LArt.mfn_nart nm list in
+      (module Types.Tuple2(Types.Seeds)(SToL.List.Data))
+      (fun r (sd,lol) ->
+        let rnd, sd = Types.Seeds.pop sd in
+        let contr xs = mfn_contr.LoLArt.mfn_data (rnd, None, xs) in
+        let reduce list = r.LArt.mfn_data (sd, list) in
+        let reduce_n nm list = r.LArt.mfn_nart nm (sd, list) in
         (*
           Here we are using recursion as a loop. Later Names
           are maintained by the contract function, and the
@@ -813,8 +821,9 @@ struct
       )
     in
     fun list -> 
+      let sd = Types.Seeds.make() in
       let lol = singletons list in
-      mfn_reduce.LArt.mfn_data lol
+      mfn_reduce.LArt.mfn_data (sd, lol)
 
   let list_reduce 
       (op_nm : St.Name.t) 
