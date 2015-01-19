@@ -569,8 +569,11 @@ module Make_experiment ( ListApp : ListAppType ) = struct
       if Params.Flags.print_inout then begin
         Printf.printf "%d: Initial input:\t%s\n" i (string_of_list (demand_list input None));
       end;
-      let output = ListApp.compute input in
-      let (_, s) = Stats.measure (fun () -> demand_list output (Some Params.n)) in
+      (* measure both the creation and initial computation of result *)
+      let (_,output),s = Stats.measure (fun () ->
+        let output = ListApp.compute input in
+        (demand_list output (Some Params.n)), output)
+      in
       let line_prefix = Printf.sprintf "%d:%s" Params.sample_num name in
       stats_print handle Params.sample_num name "initial" Params.n s.Stats.create 0 Params.n 100.0 s ;
       if Params.Flags.print_inout then begin

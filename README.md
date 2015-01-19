@@ -28,7 +28,9 @@ To use externally:
         <true>: thread
         <true>: package(adapton)
 
-    for example: Sample/Trivial
+External example: Sample/Trivial
+
+    ocamlbuild -use-ocamlfind find_0_bit.native
 
 To use in toplevel:
 
@@ -49,6 +51,7 @@ Toplevel example:
     AInt.force ax2;;
 
 After Changing source:
+
     make opam-reload
 
 

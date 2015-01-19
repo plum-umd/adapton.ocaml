@@ -40,6 +40,7 @@ Minor:
   (issue 6)fix title line of experiments
   (issue 7)include a 'compare' item to the datatypes
   (issue 8)get the logging to work
+  (issue 9)have experiments.ml measure initial list creation, not just forcing it
 
 Determine:
   mutual recursion strategy
