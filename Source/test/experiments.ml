@@ -280,14 +280,15 @@ module Make_experiment ( ListApp : ListAppType ) = struct
         let locations = Array.make Params.num_changes ( 0, l) in
         let stride = if Params.num_changes > 0 then Params.n / Params.num_changes else 1 in
         let stride = if stride = 0 then 1 else stride in
-        let rec helper l' i j = match ListApp.ListRep.next l' with
+        let rec helper l' i j =
+          match ListApp.ListRep.next l' with
           | None -> locations
           | Some t ->
-	    if i mod stride == 0 then (
-	      locations.(j) <- ( i, l');
-	      helper t (i+1) (j+1)
-	    ) else
-	      helper t (i+1) j
+      	    if i mod stride == 0 then (
+      	      locations.(j) <- ( i, l');
+      	      helper t (i+1) (j+1)
+      	    ) else
+    	      helper t (i+1) j
         in
         helper l 0 0
       in

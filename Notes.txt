@@ -59,13 +59,19 @@ Singleton questions:
 
   can the name just be a hash of the code plus inputs?
     no, the point is location in datastructure
+    that hash is what classic adapton does
 
-  can or should there be one memotable per structure?
+  can or should there be one namespace per structure?
 
   how do you set up a new memotable?
     create an artType - table of data
-    create a memoized function - table of code
+    create a memoized function - table of code within an artType
     more?
+
+  when are memotables accessed?
+
+  how do you set up a namespace?
+    create an artType, the same type will still produce a different namespace
 
   since tables are given names, is there a global table that memo matches memotables?
     possibly, but unimplemented

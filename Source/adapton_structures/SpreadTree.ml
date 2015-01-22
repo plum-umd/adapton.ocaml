@@ -319,9 +319,12 @@ struct
 end
 
 (* Sequences, based on SpreadTrees. *)
-module MakeSeq ( St : SpreadTreeType )
-  =
-struct
+module MakeSeq
+  ( St : SpreadTreeType )
+= struct
+
+  let default_granularity = 4
+
   module Name        = St.Name
   module AData       = St.ArtLib.MakeArt(Name)(St.Data)
   module ADataOption = St.ArtLib.MakeArt(Name)(Types.Option(St.Data))
@@ -334,6 +337,68 @@ struct
   (* List of List Articulation *)
   module SToL = MakeSpreadTree(St.ArtLib)(Name)(St.List.Data)
   module LoLArt = SToL.List.Art
+
+
+  (* --------------------- *)
+
+  (* creates an articulated list *)
+  let art_list
+    ?nm:(name=Name.nondet())
+    ?g:(granularity=default_granularity)
+    (input_list : St.Data.t list)
+    : St.List.Data.t
+  =
+    let rec loop l =
+      match l with
+      | [] -> `Nil
+      | x::xs ->
+        if ffs (St.Data.hash 0 x) >= granularity then
+          let nm1, nm2 = Name.fork (Name.nondet()) in
+          `Cons(x, `Name(nm1, `Art (LArt.cell nm2 (loop xs))))
+        else
+          `Cons(x, (loop xs))
+    in
+    loop input_list
+
+  (* returns a standard list *)
+  let to_list (list : St.List.Data.t) : St.Data.t list = 
+    let rec loop l =
+      match l with
+      | `Nil -> []
+      | `Art(a) -> loop (LArt.force a)
+      | `Name(_, xs) -> loop xs
+      | `Cons(x, xs) -> x::(loop xs)
+    in
+    loop list
+
+  (* inserts an element at the beginning of the list *)
+  let list_cons
+    ?g:(granularity=default_granularity)
+    (h : St.Data.t)
+    (tl : St.List.Data.t)
+  =
+    if ffs (St.Data.hash 0 h) >= granularity then
+      let nm1, nm2 = Name.fork (Name.nondet()) in
+      `Cons(h, `Name(nm1, `Art (LArt.cell nm2 tl)))
+    else
+      `Cons(h, tl)
+
+  (* returns head and tail of list *)
+  let list_snoc
+    (list : St.List.Data.t)
+    : (St.Data.t * St.List.Data.t) option
+  =
+    let rec loop l = 
+      match l with
+      | `Nil -> None
+      | `Art(a) -> loop (LArt.force a)
+      | `Name(_, xs) -> loop xs
+      | `Cons(x, xs) -> Some(x, xs)
+    in
+    loop list
+
+
+   (* --------------------------- *) 
 
   let mut_elms_of_list
     ( name : Name.t )
