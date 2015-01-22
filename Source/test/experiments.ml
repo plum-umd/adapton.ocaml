@@ -593,10 +593,14 @@ module Make_experiment ( ListApp : ListAppType ) = struct
         line_prefix s.Stats.dirty s.Stats.clean s.Stats.evaluate s.Stats.create s.Stats.tables ;
       Memotables.print_stats stdout ;
       Viz.flush_ticks_out graphout ;
-      output_graphstate ~label:(Printf.sprintf "Initial graph: mergesort %s => %s"
-        (string_of_list (demand_list input None))
-        (string_of_list (demand_list output None)))
-        graphout ;
+      let (in_str,out_str) =
+        if Params.Flags.print_inout then
+          (string_of_list (demand_list input None)),
+          (string_of_list (demand_list output None))
+        else
+          ("<omitted>","<omitted>")
+      in
+      output_graphstate ~label:(Printf.sprintf "Initial graph: mergesort %s => %s" in_str out_str) graphout ;
       let total_size = s.Stats.create in
       if Params.num_changes = 0 then (
         Printf.printf "--------------------\n%s: No changes requested; Skipping interaction.\n%!" line_prefix ;
