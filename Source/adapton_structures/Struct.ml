@@ -125,6 +125,8 @@ module MakeCommonStruct
   (* articulation module for whole structure *)
   module SArt = Datastruct.Art
 
+
+  (* TODO: add articulation points by 'max' and add `Continue's *)
   let art_struct_of_valued_list
     ?n:(name = Name.nondet())
     ?max:(max_elm = Params.max_unarticulated)
@@ -139,76 +141,64 @@ module MakeCommonStruct
       let ns, n = Name.fork !name_seed in
       name_seed := ns; n
     in
-    let rec make_branch br max_val data = 
+    let rec make_branch max_val data = 
       match data with
-      | [] -> (`Continue(br),[])
+      | [] -> (`Nil,[])
       | x::xs ->
         let value = value_of x in
         if value > max_val then
           (* found a higher value, so this branch is over *)
-          (`Continue(br),data)
+          (`Nil,data)
         else if value = max_val || value < min_val then
           (* no reason to branch off *)
-          let continue, leftover = make_branch(br)(max_val)(xs) in
+          let continue, leftover = make_branch(max_val)(xs) in
           match data_of x with
           | None -> (continue, leftover)
           | Some(x) ->
             (`Data(x, continue), leftover)
         else
           (* create a new branch *)
-          let do_branch = lazy (make_branch(inner_branch)(max_val-1)(xs))
-          and inner_branch = 
-            let branch, _ = Lazy.force do_branch in
-            branch
-          and leftover =
-            let _, rest = Lazy.force do_branch in
-            rest
-          in
-          let outer_branch, rest = make_branch(br)(max_val)(leftover) in
+          let inner_branch, leftover = make_branch(max_val-1)(xs) in
+          let outer_branch, leftover = make_branch(max_val)(leftover) in
           (`Branch(
               next_name(),
               SArt.cell (next_name()) (inner_branch),
               outer_branch
-            ), rest
+            ), leftover
           )
-
-(*           
-          let rec first_result = make_branch(inner_branch)(max_val-1)(xs)
-          and inner_branch = 
-            let branch, _ = first_result in
-            branch
-          in
-          let _, leftover = first_result in
-          let outer_branch, rest = make_branch(br)(max_val)(leftover) in
-            (`Branch(
-                next_name(),
-                SArt.cell (next_name()) (inner_branch),
-                outer_branch
-              ), rest
-            )
- *)
- (*           
-          let rec new_branch, leftover =
-            let inner_branch, rest = make_branch(new_branch)(max_val-1)(xs) in
-            let outer_branch, leftover = make_branch(br)(max_val)(rest) in
-            (`Branch(
-                next_name(),
-                SArt.cell (next_name()) (inner_branch),
-                outer_branch
-              ), leftover
-            )
-          in
-          (new_branch, leftover)
-
- *)    
-    and main_branch =
-      let inner_branch, _ = make_branch(main_branch)(max_int)(input) in
-      `Branch(
-        next_name(),
-        SArt.cell (next_name()) (inner_branch),
-        `Nil
-      )
     in
+    let main_branch = 
+      (* first branch is put at proper level *)
+      match input with
+      | [] -> `Nil
+      | x::xs -> 
+        let first_value = value_of x in
+        let rec build_up value data =
+          let branch, leftover = make_branch(value)(data) in
+          match leftover with
+          | [] -> branch
+          | more -> 
+            let continue = build_up(value+1)(data) in
+            `Branch(next_name(), SArt.cell (next_name()) branch, continue)
+        in
+        build_up first_value input
+(* 
+      (* first branch is put directly under root *)   
+      let rec build_up input = 
+      match input with
+      | [] -> `Nil
+      | x::xs -> 
+        let first_value = value_of x in
+        let branch, leftover = make_branch(first_value)(input) in
+        match leftover with
+        | [] -> branch
+        | more -> 
+          let continue = build_up more in
+          `Branch(next_name(), SArt.cell (next_name()) branch, continue)
+      in
+      build_up input
+ *)   
+    in   
     SArt.cell name main_branch
 
   let more_funs = ()
