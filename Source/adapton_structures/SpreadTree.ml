@@ -176,8 +176,7 @@ struct
     with type Data.t    = List.Art.t art_list
     and type Art.Data.t = List.Art.t art_list
     and type Art.Name.t = Name.t
-    =
-  struct
+  = struct
     module Data = struct
       type t = List.Art.t art_list
 
@@ -339,11 +338,10 @@ module MakeSeq
   module LoLArt = SToL.List.Art
 
 
-  (* --------------------- *)
+  (* ---------- first attempt at mutable list ----------- *)
 
   (* creates an articulated list *)
   let art_list
-    ?nm:(name=Name.nondet())
     ?g:(granularity=default_granularity)
     (input_list : St.Data.t list)
     : St.List.Data.t
