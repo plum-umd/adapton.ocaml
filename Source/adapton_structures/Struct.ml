@@ -7,7 +7,7 @@ open GrifolaType
 module Types = AdaptonTypes
 module Statistics = AdaptonStatistics
 
-module type StructType = sig
+(* module type StructType = sig
   module ArtLib : ArtLibType
   module Name : NameType
   module Data : DatType
@@ -31,7 +31,7 @@ module type StructType = sig
     and type Art.Name.t = Name.t
 
 end
-
+ *)
 module type SParamsType = sig
   val max_unarticulated : int
   val min_value_branched : int
@@ -42,11 +42,11 @@ module MakeCommonStruct
   (Name   : NameType)
   (Data   : DatType)
   (Params : SParamsType)
-  : StructType with type
+(*   : StructType with type
     ArtLib.lib_id = ArtLib.lib_id
     and  type Name.t = Name.t
     and  type Data.t = Data.t 
-=struct
+ *)=struct
   module ArtLib = ArtLib
   module Name = Name
   module Data = Data
@@ -205,11 +205,12 @@ module MakeSequence
   (Params : SParamsType)
 = struct
 
-  module Common : StructType 
+  module Common 
+(*     : StructType 
     with type ArtLib.lib_id = ArtLib.lib_id
     and type Name.t = Name.t
     and type Data.t = Data.t 
-  = struct
+ *)  = struct
     include (MakeCommonStruct(ArtLib)(Name)(Data)(Params))
   end
   
@@ -223,6 +224,18 @@ module MakeSequence
 
   (* articulation module for whole structure *)
   module SArt = Common.Datastruct.Art
+
+  let art_list ?b:(branch = false) input = 
+    let branching = (fun x -> ffs (Data.hash 0 x)) in
+    let flat = (fun x -> 0) in
+    Common.art_struct_of_valued_list 
+      ~min:4 
+      (if branch then branching else flat)
+      (fun x -> Some(x))
+      input
+
+
+  let insert elm pos = ()
 
   let more_funs = ()
 
