@@ -7,7 +7,9 @@ open GrifolaType
 module Types = AdaptonTypes
 module Statistics = AdaptonStatistics
 
-(* module type StructType = sig
+(* without this sig we can add arbitrary funs without modifying other code
+
+  module type StructType = sig
   module ArtLib : ArtLibType
   module Name : NameType
   module Data : DatType
@@ -42,7 +44,8 @@ module MakeCommonStruct
   (Name   : NameType)
   (Data   : DatType)
   (Params : SParamsType)
-(*   : StructType with type
+(* no sig
+    : StructType with type
     ArtLib.lib_id = ArtLib.lib_id
     and  type Name.t = Name.t
     and  type Data.t = Data.t 
@@ -56,7 +59,7 @@ module MakeCommonStruct
   | `Ready of 'art
   | `Data of Data.t * 'art art_struct
   | `Art of Name.t * 'art
-  | `Branch of Name.t * 'art * 'art art_struct
+  | `Branch of 'art art_struct * 'art art_struct
     (* constrain `Continue to branches? *)  
   | `Continue of 'art art_struct
   ]
@@ -78,7 +81,7 @@ module MakeCommonStruct
         | `Ready(a) -> "Ready("^(Datastruct.Art.string a)^")"
         | `Data(x,xs) -> "Data("^(Data.string x)^","^(string xs)^")"
         | `Art(n,a) -> "Art("^(Name.string n)^","^(Datastruct.Art.string a)^")"
-        | `Branch(n,a,xs) -> "Branch("^(Name.string n)^","^(Datastruct.Art.string a)^","^(string xs)^")"
+        | `Branch(xs,ys) -> "Branch("^(string xs)^","^(string xs)^")"
         | `Continue(xs) -> "Continue("^(string xs)^")"
 
       let rec hash seed x =
@@ -87,7 +90,7 @@ module MakeCommonStruct
         | `Ready(a) -> Datastruct.Art.hash seed a
         | `Data(x,xs) -> Data.hash (hash seed xs) x
         | `Art(n,a) -> Name.hash (Datastruct.Art.hash seed a) n
-        | `Branch(n,a,xs) -> Name.hash (Datastruct.Art.hash (hash seed xs) a) n
+        | `Branch(xs,ys) -> hash (hash seed ys) xs
         | `Continue(xs) -> hash seed xs
 
       let rec equal xs ys =
@@ -96,7 +99,7 @@ module MakeCommonStruct
         | `Ready(a1), `Ready(a2) -> Datastruct.Art.equal a1 a2
         | `Data(x1,xs1), `Data(x2,xs2) -> Data.equal x1 x2 && equal xs1 xs2
         | `Art(n1,a1), `Art(n2,a2) -> Name.equal n1 n2 && Datastruct.Art.equal a1 a2
-        | `Branch(n1,a1,xs1), `Branch(n2,a2,xs2) -> Name.equal n1 n2 && Datastruct.Art.equal a1 a2 && equal xs1 xs2
+        | `Branch(xs1,ys1), `Branch(xs2,ys2) -> equal xs1 xs2 && equal ys1 ys2
         | `Continue(xs1), `Continue(xs2) -> equal xs1 xs2
         | _, _ -> false
 
@@ -106,7 +109,7 @@ module MakeCommonStruct
         | `Ready(a) -> `Ready(Datastruct.Art.sanitize a)
         | `Data(x,xs) -> `Data(Data.sanitize x, sanitize xs)
         | `Art(n,a) -> `Art(Name.sanitize n, Datastruct.Art.sanitize a)
-        | `Branch(n,a,xs) -> `Branch(Name.sanitize n, Datastruct.Art.sanitize a, sanitize xs)
+        | `Branch(xs, ys) -> `Branch(sanitize xs, sanitize ys)
         | `Continue(xs) -> `Continue(sanitize xs)
     
     end
@@ -118,8 +121,21 @@ module MakeCommonStruct
   (* articulation module for whole structure *)
   module SArt = Datastruct.Art
 
+  let art_struct_of_valued_list
+    ?n:(name = Name.nondet())
+    ?b:(branch_arts = 1)
+    ?max:(max_elm = Params.max_unarticulated)
+    ?min:(min_val = Params.min_value_branched)
+    (value_of : 'a -> int)
+    (data_of : 'a -> Data.t option)
+    (input : 'a list)
+    : Datastruct.Data.t
+  =
+    `Nil
 
+(*   
   (* TODO: add articulation points by 'max' and add `Continue's *)
+  (* OBSOLETE: uses `Branch(n,a,xs) *)
   let art_struct_of_valued_list
     ?n:(name = Name.nondet())
     ?max:(max_elm = Params.max_unarticulated)
@@ -193,7 +209,7 @@ module MakeCommonStruct
  *)   
     in   
     SArt.cell name main_branch
-
+ *)
   let more_funs = ()
 
 end
@@ -206,7 +222,8 @@ module MakeSequence
 = struct
 
   module Common 
-(*     : StructType 
+(*   no sig  
+    : StructType 
     with type ArtLib.lib_id = ArtLib.lib_id
     and type Name.t = Name.t
     and type Data.t = Data.t 

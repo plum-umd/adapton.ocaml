@@ -13,6 +13,10 @@ lib:
 test:
 	ocamlbuild Source/test/experiments.native
 
+# this doesn't work yet
+test-log:
+	ocamlbuild -cflags -ppopt,"-DADAPTON_LOG" Source/test/experiments.native -verbose 1
+
 opam-pin:
 	opam pin add adapton .
 
