@@ -1,5 +1,8 @@
 (** Struct: an experimental alternative to spreadtrees
 
+
+TODO: determine what statistics need to be managed in this module
+
 *)
 open Adapton_core
 open Primitives
@@ -122,14 +125,14 @@ module MakeCommonStruct
   module SArt = Datastruct.Art
 
   let art_struct_of_valued_list
-    ?n:(name = Name.nondet())
-    ?b:(branch_arts = 1)
-    ?max:(max_elm = Params.max_unarticulated)
-    ?min:(min_val = Params.min_value_branched)
-    (value_of : 'a -> int)
-    (data_of : 'a -> Data.t option)
-    (input : 'a list)
-    : Datastruct.Data.t
+    ?n:(name = Name.nondet())                   (* name for this structure *)
+    ?b:(branch_arts = 1)                        (* guarenteed articulation points per branch *)
+    ?max:(max_elm = Params.max_unarticulated)   (* maximum number of elements per art *)
+    ?min:(min_val = Params.min_value_branched)  (* there is no branching with values under this *)
+    (value_of : 'a -> int)                      (* function to access structure value *)
+    (data_of : 'a -> Data.t option)             (* function to access data value *)
+    (input : 'a list)                           (* input list to be structured *)
+    : Datastruct.Art.t
   =
     (* set up some names *)
     let name_seed = ref name in
@@ -138,95 +141,70 @@ module MakeCommonStruct
       name_seed := ns; n
     in
     (* recurse at branch point *)
-    let rec do_branch entries level count input = 
-      `Branch(`Nil, `Nil)
-    (* recurse at linear point *)
-    and do_linear entries level count input =
-      `Nil
-    in
-    match input with
-    | [] -> `Nil
-    | x::_ -> 
-      let first_level = value_of x in
-      do_branch `Nil first_level input
-
-(*   
-  (* TODO: add articulation points by 'max' and add `Continue's *)
-  (* OBSOLETE: uses `Branch(n,a,xs) *)
-  let art_struct_of_valued_list
-    ?n:(name = Name.nondet())
-    ?max:(max_elm = Params.max_unarticulated)
-    ?min:(min_val = Params.min_value_branched)
-    (value_of : 'a -> int)
-    (data_of : 'a -> Data.t option)
-    (input : 'a list)
-    : SArt.t
-  =
-    let name_seed = ref name in
-    let next_name () = 
-      let ns, n = Name.fork !name_seed in
-      name_seed := ns; n
-    in
-    let rec make_branch max_val data = 
-      match data with
-      | [] -> (`Nil,[])
-      | x::xs ->
-        let value = value_of x in
-        if value > max_val then
-          (* found a higher value, so this branch is over *)
-          (`Nil,data)
-        else if value = max_val || value < min_val then
-          (* no reason to branch off *)
-          let continue, leftover = make_branch(max_val)(xs) in
-          match data_of x with
-          | None -> (continue, leftover)
-          | Some(x) ->
-            (`Data(x, continue), leftover)
+    let rec do_branch level count input =
+      (* enforce the max unarticulated elements through the branch *)
+      let count = count / 2 in
+      let first_branch, more =
+        (* articulate at branch if requested *)
+        if branch_arts > 0 then
+          (* branches continue until the element value surpasses the level *)
+          let inner, rest = do_linear (level-1) max_elm input in
+          `Art(next_name(), SArt.cell (next_name()) inner), rest
         else
-          (* create a new branch *)
-          let inner_branch, leftover = make_branch(max_val-1)(xs) in
-          let outer_branch, leftover = make_branch(max_val)(leftover) in
-          (`Branch(
-              next_name(),
-              SArt.cell (next_name()) (inner_branch),
-              outer_branch
-            ), leftover
-          )
-    in
-    let main_branch = 
-      (* first branch is put at proper level *)
-      match input with
-      | [] -> `Nil
-      | x::xs -> 
-        let first_value = value_of x in
-        let rec build_up value data =
-          let branch, leftover = make_branch(value)(data) in
-          match leftover with
-          | [] -> branch
-          | more -> 
-            let continue = build_up(value+1)(data) in
-            `Branch(next_name(), SArt.cell (next_name()) branch, continue)
-        in
-        build_up first_value input
-(* 
-      (* first branch is put directly under root *)   
-      let rec build_up input = 
-      match input with
-      | [] -> `Nil
-      | x::xs -> 
-        let first_value = value_of x in
-        let branch, leftover = make_branch(first_value)(input) in
-        match leftover with
-        | [] -> branch
-        | more -> 
-          let continue = build_up more in
-          `Branch(next_name(), SArt.cell (next_name()) branch, continue)
+          do_linear (level-1) count input
       in
-      build_up input
- *)   
-    in   
-    SArt.cell name main_branch
- *)
+      let second_branch, rest =
+        (* articulate at branch if requested *)
+        if branch_arts > 1 then
+          let inner, rest = do_linear (level-1) max_elm more in
+          `Art(next_name(), SArt.cell (next_name()) inner), rest
+        else
+          do_linear level count more
+      in
+      `Branch(first_branch, second_branch), rest
+    (* recurse at linear point *)
+    and do_linear level count input =
+      (* pack it all into a cell if it's time *)
+      if count <= 0 then 
+        let linear, rest = do_linear level max_elm input in
+        `Art(next_name(), SArt.cell (next_name()) linear), rest
+      else
+      match input with
+      | [] -> `Nil, []
+      | x::xs ->
+        (* next value is too high, so we're done, return the rest *)
+        if value_of x > level then `Nil, input else
+        (* next value is too low, so branch off *)
+        if value_of x < level then do_branch level count input else
+        match data_of x with
+        (* structural marker, carry on *)
+        | None -> do_linear level count xs
+        (* this is our data, use it and continue *)
+        | Some(x) -> 
+          let continue, rest = do_linear level (count-1) xs in
+          `Data(x, continue), rest
+    in
+    (* build 'backwards' to higher levels if nessecary *)
+    let rec wrap_branch first_branch level input =
+      let second_branch, rest = do_linear level max_elm input in
+      let wrap = `Branch(first_branch, second_branch) in
+      match rest with
+      | [] -> wrap
+      | more -> wrap_branch wrap (level+1) more
+    in
+    (* create struct *)
+    let final_struct =
+      match input with
+      | [] -> `Nil
+      | x::_ -> 
+        let first_level = value_of x in
+        let first_try, rest = do_linear first_level max_elm input in
+        match rest with
+        | [] -> first_try
+        | more -> wrap_branch first_try (first_level+1) more
+    in
+    SArt.cell name final_struct
+
   let more_funs = ()
 
 end
@@ -260,7 +238,8 @@ module MakeSequence
   module SArt = Common.Datastruct.Art
 
   let art_list ?b:(branch = false) input = 
-    let branching = (fun x -> ffs (Data.hash 0 x)) in
+    let purpose = Hashtbl.hash "structure" in
+    let branching = (fun x -> ffs (Data.hash purpose x)) in
     let flat = (fun x -> 0) in
     Common.art_struct_of_valued_list 
       ~min:4 

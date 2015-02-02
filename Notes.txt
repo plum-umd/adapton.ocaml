@@ -102,6 +102,7 @@ OO Interface:
     #try(val:'a):()                will ignore computation and pass val to dependents
     #reset():()                    returns computation to default
     #type():DatType with t = 'a    gets the type module
+    #name():Name.t                 returns the name of this datastructure
 
   since modules that need to be included are all datatypes,
   we can be more explicit about it:
