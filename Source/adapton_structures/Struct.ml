@@ -131,7 +131,24 @@ module MakeCommonStruct
     (input : 'a list)
     : Datastruct.Data.t
   =
-    `Nil
+    (* set up some names *)
+    let name_seed = ref name in
+    let next_name () = 
+      let ns, n = Name.fork !name_seed in
+      name_seed := ns; n
+    in
+    (* recurse at branch point *)
+    let rec do_branch entries level count input = 
+      `Branch(`Nil, `Nil)
+    (* recurse at linear point *)
+    and do_linear entries level count input =
+      `Nil
+    in
+    match input with
+    | [] -> `Nil
+    | x::_ -> 
+      let first_level = value_of x in
+      do_branch `Nil first_level input
 
 (*   
   (* TODO: add articulation points by 'max' and add `Continue's *)

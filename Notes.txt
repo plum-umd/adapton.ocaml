@@ -14,14 +14,16 @@ Main goals:
 2) experiments.ml works
 3) Create opam package
 4) Run code from package
-===== Complete =====
+===== All the above are complete =====
 
 ===== Continuing =====
 
 STATUS:
 
   AS2 not working
-  Gran not working (_nm functions?)
+  Granularity control testing is buggy, needs new list mod technique
+  Object interface not implemented
+  New datastructure in progress
 
 TODO:
 
@@ -31,21 +33,23 @@ Major:
   (issue 4)create an oo interface to encapsulate data types (discussed below)
   Expand alternative Artlib modules
   Test out granularity control
+  (issue 13)make edits to coarse-grained lists in the right places
 
 
 Minor:
   Use _tags for internal dependency
   (issue 5)move install script to makefile (findlib install [deps])
   Remove non-working code
+  Remove old granularity control code
   (issue 6)fix title line of experiments
   (issue 7)include a 'compare' item to the datatypes
   (issue 8)get the logging to work
-  (issue 9)have experiments.ml measure initial list creation, not just forcing it
 
 Determine:
   mutual recursion strategy
     compiler doesn't allow: let memo1 (params) = ... and memo2 (params) = ... in
   a better articulation strategy for datastructures
+    currently trying hierarchal hash structure on mutable list, maintaining (recreating) structure with edits
 
 
 
@@ -54,14 +58,17 @@ Determine:
 Singleton questions:
 
   do .thunk and .cell really need names?
-    they can be beneficial, but it may be better to create
-    a namespace for any complex programming
+    -they can be beneficial, but it may be better to create
+     a namespace for any complex programming
+    -it's the lazy (memo) functions that have working names
+     explicitly declared nodes can be accessed by their let binding
 
   can the name just be a hash of the code plus inputs?
     no, the point is location in datastructure
-    that hash is what classic adapton does
+    that hash is what classic adapton does (first aprox)
 
   can or should there be one namespace per structure?
+    perhaps just use names paired with the struct name?
 
   how do you set up a new memotable?
     create an artType - table of data
@@ -128,10 +135,28 @@ OO Interface:
     forking outside function call vs pairing inside function call 
     others?
 
-Progress:
-  The constructor above is just a simple wrapper on the regular
-  Adapton memo function. First priority is combining type and value
-  into an object to reduce code complexity. Eventually, we want to
-  hide the type metadata completely. We may still need to expose it
-  for object creation.
+  Progress:
+    The constructor above is just a simple wrapper on the regular
+    Adapton memo function. First priority is combining type and value
+    into an object to reduce code complexity. Eventually, we want to
+    hide the type metadata completely. We may still need to expose it
+    for object creation.
 
+New Datastructures
+  attempting more integrated spreadtree structure
+  s = 1+R:(a)+A:(n*a)+D:(d*s)+B:(s*s) [ +C:(s) ]
+    R:Ready, A:Art, D:Data, B:Branch, C:continue
+    a:art, n:name, d:data, s:recursive structure
+    C is meant to be a link to the next item, to avoid extra stack usage
+      it should actually link to the branch that leads to it, to allow 
+      circular access. It is marked to help computation terminate
+
+  with C, all lists should start with B(list, Nil) so that they can be cyclic
+
+  constructor can take a value parameter to determine item level in structure
+
+  input list can be 'a option list to allow structural values unconnected to data
+
+  lists can be built up in the manner of rope of list,
+    building a branch at a time and returning
+    a pointer to the rest of the input list
