@@ -42,8 +42,8 @@ module type ParamsType = sig
   val num_changes : int  (* Number of changes to perform on each input list *)
   val demand : float     (* Percent of output to demand to force after each change *)
   val num_lists : int    (* Number of distinct input lists. *)
+  val fullinit : bool    (* Demand the full list on init *)
   val granularity : int  (* Number of non-articulated elements articulation is 2^g, on average *)
-  val vary_demand : bool
   val interactions : string list (* "r", "rr", "di", "id", "ss" *)
   val experiment : string
   val outfile : string
@@ -293,7 +293,6 @@ module Make_experiment ( ListApp : ListAppType ) = struct
           else (
             let aprox_change_position = int_of_float (art_count *. gran) in
             locations.(change) <- (aprox_change_position, art);
-            Printf.printf "debug loc:%f change:%d art_c:%f\n%!" loc change art_count;
             build_change_locs art (loc+.stride) (change+1) art_count 
           )
         in
@@ -508,7 +507,6 @@ module Make_experiment ( ListApp : ListAppType ) = struct
       let rec benchmark_demand (demand:float) = if demand <= 0.0 then () else
           let demand_count = int_of_float (( float Params.n) *. (demand /. 100.0)) in
           let demand_count = if demand_count = 0 then 1 else demand_count in
-          let s = int_of_float (( float Params.n) *. Params.demand /. 100.0) in
           for i = 0 to Params.num_changes - 1 do
 	          let change_pos_idx, change_pos_inp = change_locations.(i) in
             let stats_list1 = if List.mem "r"  Params.interactions then do_replace_interaction         change_pos_idx change_pos_inp demand_count else [] in
@@ -543,16 +541,7 @@ module Make_experiment ( ListApp : ListAppType ) = struct
               0 Params.granularity;
           );
           ListApp.flush ();
-          Pervasives.flush handle;
-          if Params.vary_demand then begin
-            let rec next_demand demand (* skip over next demands that do not change the value s *) =
-              if (int_of_float (( float Params.n) *. (demand -. 10.0) /. 100.0)) = s then
-                next_demand (demand -. 10.0)
-              else
-                demand
-            in
-            benchmark_demand (next_demand (demand -. 10.0))
-          end
+          Pervasives.flush handle
       in
       benchmark_demand Params.demand
     in
@@ -587,10 +576,19 @@ module Make_experiment ( ListApp : ListAppType ) = struct
       if Params.Flags.print_inout then begin
         Printf.printf "%d: Initial input:\t%s\n" i (string_of_list (demand_list input None));
       end;
+      let demand_count =
+        if Params.fullinit then
+          (* demand all *)
+          Params.n
+        else
+        (* only request the same amount as the incremental test will, as a lazy baseline *)
+        let calc_demand = int_of_float (( float Params.n) *. (Params.demand /. 100.0)) in
+        if calc_demand = 0 then 1 else calc_demand
+      in
       (* measure both the creation and initial computation of result *)
       let (_,output),s = Stats.measure (fun () ->
         let output = ListApp.compute input in
-        (demand_list output (Some Params.n)), output)
+          (demand_list output (Some demand_count)), output)
       in
       let line_prefix = Printf.sprintf "%d:%s" Params.sample_num name in
       stats_print handle Params.sample_num name "initial" Params.n s.Stats.create 0 Params.n 100.0 Params.granularity s ;
@@ -1206,8 +1204,8 @@ module Default_perf_params : ParamsType = struct
   let num_changes = 10 (* Number of changes to perform on each input list *)
   let demand = 100.0    (* Percent of output to demand to force after each change *)
   let num_lists = 1    (* Number of distinct input lists. *)
+  let fullinit = false 
   let granularity = 0
-  let vary_demand = false
   let interactions = [ "di"; "id"; "ss"; "rr"; "r"]
   let experiment = ""
   let outfile = default_outfile
@@ -1223,8 +1221,8 @@ module Benchmark_params_10k : ParamsType = struct
   let num_changes = 10 (* Number of changes to perform on each input list *)
   let demand = 100.0    (* Percent of output to demand to force after each change *)
   let num_lists = 4    (* Number of distinct input lists. *)
+  let fullinit = false 
   let granularity = 0
-  let vary_demand = true
   let interactions = [ "di"; "id"; "ss"]
   let experiment = ""
   let outfile = default_outfile
@@ -1237,8 +1235,8 @@ module Movie_params : ParamsType = struct
   let num_changes = 8
   let demand = 50.0
   let num_lists = 1
+  let fullinit = false 
   let granularity = 0
-  let vary_demand = false
   let interactions = [ "di"; "id"; "ss";"r"]
   let experiment = ""
   let outfile = default_outfile
@@ -1251,8 +1249,8 @@ module Short_movie_params : ParamsType = struct
   let num_changes = 3 (* Number of changes to perform on each input list *)
   let demand = 100.0  (* Percent of output to demand to force after each change *)
   let num_lists = 1   (* Number of distinct input lists. *)
+  let fullinit = false 
   let granularity = 0
-  let vary_demand = false
   let interactions = [ "di"; "id"; "ss";"r"]
   let experiment = ""
   let outfile = default_outfile
@@ -1265,8 +1263,8 @@ module Test_params : ParamsType = struct
   let num_changes = 500 (* Number of changes to perform on each input list *)
   let demand = 50.0     (* Percent of output to demand to force after each change *)
   let num_lists = 10    (* Number of distinct input lists. *)
+  let fullinit = false 
   let granularity = 0
-  let vary_demand = false
   let interactions = [ "di"; "id"; "ss";"r"]
   let experiment = ""
   let outfile = default_outfile
@@ -1281,8 +1279,8 @@ module Commandline_params : ParamsType = struct
   let num_changes_  = ref Default.num_changes
   let demand_       = ref Default.demand
   let num_lists_    = ref Default.num_lists
+  let fullinit_     = ref Default.fullinit 
   let granularity_  = ref Default.granularity
-  let vary_demand_  = ref Default.vary_demand
   let flags_        = ref (module Default.Flags : FlagsType)
   let interactions_ = ref Default.interactions
   let experiment_   = ref Default.experiment
@@ -1295,7 +1293,7 @@ module Commandline_params : ParamsType = struct
     ("--demand",      Arg.Float (fun n -> demand_ := n),      " percent of output to observe");
     ("--num-lists",   Arg.Int   (fun n -> num_lists_ := n),   " number of lists to try");
     ("--gran",        Arg.Int   (fun n -> granularity_ := n), " granularity of articulation points");
-    ("--vary-demand", Arg.Bool  (fun n -> vary_demand_ := n), " whether to vary demand");
+    ("--fullinit",    Arg.Set   fullinit_,                    " demand full list at initialization");
     ("--outfile",     Arg.String(fun s -> outfile_ := s),     " file to save output to");
     ("--experiment",  Arg.String(fun name_req -> 
       ( let names = 
@@ -1340,8 +1338,8 @@ module Commandline_params : ParamsType = struct
   let num_changes = !num_changes_
   let demand = !demand_
   let num_lists = !num_lists_ 
+  let fullinit = !fullinit_
   let granularity = !granularity_
-  let vary_demand = !vary_demand_
   let interactions = List.rev (!interactions_)
   let experiment = !experiment_
   let outfile = !outfile_
