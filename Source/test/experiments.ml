@@ -275,22 +275,29 @@ module Make_experiment ( ListApp : ListAppType ) = struct
         end
       in
       
-      let change_locations =
       (* Pre-compute the places in the input list that we will change over time. *)
+      let change_locations =
         let locations = Array.make Params.num_changes ( 0, l) in
-        let stride = if Params.num_changes > 0 then Params.n / Params.num_changes else 1 in
-        let stride = if stride = 0 then 1 else stride in
-        let rec helper l' i j =
-          match ListApp.ListRep.next l' with
-          | None -> locations
-          | Some t ->
-      	    if i mod stride == 0 then (
-      	      locations.(j) <- ( i, l');
-      	      helper t (i+1) (j+1)
-      	    ) else
-    	      helper t (i+1) j
+        let n = float_of_int Params.n in
+        let chs = float_of_int Params.num_changes in
+        let gran = 2. ** (float_of_int Params.granularity) in
+        let divs = n /. gran in
+        let stride = divs /. chs in
+        let rec build_change_locs art loc change art_count =
+          if change >= Params.num_changes then locations else
+          if loc >= 1. then 
+            match ListApp.ListRep.next art with
+            | None -> locations
+            | Some(a) -> 
+              build_change_locs a (loc-.1.0) change (art_count+.1.)
+          else (
+            let aprox_change_position = int_of_float (art_count *. gran) in
+            locations.(change) <- (aprox_change_position, art);
+            Printf.printf "debug loc:%f change:%d art_c:%f\n%!" loc change art_count;
+            build_change_locs art (loc+.stride) (change+1) art_count 
+          )
         in
-        helper l 0 0
+        build_change_locs l 0.0 0 0.0
       in
 
       let print_inout msg =
@@ -550,6 +557,8 @@ module Make_experiment ( ListApp : ListAppType ) = struct
       benchmark_demand Params.demand
     in
     
+    (* the code originally ran multiple times, printing "%% major GC." thousands of times per GC *)
+    (* TODO: make one create_alarm call before running other code *)
     if false then (
       ignore (Gc.create_alarm begin fun _ ->
         if false then (                         
