@@ -585,13 +585,14 @@ module Make_experiment ( ListApp : ListAppType ) = struct
         let calc_demand = int_of_float (( float Params.n) *. (Params.demand /. 100.0)) in
         if calc_demand = 0 then 1 else calc_demand
       in
+      let demand_percent = (float demand_count) /. (float Params.n) in
       (* measure both the creation and initial computation of result *)
       let (_,output),s = Stats.measure (fun () ->
         let output = ListApp.compute input in
           (demand_list output (Some demand_count)), output)
       in
       let line_prefix = Printf.sprintf "%d:%s" Params.sample_num name in
-      stats_print handle Params.sample_num name "initial" Params.n s.Stats.create 0 Params.n 100.0 Params.granularity s ;
+      stats_print handle Params.sample_num name "initial" Params.n s.Stats.create 0 demand_count demand_percent Params.granularity s ;
       if Params.Flags.print_inout then begin
         Printf.printf "%d: Initial output:\t%s\n" i (string_of_list (demand_list output None));
       end;
