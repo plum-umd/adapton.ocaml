@@ -338,7 +338,7 @@ module MakeSeq
   module LoLArt = SToL.List.Art
 
 
-  (* ---------- first attempt at mutable list ----------- *)
+  (* ---------- an attempt at mutable list ----------- *)
 
   (* creates an articulated list *)
   let art_list
@@ -702,6 +702,40 @@ module MakeSeq
     in
     fun rope list -> mfn.LArt.mfn_data (rope, list)
 
+  let rope_length : St.Rope.Data.t -> int =
+    let module Len = St.ArtLib.MakeArt(Name)(Types.Int) in
+    let mfn = Len.mk_mfn (St.Name.gensym "rope_length")
+      (module St.Rope.Data)
+      (fun r rope ->
+        let len rope = r.Len.mfn_data rope in
+        let memo_len n rope = r.Len.mfn_nart n rope in
+        match rope with
+        | `Zero -> 0
+        | `One(x) -> 1
+        | `Two(r1,r2) -> (len r1) + (len r2)
+        | `Art(a) -> len (RArt.force a)
+        | `Name(nm, r) -> Len.force (memo_len nm r)
+      )
+    in
+    fun rope -> mfn.Len.mfn_data rope
+
+  (* non-memoised indexed lookup of a rope, using memoized rope_length for speed *)
+  let rec rope_nth rope n : St.Data.t option = 
+    if rope_length rope <= n then None else
+    match rope with
+    | `Zero -> failwith "rope_nth: bad length reporting"
+    | `One(x) -> if n = 0 then Some(x) else failwith "rope_nth: bad length reporting"
+    | `Two(r1,r2) -> 
+      let r1l = rope_length r1 in
+      if rope_length r1 > n then
+        rope_nth r1 n
+      else
+        rope_nth r2 (n-r1l)
+    | `Art(a) -> rope_nth (RArt.force a) n
+    | `Name(nm, r) -> rope_nth r n
+      
+
+
 (*
   let rec tree_append ( left : St.Tree.Data.t ) ( right : St.Tree.Data.t ) =
     ( match left, right with
@@ -973,6 +1007,13 @@ module MakeSeq
         ))
     in
     fun rope -> mfn.ADataOption.mfn_data rope
+
+  (* finds the median of a rope in current order, sort first to find true median *)
+  let rope_median rope : St.Data.t option =
+    let len = rope_length rope in
+    if len = 0 then None else
+    let mid = len/2 in
+    rope_nth rope mid
 
   let list_merge
       (compare_nm : St.Name.t)

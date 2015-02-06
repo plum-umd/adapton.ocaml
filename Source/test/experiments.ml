@@ -585,7 +585,7 @@ module Make_experiment ( ListApp : ListAppType ) = struct
         let calc_demand = int_of_float (( float Params.n) *. (Params.demand /. 100.0)) in
         if calc_demand = 0 then 1 else calc_demand
       in
-      let demand_percent = (float demand_count) /. (float Params.n) in
+      let demand_percent = (float demand_count) /. (float Params.n) *. 100 in
       (* measure both the creation and initial computation of result *)
       let (_,output),s = Stats.measure (fun () ->
         let output = ListApp.compute input in
@@ -878,6 +878,39 @@ module Mergesorts = struct
 
 end
 
+module Median = struct
+
+  module Rope_median
+    ( N : sig val name : string end )
+    ( AL : GrifolaType.ArtLibType ) = 
+  struct
+    let name = "Rope_median_" ^ N.name
+    let int_compare : int -> int -> int = Pervasives.compare
+    module ListRep = SpreadTreeRep ( AL )
+    let compute inp = 
+      let nm1, nm2 = Key.fork (Key.nondet()) in
+      let mergesort = ListRep.Seq.list_to_rope_mergesort nm1 int_compare in
+      let rope_of_list = ListRep.Seq.rope_of_list in
+      let rope_median = ListRep.Seq.rope_median in
+      ListRep.St.List.Art.thunk (nm2) ( fun() ->
+        let result =
+          rope_median @@ rope_of_list @@
+          mergesort @@ (ListRep.St.List.Art.force inp)
+        in
+        match result with
+        | None -> `Nil
+        | Some x -> `Cons(x,`Nil)
+      )
+    let trusted inp = 
+      let len = List.length inp in
+      let middle = len/2 in
+      let sorted = List.sort int_compare inp in
+      [List.nth sorted middle]
+    let flush = AL.Eviction.flush
+  end
+end
+
+
 module Iteration = struct
   module Rope_iter 
     ( N : sig val name : string end ) 
@@ -1091,6 +1124,23 @@ module Experiments = struct
       module Exp_lazy_recalc : ExperimentType = Make_experiment(ListApp_lazy_recalc)
     end
 
+    module Rope_median = struct
+      module ListApp_name = Median.Rope_median(struct let name = "name" end)(Grifola_name.ArtLib)
+      module Exp_name :  ExperimentType = Make_experiment(ListApp_name)
+
+      module ListApp_arg = Median.Rope_median(struct let name = "arg" end)(Grifola_arg.ArtLib)
+      module Exp_arg :  ExperimentType = Make_experiment(ListApp_arg)
+
+      module ListApp_arggen = Median.Rope_median(struct let name = "arggen" end)(Grifola_arggen.ArtLib)
+      module Exp_arggen :  ExperimentType = Make_experiment(ListApp_arggen)
+
+      module ListApp_lazy_recalc = Median.Rope_median(struct let name = "lazyrecalc" end)(LazyRecalc.ArtLib)
+      module Exp_lazy_recalc :  ExperimentType = Make_experiment(ListApp_lazy_recalc)
+
+      module ListApp_eager_noninc = Median.Rope_median(struct let name = "eagernoninc" end)(EagerNonInc.ArtLib)
+      module Exp_eager_noninc :  ExperimentType = Make_experiment(ListApp_eager_noninc)
+    end
+
     module Rope_iter = struct
       module ListApp_name = Iteration.Rope_iter(struct let name = "name" end)(Grifola_name.ArtLib)
       module Exp_name : ExperimentType = Make_experiment(ListApp_name)
@@ -1193,7 +1243,13 @@ let all_experiments : (module ExperimentType) list = [
   (module Experiments.List_mergesort.Exp_arggen       : ExperimentType) ;
   (module Experiments.List_mergesort.Exp_lazy_recalc  : ExperimentType) ;
   
-  (* TUESDAY Nov 11 2014: Benchmarks for overhead comparison: *)
+  (* Rope Median *)
+  (module Experiments.Rope_median.Exp_name         : ExperimentType) ;
+  (module Experiments.Rope_median.Exp_arggen       : ExperimentType) ;
+  (module Experiments.Rope_median.Exp_lazy_recalc  : ExperimentType) ;
+  (module Experiments.Rope_median.Exp_eager_noninc : ExperimentType) ;
+  
+  (* Benchmarks for overhead comparison: *)
   (module Experiments.AVL_of_rope_grifola_name        : ExperimentType) ;
   (module Experiments.AVL_of_rope_grifola_arggen      : ExperimentType) ;
   (module Experiments.AVL_of_rope_lazy_recalc         : ExperimentType) ;
