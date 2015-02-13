@@ -585,7 +585,7 @@ module Make_experiment ( ListApp : ListAppType ) = struct
         let calc_demand = int_of_float (( float Params.n) *. (Params.demand /. 100.0)) in
         if calc_demand = 0 then 1 else calc_demand
       in
-      let demand_percent = (float demand_count) /. (float Params.n) *. 100 in
+      let demand_percent = (float demand_count) /. (float Params.n) *. 100.0 in
       (* measure both the creation and initial computation of result *)
       let (_,output),s = Stats.measure (fun () ->
         let output = ListApp.compute input in
@@ -931,50 +931,14 @@ module Iteration = struct
   end
 end
 
-module List_transf = struct
-    
+module List_transf = struct    
   let mapf x = int_of_float ((log (1. +. float_of_int x)) +. log 1.5)
   let filterf x = ((x mod 2) = 0)
 
-(*   
-  module AKList_map (N : sig val name : string end) ( A : AdaptonUtil.Signatures.AType ) = struct
-    let name = "AKList_map_" ^ N.name
-    module ListRep = AKListRep ( A )
-    let compute inp = ListRep.IL.memo_map (module ListRep.IL) mapf (Key.nondet()) inp
-    let trusted x = List.map mapf x
-    let flush = ListRep.IL.flush
-  end 
-
-  module AKList_filter (N : sig val name : string end) ( A : AdaptonUtil.Signatures.AType ) = struct
-    let name = "AKList_filter_" ^ N.name
-    module ListRep = AKListRep ( A )
-    let compute inp = ListRep.IL.memo_filter (fun x -> filterf x) (Key.nondet()) inp
-    let trusted x = List.filter filterf x
-    let flush = ListRep.IL.flush
-  end 
- *)
 end
+
 module Reduction = struct
 
-(*   
-  module AKList_min (N : sig val name : string end) ( A : AdaptonUtil.Signatures.AType ) = struct
-    let name = "AKList_min_" ^ N.name
-    module ListRep = AKListRep ( A )
-    let min_of_ints _ (x:int) y = (
-      incr AdaptonUtil.Statistics.Counts.unit_cost ;
-      if x < y then x else y
-    )
-    let fold = ListRep.IL.memo_reduce min_of_ints (Key.nondet ()) (Key.nondet ())
-    let compute inp = ListRep.IL.thunk (fun () ->
-      let x = ListRep.IL.AData.force (fold inp) in
-      `Cons(x, Key.gensym "dummy", ListRep.IL.const `Nil)
-    )
-    let trusted x = match x with 
-      | [] -> [] 
-      | _ -> [ List.fold_left (fun x y -> min_of_ints () x y) max_int x ]
-    let flush = ListRep.IL.flush
-  end
- *)
   module Rope_reduce_monoid
     ( N : sig val name : string end ) 
     ( AL : GrifolaType.ArtLibType )
@@ -1087,173 +1051,105 @@ end
     
 module Experiments = struct 
   open Engines
-  
-  module Grifola_representation = struct
-    
-    module Rope_mergesort = struct
-      module ListApp_name = Mergesorts.Rope_mergesort(struct let name = "name" end)(Grifola_name.ArtLib)
-      module Exp_name : ExperimentType = Make_experiment(ListApp_name)
       
-      module ListApp_arg = Mergesorts.Rope_mergesort(struct let name = "arg" end)(Grifola_arg.ArtLib)
-      module Exp_arg : ExperimentType = Make_experiment(ListApp_arg)
-
-      module ListApp_arggen = Mergesorts.Rope_mergesort(struct let name = "arggen" end)(Grifola_arggen.ArtLib)
-      module Exp_arggen : ExperimentType = Make_experiment(ListApp_arggen)
-
-      module ListApp_lazy_recalc = Mergesorts.Rope_mergesort(struct let name = "lazyrecalc" end)(LazyRecalc.ArtLib)
-      module Exp_lazy_recalc : ExperimentType = Make_experiment(ListApp_lazy_recalc)
-
-      module ListApp_eager_noninc = Mergesorts.Rope_mergesort(struct let name = "eagernoninc" end)(EagerNonInc.ArtLib)
-      module Exp_eager_noninc : ExperimentType = Make_experiment(ListApp_eager_noninc)
-
-      module ListApp_lazy_noninc = Mergesorts.Rope_mergesort(struct let name = "lazynoninc" end)(LazyNonInc.ArtLib)
-      module Exp_lazy_noninc : ExperimentType = Make_experiment(ListApp_lazy_noninc)
-    end
-
-    module List_mergesort = struct
-      module ListApp_name = Mergesorts.List_mergesort(struct let name = "name" end)(Grifola_name.ArtLib)
-      module Exp_name : ExperimentType = Make_experiment(ListApp_name)
-      
-      module ListApp_arg = Mergesorts.List_mergesort(struct let name = "arg" end)(Grifola_arg.ArtLib)
-      module Exp_arg : ExperimentType = Make_experiment(ListApp_arg)
-
-      module ListApp_arggen = Mergesorts.List_mergesort(struct let name = "arggen" end)(Grifola_arggen.ArtLib)
-      module Exp_arggen : ExperimentType = Make_experiment(ListApp_arggen)
-
-      module ListApp_lazy_recalc = Mergesorts.List_mergesort(struct let name = "lazyrecalc" end)(LazyRecalc.ArtLib)
-      module Exp_lazy_recalc : ExperimentType = Make_experiment(ListApp_lazy_recalc)
-    end
-
-    module Rope_median = struct
-      module ListApp_name = Median.Rope_median(struct let name = "name" end)(Grifola_name.ArtLib)
-      module Exp_name :  ExperimentType = Make_experiment(ListApp_name)
-
-      module ListApp_arg = Median.Rope_median(struct let name = "arg" end)(Grifola_arg.ArtLib)
-      module Exp_arg :  ExperimentType = Make_experiment(ListApp_arg)
-
-      module ListApp_arggen = Median.Rope_median(struct let name = "arggen" end)(Grifola_arggen.ArtLib)
-      module Exp_arggen :  ExperimentType = Make_experiment(ListApp_arggen)
-
-      module ListApp_lazy_recalc = Median.Rope_median(struct let name = "lazyrecalc" end)(LazyRecalc.ArtLib)
-      module Exp_lazy_recalc :  ExperimentType = Make_experiment(ListApp_lazy_recalc)
-
-      module ListApp_eager_noninc = Median.Rope_median(struct let name = "eagernoninc" end)(EagerNonInc.ArtLib)
-      module Exp_eager_noninc :  ExperimentType = Make_experiment(ListApp_eager_noninc)
-    end
-
-    module Rope_iter = struct
-      module ListApp_name = Iteration.Rope_iter(struct let name = "name" end)(Grifola_name.ArtLib)
-      module Exp_name : ExperimentType = Make_experiment(ListApp_name)
-
-      module ListApp_arg = Iteration.Rope_iter(struct let name = "arg" end)(Grifola_arg.ArtLib)
-      module Exp_arg : ExperimentType = Make_experiment(ListApp_arg)
-      
-      module ListApp_arggen = Iteration.Rope_iter(struct let name = "arggen" end)(Grifola_name.ArtLib)
-      module Exp_arggen : ExperimentType = Make_experiment(ListApp_arggen)
-    end
-
-    module Rope_min = struct
-      module ListApp_name = Reduction.Rope_min(struct let name = "name" end)(Grifola_name.ArtLib)
-      module Exp_name : ExperimentType = Make_experiment(ListApp_name)
-      
-      module ListApp_arg = Reduction.Rope_min(struct let name = "arg" end)(Grifola_arg.ArtLib)
-      module Exp_arg : ExperimentType = Make_experiment(ListApp_arg)
-
-      module ListApp_arggen = Reduction.Rope_min(struct let name = "arggen" end)(Grifola_arggen.ArtLib)
-      module Exp_arggen : ExperimentType = Make_experiment(ListApp_arggen)
-    end
-
-    module Rope_sum = struct
-      module ListApp_name = Reduction.Rope_sum(struct let name = "name" end)(Grifola_name.ArtLib)
-      module Exp_name : ExperimentType = Make_experiment(ListApp_name)
-      
-      module ListApp_arg = Reduction.Rope_sum(struct let name = "arg" end)(Grifola_arg.ArtLib)
-      module Exp_arg : ExperimentType = Make_experiment(ListApp_arg)
-
-      module ListApp_arggen = Reduction.Rope_sum(struct let name = "arggen" end)(Grifola_arggen.ArtLib)
-      module Exp_arggen : ExperimentType = Make_experiment(ListApp_arggen)
-    end
-
-(*    (* AKList_mergesort_grifola_* *)
-    module AKList_mergesort_grifola_name : ExperimentType =
-      Make_experiment(Mergesorts.AKList_mergesort(struct let name = "grifola_name" end)(Grifola_name.ATypeImpl))
-    module AKList_mergesort_grifola_arg : ExperimentType =
-      Make_experiment(Mergesorts.AKList_mergesort(struct let name = "grifola_arg" end)(Grifola_arg.ATypeImpl))
-    module AKList_mergesort_grifola_arggen : ExperimentType =
-      Make_experiment(Mergesorts.AKList_mergesort(struct let name = "grifola_arggen" end)(Grifola_arggen.ATypeImpl))
-    module AKList_mergesort_grifola_noninc : ExperimentType =
-      Make_experiment(Mergesorts.AKList_mergesort(struct let name = "grifola_noninc" end)(Grifola_noninc.ATypeImpl))
-    module AKList_mergesort_grifola_nocheck : ExperimentType =
-      Make_experiment(Mergesorts.AKList_mergesort(struct let name = "grifola_nocheck" end)(Grifola_nocheck.ATypeImpl))
-
-*)        
-    module AVL_name = Reduction.AVL_of_rope(struct let name = "grifola_name" end)(Grifola_name.ArtLib)
-    module AVL_arggen = Reduction.AVL_of_rope(struct let name = "grifola_arggen" end)(Grifola_arggen.ArtLib)
-    module AVL_lazy_recalc = Reduction.AVL_of_rope(struct let name = "lazy_recalc" end)(LazyRecalc.ArtLib)
-
-    module AVL_of_rope_grifola_name   : ExperimentType = Make_experiment(AVL_name)
-    module AVL_of_rope_grifola_arggen : ExperimentType = Make_experiment(AVL_arggen)
-    module AVL_of_rope_lazy_recalc   : ExperimentType = Make_experiment(AVL_lazy_recalc)
-
-(*    module AKList_min_grifola_name : ExperimentType =
-      Make_experiment(Reduction.AKList_min(struct let name = "grifola_name" end)(Grifola_name.ATypeImpl))    
-    module AList_min_grifola_arggen : ExperimentType = 
-      Make_experiment(Reduction.AList_min(struct let name = "grifola_arggen" end)(Grifola_arggen.ATypeImpl))
-
-    module AKList_filter_grifola_name : ExperimentType =
-      Make_experiment(List_transf.AKList_filter(struct let name = "grifola_name" end)(Grifola_name.ATypeImpl))    
-    module AList_filter_grifola_arggen : ExperimentType = 
-      Make_experiment(List_transf.AList_filter(struct let name = "grifola_arggen" end)(Grifola_arggen.ATypeImpl))
-
-    module AKList_map_grifola_name : ExperimentType =
-      Make_experiment(List_transf.AKList_map(struct let name = "grifola_name" end)(Grifola_name.ATypeImpl))    
-    module AList_map_grifola_arggen : ExperimentType = 
-      Make_experiment(List_transf.AList_map(struct let name = "grifola_arggen" end)(Grifola_arggen.ATypeImpl))
-*)
+  module Rope_mergesort = struct
+    module ListApp_name = Mergesorts.Rope_mergesort(struct let name = "name" end)(Grifola_name.ArtLib)      
+    module ListApp_arg = Mergesorts.Rope_mergesort(struct let name = "arg" end)(Grifola_arg.ArtLib)
+    module ListApp_arggen = Mergesorts.Rope_mergesort(struct let name = "arggen" end)(Grifola_arggen.ArtLib)
+    module ListApp_lazy_recalc = Mergesorts.Rope_mergesort(struct let name = "lazyrecalc" end)(LazyRecalc.ArtLib)
+    module ListApp_eager_noninc = Mergesorts.Rope_mergesort(struct let name = "eagernoninc" end)(EagerNonInc.ArtLib)
+    module ListApp_lazy_noninc = Mergesorts.Rope_mergesort(struct let name = "lazynoninc" end)(LazyNonInc.ArtLib)
   end
-  include Grifola_representation
+
+  module List_mergesort = struct
+    module ListApp_name = Mergesorts.List_mergesort(struct let name = "name" end)(Grifola_name.ArtLib)      
+    module ListApp_arg = Mergesorts.List_mergesort(struct let name = "arg" end)(Grifola_arg.ArtLib)
+    module ListApp_arggen = Mergesorts.List_mergesort(struct let name = "arggen" end)(Grifola_arggen.ArtLib)
+    module ListApp_lazy_recalc = Mergesorts.List_mergesort(struct let name = "lazyrecalc" end)(LazyRecalc.ArtLib)
+  end
+
+  module Rope_median = struct
+    module ListApp_name = Median.Rope_median(struct let name = "name" end)(Grifola_name.ArtLib)
+    module ListApp_arg = Median.Rope_median(struct let name = "arg" end)(Grifola_arg.ArtLib)
+    module ListApp_arggen = Median.Rope_median(struct let name = "arggen" end)(Grifola_arggen.ArtLib)
+    module ListApp_lazy_recalc = Median.Rope_median(struct let name = "lazyrecalc" end)(LazyRecalc.ArtLib)
+    module ListApp_eager_noninc = Median.Rope_median(struct let name = "eagernoninc" end)(EagerNonInc.ArtLib)
+  end
+
+  module Rope_iter = struct
+    module ListApp_name = Iteration.Rope_iter(struct let name = "name" end)(Grifola_name.ArtLib)
+    module ListApp_arg = Iteration.Rope_iter(struct let name = "arg" end)(Grifola_arg.ArtLib)
+    module ListApp_arggen = Iteration.Rope_iter(struct let name = "arggen" end)(Grifola_name.ArtLib)
+  end
+
+  module Rope_min = struct
+    module ListApp_name = Reduction.Rope_min(struct let name = "name" end)(Grifola_name.ArtLib)      
+    module ListApp_arg = Reduction.Rope_min(struct let name = "arg" end)(Grifola_arg.ArtLib)
+    module ListApp_arggen = Reduction.Rope_min(struct let name = "arggen" end)(Grifola_arggen.ArtLib)
+  end
+
+  module Rope_sum = struct
+    module ListApp_name = Reduction.Rope_sum(struct let name = "name" end)(Grifola_name.ArtLib)      
+    module ListApp_arg = Reduction.Rope_sum(struct let name = "arg" end)(Grifola_arg.ArtLib)
+    module ListApp_arggen = Reduction.Rope_sum(struct let name = "arggen" end)(Grifola_arggen.ArtLib)
+  end
+
+  module AVL_name = Reduction.AVL_of_rope(struct let name = "grifola_name" end)(Grifola_name.ArtLib)
+  module AVL_arggen = Reduction.AVL_of_rope(struct let name = "grifola_arggen" end)(Grifola_arggen.ArtLib)
+  module AVL_lazy_recalc = Reduction.AVL_of_rope(struct let name = "lazy_recalc" end)(LazyRecalc.ArtLib)
+
 end
 
-let all_experiments : (module ExperimentType) list = [
-
+let raw_experiments =
+[
   (* Rope min versions *)
-  (module Experiments.Rope_min.Exp_name           : ExperimentType) ;
-  (module Experiments.Rope_min.Exp_arg            : ExperimentType) ;
-  (module Experiments.Rope_min.Exp_arggen         : ExperimentType) ;
+  (module Experiments.Rope_min.ListApp_name           : ListAppType) ;
+  (module Experiments.Rope_min.ListApp_arg            : ListAppType) ;
+  (module Experiments.Rope_min.ListApp_arggen         : ListAppType) ;
 
   (* Rope sum versions *)
-  (module Experiments.Rope_sum.Exp_name           : ExperimentType) ;
-  (module Experiments.Rope_sum.Exp_arg            : ExperimentType) ;
-  (module Experiments.Rope_sum.Exp_arggen         : ExperimentType) ;
+  (module Experiments.Rope_sum.ListApp_name           : ListAppType) ;
+  (module Experiments.Rope_sum.ListApp_arg            : ListAppType) ;
+  (module Experiments.Rope_sum.ListApp_arggen         : ListAppType) ;
 
   (* Rope iter versions *)
-  (module Experiments.Rope_iter.Exp_name           : ExperimentType) ;
-  (module Experiments.Rope_iter.Exp_arg            : ExperimentType) ;
-  (module Experiments.Rope_iter.Exp_arggen         : ExperimentType) ;
+  (module Experiments.Rope_iter.ListApp_name           : ListAppType) ;
+  (module Experiments.Rope_iter.ListApp_arg            : ListAppType) ;
+  (module Experiments.Rope_iter.ListApp_arggen         : ListAppType) ;
 
   (* Rope mergesort *)
-  (module Experiments.Rope_mergesort.Exp_name         : ExperimentType) ;
-  (module Experiments.Rope_mergesort.Exp_arggen       : ExperimentType) ;
-  (module Experiments.Rope_mergesort.Exp_eager_noninc : ExperimentType) ;
-  (module Experiments.Rope_mergesort.Exp_lazy_noninc  : ExperimentType) ;
-  (module Experiments.Rope_mergesort.Exp_lazy_recalc  : ExperimentType) ;
+  (module Experiments.Rope_mergesort.ListApp_name         : ListAppType) ;
+  (module Experiments.Rope_mergesort.ListApp_arggen       : ListAppType) ;
+  (module Experiments.Rope_mergesort.ListApp_eager_noninc : ListAppType) ;
+  (module Experiments.Rope_mergesort.ListApp_lazy_noninc  : ListAppType) ;
+  (module Experiments.Rope_mergesort.ListApp_lazy_recalc  : ListAppType) ;
   
   (* List mergesort *)
-  (module Experiments.List_mergesort.Exp_name         : ExperimentType) ;
-  (module Experiments.List_mergesort.Exp_arggen       : ExperimentType) ;
-  (module Experiments.List_mergesort.Exp_lazy_recalc  : ExperimentType) ;
+  (module Experiments.List_mergesort.ListApp_name         : ListAppType) ;
+  (module Experiments.List_mergesort.ListApp_arggen       : ListAppType) ;
+  (module Experiments.List_mergesort.ListApp_lazy_recalc  : ListAppType) ;
   
   (* Rope Median *)
-  (module Experiments.Rope_median.Exp_name         : ExperimentType) ;
-  (module Experiments.Rope_median.Exp_arggen       : ExperimentType) ;
-  (module Experiments.Rope_median.Exp_lazy_recalc  : ExperimentType) ;
-  (module Experiments.Rope_median.Exp_eager_noninc : ExperimentType) ;
+  (module Experiments.Rope_median.ListApp_name         : ListAppType) ;
+  (module Experiments.Rope_median.ListApp_arggen       : ListAppType) ;
+  (module Experiments.Rope_median.ListApp_lazy_recalc  : ListAppType) ;
+  (module Experiments.Rope_median.ListApp_eager_noninc : ListAppType) ;
   
   (* Benchmarks for overhead comparison: *)
-  (module Experiments.AVL_of_rope_grifola_name        : ExperimentType) ;
-  (module Experiments.AVL_of_rope_grifola_arggen      : ExperimentType) ;
-  (module Experiments.AVL_of_rope_lazy_recalc         : ExperimentType) ;
+  (module Experiments.AVL_name                         : ListAppType) ;
+  (module Experiments.AVL_arggen                       : ListAppType) ;
+  (module Experiments.AVL_lazy_recalc                  : ListAppType) ;
 ]
+
+let all_experiments : (module ExperimentType) list =
+  List.map 
+  (fun a ->
+    (* apply Make_experiment functor to input modules *)
+    let module App = (val a : ListAppType) in
+    let module Exp = Make_experiment(App)in 
+    (module Exp : ExperimentType)
+  )
+  raw_experiments
 
 module Default_perf_params : ParamsType = struct
   let sample_num = 0   (* Seed. *)
