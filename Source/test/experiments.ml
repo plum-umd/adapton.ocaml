@@ -908,6 +908,35 @@ module Median = struct
       [List.nth sorted middle]
     let flush = AL.Eviction.flush
   end
+
+  module Rope_center
+    ( N : sig val name : string end )
+    ( AL : GrifolaType.ArtLibType ) = 
+  struct
+    let name = "Rope_center_" ^ N.name
+    let int_compare : int -> int -> int = Pervasives.compare
+    module ListRep = SpreadTreeRep ( AL )
+    let compute inp = 
+      let nm1 = Key.nondet() in
+      let rope_of_list = ListRep.Seq.rope_of_list in
+      let rope_median = ListRep.Seq.rope_median in
+      ListRep.St.List.Art.thunk (nm1) ( fun() ->
+        let result =
+          rope_median @@ rope_of_list @@
+          (ListRep.St.List.Art.force inp)
+        in
+        match result with
+        | None -> `Nil
+        | Some x -> `Cons(x,`Nil)
+      )
+    let trusted inp = 
+      let len = List.length inp in
+      let middle = len/2 in
+      [List.nth inp middle]
+    let flush = AL.Eviction.flush
+  end
+
+
 end
 
 
@@ -1076,6 +1105,15 @@ module Experiments = struct
     module ListApp_eager_noninc = Median.Rope_median(struct let name = "eagernoninc" end)(EagerNonInc.ArtLib)
   end
 
+  (* to test the median, this finds center without sorting first *)
+  module Rope_center = struct
+    module ListApp_name = Median.Rope_center(struct let name = "name" end)(Grifola_name.ArtLib)
+    module ListApp_arg = Median.Rope_center(struct let name = "arg" end)(Grifola_arg.ArtLib)
+    module ListApp_arggen = Median.Rope_center(struct let name = "arggen" end)(Grifola_arggen.ArtLib)
+    module ListApp_lazy_recalc = Median.Rope_center(struct let name = "lazyrecalc" end)(LazyRecalc.ArtLib)
+    module ListApp_eager_noninc = Median.Rope_center(struct let name = "eagernoninc" end)(EagerNonInc.ArtLib)
+  end
+
   module Rope_iter = struct
     module ListApp_name = Iteration.Rope_iter(struct let name = "name" end)(Grifola_name.ArtLib)
     module ListApp_arg = Iteration.Rope_iter(struct let name = "arg" end)(Grifola_arg.ArtLib)
@@ -1134,6 +1172,12 @@ let raw_experiments =
   (module Experiments.Rope_median.ListApp_arggen       : ListAppType) ;
   (module Experiments.Rope_median.ListApp_lazy_recalc  : ListAppType) ;
   (module Experiments.Rope_median.ListApp_eager_noninc : ListAppType) ;
+  
+  (* Rope Center (median without sorting) *)
+  (module Experiments.Rope_center.ListApp_name         : ListAppType) ;
+  (module Experiments.Rope_center.ListApp_arggen       : ListAppType) ;
+  (module Experiments.Rope_center.ListApp_lazy_recalc  : ListAppType) ;
+  (module Experiments.Rope_center.ListApp_eager_noninc : ListAppType) ;
   
   (* Benchmarks for overhead comparison: *)
   (module Experiments.AVL_name                         : ListAppType) ;
