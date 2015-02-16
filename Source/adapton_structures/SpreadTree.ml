@@ -720,19 +720,23 @@ module MakeSeq
     fun rope -> mfn.Len.mfn_data rope
 
   (* non-memoised indexed lookup of a rope, using memoized rope_length for speed *)
-  let rec rope_nth rope n : St.Data.t option = 
+  let rope_nth rope n : St.Data.t option = 
     if rope_length rope <= n then None else
-    match rope with
-    | `Zero -> failwith "rope_nth: bad length reporting"
-    | `One(x) -> if n = 0 then Some(x) else failwith "rope_nth: bad length reporting"
-    | `Two(r1,r2) -> 
-      let r1l = rope_length r1 in
-      if rope_length r1 > n then
-        rope_nth r1 n
-      else
-        rope_nth r2 (n-r1l)
-    | `Art(a) -> rope_nth (RArt.force a) n
-    | `Name(nm, r) -> rope_nth r n
+    (* main work after initial checks *)
+    let rec rope_nth rope n =
+      match rope with
+      | `Zero -> failwith "rope_nth: bad length reporting"
+      | `One(x) -> if n = 0 then Some(x) else failwith "rope_nth: bad length reporting"
+      | `Two(r1,r2) -> 
+        let r1l = rope_length r1 in
+        if r1l > n then
+          rope_nth r1 n
+        else
+          rope_nth r2 (n-r1l)
+      | `Art(a) -> rope_nth (RArt.force a) n
+      | `Name(nm, r) -> rope_nth r n
+    in
+    rope_nth rope n
       
 
 
