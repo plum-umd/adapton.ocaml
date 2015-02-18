@@ -171,10 +171,11 @@ module Adaptonic = struct
              | false -> ceval s c1)
          | (While (b, c)) as w -> ceval s (If (b, Seq(c, w), Skip))
 
-         | Art a -> ceval s (Cmd.Art.force a)
+         | Art a ->
+            ceval s (Cmd.Art.force a)
 
          | Name(nm, cmd) ->
-            failwith "todo"
+            Cmd.Art.force (mfn.mfn_nart nm cmd)
         )
     in
     mfn.mfn_data (cmd, s)
