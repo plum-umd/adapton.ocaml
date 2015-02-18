@@ -41,9 +41,10 @@ module type ArtType = sig
 
   val cell  : Name.t -> Data.t -> t (* mutable ref cell; supports set operation. *)
   val thunk : Name.t -> (unit -> Data.t) -> t
-  val force : t -> Data.t
 
   val set   : t -> Data.t -> unit (* set: Error unless articulation point is a mutable cell, and caller is outer layer. *)
+
+  val force : t -> Data.t
 
   (* Namespaces: Memo-table-based recursion ( nominal & classic ). *)
   type 'arg mfn = { mfn_data : 'arg -> Data.t ;      (* Pure recursion. *)

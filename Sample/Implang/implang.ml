@@ -55,7 +55,7 @@ type bexpr =
   | Or of bexpr * bexpr
   | Eq of aexpr * aexpr
   | Leq of aexpr * aexpr
-                    
+
 type cmd =
   | Skip
   | Assign of string * aexpr
@@ -87,14 +87,10 @@ let rec ceval s = function
      (match beval s b with
         true -> ceval s c0
       | false -> ceval s c1)
-  (*  | (While (b, c)) as w ->
-     (match beval s b with
-true -> ceval (ceval s c) w
-      | false -> s)*)
   | (While (b, c)) as w -> ceval s (If (b, Seq(c, w), Skip))
 ;;
 
-let test =  
+let test =
   aeval (ext (ext mt "x" 3) "y" 4)
         (Plus(Var "x", Times((Var "y"), (Int 3))));
   beval (ext (ext mt "x" 3) "y" 4)
@@ -104,25 +100,30 @@ let test =
       Seq(Assign ("f", Int 1),
           While (Leq(Int 1, Var "n"),
                  Seq(Assign("f", Times(Var "f", Var "n")),
-                     Assign("n", Minus(Var "n", Int 1)))))) in  
+                     Assign("n", Minus(Var "n", Int 1)))))) in
   lookup (ceval mt fact) "f"
 
-      
+
 module Adaptonic = struct
   open Adapton_core
   open Primitives
   open GrifolaType
 
+  module Types = AdaptonTypes
+  module Statistics = AdaptonStatistics
   module ArtLib (* : ArtLibType *) = Grifola.Default
   module Name : NameType = Key
-         
+
   type 'a art_cmd =
     | Skip
     | Assign of string * aexpr
     | Seq of 'a art_cmd * 'a art_cmd
     | If of bexpr * 'a art_cmd * 'a art_cmd
     | While of bexpr * 'a art_cmd
-         
+    (* Boilerplate cases: *)
+    | Art of 'a
+    | Name of Name.t * 'a art_cmd
+
   module rec Cmd
              : sig
                  module Data : DatType
@@ -139,13 +140,40 @@ module Adaptonic = struct
                            let rec equal xs ys = failwith "todo"
                            let rec sanitize x = failwith "todo"
                          end
+                         (* Apply the library's functor: *)
                          module Art = ArtLib.MakeArt(Name)(Data)
                        end
+
+  let rec ceval cmd s =
+    (* next step is to use mk_mfn *)
+
+    let mfn =
+      Cmd.Art.mk_mfn
+        (Name.gensym "ceval")
+        (module Types.Tuple2(Cmd)(AssocStore))
+        (fun mfn (cmd, s) ->
+         match cmd with
+         | Skip -> s
+         | Assign (x, a) -> ext s x (aeval s a)
+         | Seq (c0, c1) -> ceval (ceval s c0) c1
+         | If (b, c0, c1) ->
+            (match beval s b with
+               true -> ceval s c0
+             | false -> ceval s c1)
+         | (While (b, c)) as w -> ceval s (If (b, Seq(c, w), Skip))
+
+         | Art a -> ceval s (Cmd.Art.force a)
+
+         | Name(nm, cmd) ->
+            failwith "todo"
+        )
+    in
+    mfn.mfn_data (cmd, s)
 end
-  
 
 
-      
+
+
 (*
 let rec aevals s = function
   | Var x -> Int (lookup s x)
