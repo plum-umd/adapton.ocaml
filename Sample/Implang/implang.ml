@@ -6,7 +6,7 @@ module type Store = sig
   type a
   type b
   val mt : sto
-  val lookup : sto -> a -> b
+  val lookup : sto -> a -> b option
   val ext : sto -> a -> b -> sto
   val hash : int -> sto -> int
   val string : sto -> string
@@ -22,10 +22,11 @@ module AssocStore (KV:sig type a type b end) = struct
   type t = sto
 
   let mt = []
-
-  let lookup : sto -> 'a -> 'b =
-    fun s x -> List.assoc x s
-
+	     
+  let lookup : sto -> 'a -> 'b option =
+    fun s x ->
+    try Some (List.assoc x s) with Not_found -> None
+							     
   let ext : sto -> 'a -> 'b -> sto =
     fun s x v ->
     (x, v) :: s
@@ -49,7 +50,7 @@ module AssocStore (KV:sig type a type b end) = struct
 
 end
 
-module StoStringInt = AssocStore (struct type a = string type b = int end)
+module StoStringInt = AssocStore (struct type a = string type b = (int * int) end)
 open StoStringInt
 
 type store = sto
@@ -82,8 +83,11 @@ let rec aeval s = function
   | Plus (e1, e2) -> (aeval s e1) + (aeval s e2)
   | Minus (e1, e2) -> (aeval s e1) - (aeval s e2)
   | Times (e1, e2) -> (aeval s e1) * (aeval s e2)
-  | Var x -> lookup s x
-
+  | Var x -> 
+     (match lookup s x with
+      | Some (i, j) -> i
+      | None -> failwith "Unset variable")
+			 
 let rec beval s = function
   | True -> true
   | False -> false
@@ -95,7 +99,12 @@ let rec beval s = function
 
 let rec ceval s = function
   | Skip -> s
-  | Assign (x, a) -> ext s x (aeval s a)
+  | Assign (x, a) -> 
+     (match lookup s x with
+      | None -> ext s x ((aeval s a), 0)
+      | Some (_, count) ->
+	 ext s x ((aeval s a), count + 1))
+
   | Seq (c0, c1) -> ceval (ceval s c0) c1
   | If (b, c0, c1) ->
      (match beval s b with
@@ -104,6 +113,7 @@ let rec ceval s = function
   | (While (b, c)) as w -> ceval s (If (b, Seq(c, w), Skip))
 ;;
 
+(*
 let test =
   aeval (ext (ext mt "x" 3) "y" 4)
         (Plus(Var "x", Times((Var "y"), (Int 3))));
@@ -116,7 +126,7 @@ let test =
                  Seq(Assign("f", Times(Var "f", Var "n")),
                      Assign("n", Minus(Var "n", Int 1)))))) in
   lookup (ceval mt fact) "f"
-
+ *)
 
 module Adaptonic = struct
   open Adapton_core
@@ -171,7 +181,12 @@ module Adaptonic = struct
          let ceval s c = mfn.mfn_data (s,c) in
          match cmd with
          | Skip -> s
-         | Assign (x, a) -> ext s x (aeval s a)
+         | Assign (x, a) -> 
+	    (match lookup s x with
+	     | None -> ext s x ((aeval s a), 0)
+	     | Some (_, count) ->
+		ext s x ((aeval s a), count + 1))
+
          | Seq (c0, c1) -> ceval (ceval s c0) c1
          | If (b, c0, c1) ->
             (match beval s b with
