@@ -1,7 +1,8 @@
 include Adapton_lib
 
 module type Store = sig
-  type sto
+    type sto
+    type t = sto
   type a
   type b
   val mt : sto
@@ -11,17 +12,13 @@ module type Store = sig
   val string : sto -> string
   val sanitize : sto -> sto
 end
-
-module Tinacan(S:Store) = struct
-  type t = S.sto
-  include S
-end
                       
 module AssocStore (KV:sig type a type b end) = struct
   type a = KV.a
   type b = KV.b
 
   type sto = (a * b) list
+  type t = sto
 
   let mt = []
 
@@ -162,7 +159,7 @@ module Adaptonic = struct
     let mfn =
       Cmd.Art.mk_mfn
         (Name.gensym "ceval")
-        (module Types.Tuple2(Cmd.Data)(Tinacan(StoStringInt)))
+        (module Types.Tuple2(Cmd.Data)(StoStringInt))
         (fun mfn (cmd, s) ->
          match cmd with
          | Skip -> s
