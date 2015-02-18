@@ -77,23 +77,58 @@ true -> ceval (ceval s c) w
   | (While (b, c)) as w -> ceval s (If (b, Seq(c, w), Skip))
 ;;
 
+let test =  
   aeval (ext (ext mt "x" 3) "y" 4)
-        (Plus(Var "x", Times((Var "y"), (Int 3))));;
-
+        (Plus(Var "x", Times((Var "y"), (Int 3))));
   beval (ext (ext mt "x" 3) "y" 4)
         (Eq((Plus(Var "x", Times((Var "y"), (Int 3)))),
-            (Plus(Var "y", Times((Var "x"), (Int 3))))));;
+            (Plus(Var "y", Times((Var "x"), (Int 3))))));
+  let fact = Seq(Assign ("n", Int 5),
+      Seq(Assign ("f", Int 1),
+          While (Leq(Int 1, Var "n"),
+                 Seq(Assign("f", Times(Var "f", Var "n")),
+                     Assign("n", Minus(Var "n", Int 1)))))) in  
+  lookup (ceval mt fact) "f"
 
-  let fact =
-    Seq(Assign ("n", Int 5),
-        Seq(Assign ("f", Int 1),
-            While (Leq(Int 1, Var "n"),
-                   Seq(Assign("f", Times(Var "f", Var "n")),
-                       Assign("n", Minus(Var "n", Int 1))))));;
+      
+module Adaptonic = struct
+  open Adapton_core
+  open Primitives
+  open GrifolaType
 
-    lookup (ceval mt fact) "f";;
+  module ArtLib (* : ArtLibType *) = Grifola.Default
+  module Name : NameType = Key
+         
+  type 'a art_cmd =
+    | Skip
+    | Assign of string * aexpr
+    | Seq of 'a art_cmd * 'a art_cmd
+    | If of bexpr * 'a art_cmd * 'a art_cmd
+    | While of bexpr * 'a art_cmd
+         
+  module rec Cmd
+             : sig
+                 module Data : DatType
+                 module Art : ArtType
+               end
+             with type Data.t = Cmd.Art.t art_cmd
+              and type Art.Data.t = Cmd.Art.t art_cmd
+              and type Art.Name.t = Name.t
+                                    = struct
+                         module Data = struct
+                           type t = Cmd.Art.t art_cmd
+                           let rec string x = failwith "todo"
+                           let rec hash seed x = failwith "todo"
+                           let rec equal xs ys = failwith "todo"
+                           let rec sanitize x = failwith "todo"
+                         end
+                         module Art = ArtLib.MakeArt(Name)(Data)
+                       end
+end
+  
 
 
+      
 (*
 let rec aevals s = function
   | Var x -> Int (lookup s x)
