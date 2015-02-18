@@ -1,6 +1,6 @@
 include Adapton_lib
 
-open Adapton_structures                 
+open Adapton_structures
 open Adapton_core
 open Primitives
 open GrifolaType
@@ -23,32 +23,35 @@ module type Store = sig
     val sanitize : sto -> sto
     val equal : sto -> sto -> bool
   end
-                      
+
 module AssocStore (A:DatType)(B:DatType) = struct
   type a = A.t
   type b = B.t
 
   module St = SpreadTree.MakeSpreadTree(ArtLib)(Name)
                                        (Types.Tuple2(A)(B))
-             
-  type sto = St.List.Data.t
+
+  module List = St.List
+  type sto = List.Data.t
   type t = sto
 
   let mt = []
-	     
-  let lookup : sto -> 'a -> 'b option =
-    failwith "todo"
-             (*
-    fun s x ->
-    try Some (List.assoc x s) with Not_found -> None
-              *)
-						  
-  let ext : sto -> 'a -> 'b -> sto =
-    failwith "todo"
-    (*
-    fun s x v ->
-    (x, v) :: s
-     *)
+
+  let rec lookup : sto -> 'a -> 'b option =
+    fun s x -> match s with
+                 `Cons ((y, b), s) when (y = x) -> Some b
+               | `Cons (_, s) -> lookup s x
+               | `Nil -> None
+               | `Name(_, s) -> lookup s x
+               | `Art(a) -> lookup (List.Art.force a) x
+
+  let ext : Name.t -> sto -> 'a -> 'b -> sto =
+    let list_mfn =
+      List.Art.mk_mfn (Name.gensym "sto") (module List.Data) (fun _ l -> l)
+    in
+    fun nm s x v ->
+    let nm1, nm2 = Name.fork nm in
+    `Name(nm1, `Art( list_mfn.mfn_nart nm2 (`Cons ((x, v), s))))
 
   (* FIXME: degenerate hash *)
   let hash : int -> sto -> int =
@@ -56,15 +59,15 @@ module AssocStore (A:DatType)(B:DatType) = struct
     0
 
   (* FIXME: *)
-  let string : sto -> string = 
+  let string : sto -> string =
     fun s ->
     failwith "Not implemented"
 
   (* FIXME: no op *)
-  let sanitize : sto -> sto = 
+  let sanitize : sto -> sto =
     fun s -> s
 
-  let equal : sto -> sto -> bool = 
+  let equal : sto -> sto -> bool =
     fun s1 s2 -> s1 = s2
 
 end
@@ -102,11 +105,11 @@ let rec aeval s = function
   | Plus (e1, e2) -> (aeval s e1) + (aeval s e2)
   | Minus (e1, e2) -> (aeval s e1) - (aeval s e2)
   | Times (e1, e2) -> (aeval s e1) * (aeval s e2)
-  | Var x -> 
+  | Var x ->
      (match lookup s x with
       | Some (i, j) -> i
       | None -> failwith "Unset variable")
-       
+
 let rec beval s = function
   | True -> true
   | False -> false
@@ -126,7 +129,7 @@ type 'a art_cmd =
   (* Boilerplate cases: *)
   | Art of 'a
   | Name of Name.t * 'a art_cmd
-                        
+
 module rec Cmd
            : sig
                module Data : DatType
@@ -148,26 +151,31 @@ module rec Cmd
                      end
 
 module StoArt = ArtLib.MakeArt(Name)(StoStringInt)
-                              
+
 let rec ceval cmd s =
   (* next step is to use mk_mfn *)
 
   let mfn =
-    StoArt.mk_mfn
+    List.Art.mk_mfn
       (Name.gensym "ceval")
-      (module Types.Tuple2(StoStringInt)(Cmd.Data))
+      (module Types.Tuple2(List.Data)(Cmd.Data))
       (fun mfn (s, cmd) ->
-       let ceval s c = mfn.mfn_data (s,c) in
+       let ceval s c = mfn.List.Art.mfn_data (s,c) in
        match cmd with
        | Skip -> s
-       | Assign (x, a) -> 
+       | Assign (x, a) ->
+          let cnt = match lookup s x with
+	    | None -> 0
+	    | Some (_, count) -> count + 1
+          in
+          let nm = Name.pair (Name.gensym x)
+                             (Name.gensym (string_of_int cnt))
+          in
 	  let i = aeval s a in
-	  (match lookup s x with
-	   | None -> ext s x (i, 0)
-	   | Some (_, count) ->
-	      ext s x (i, count + 1))	 
+          ext nm s x (i, cnt)
 
        | Seq (c0, c1) -> ceval (ceval s c0) c1
+
        | If (b, c0, c1) ->
           (match beval s b with
              true -> ceval s c0
@@ -178,7 +186,7 @@ let rec ceval cmd s =
           ceval s (Cmd.Art.force a)
 
        | Name(nm, cmd) ->
-          StoArt.force (mfn.mfn_nart nm (s,cmd))
+          List.Art.force (mfn.mfn_nart nm (s,cmd))
       )
   in
   mfn.mfn_data (cmd, s)
