@@ -97,36 +97,6 @@ let rec beval s = function
   | Leq (a1, a2) -> (aeval s a1) <= (aeval s a2)
   | Eq (a1, a2) -> (aeval s a1) = (aeval s a2)
 
-let rec ceval s = function
-  | Skip -> s
-  | Assign (x, a) -> 
-     (match lookup s x with
-      | None -> ext s x ((aeval s a), 0)
-      | Some (_, count) ->
-	 ext s x ((aeval s a), count + 1))
-
-  | Seq (c0, c1) -> ceval (ceval s c0) c1
-  | If (b, c0, c1) ->
-     (match beval s b with
-        true -> ceval s c0
-      | false -> ceval s c1)
-  | (While (b, c)) as w -> ceval s (If (b, Seq(c, w), Skip))
-;;
-
-(*
-let test =
-  aeval (ext (ext mt "x" 3) "y" 4)
-        (Plus(Var "x", Times((Var "y"), (Int 3))));
-  beval (ext (ext mt "x" 3) "y" 4)
-        (Eq((Plus(Var "x", Times((Var "y"), (Int 3)))),
-            (Plus(Var "y", Times((Var "x"), (Int 3))))));
-  let fact = Seq(Assign ("n", Int 5),
-      Seq(Assign ("f", Int 1),
-          While (Leq(Int 1, Var "n"),
-                 Seq(Assign("f", Times(Var "f", Var "n")),
-                     Assign("n", Minus(Var "n", Int 1)))))) in
-  lookup (ceval mt fact) "f"
- *)
 
 module Adaptonic = struct
   open Adapton_core
@@ -182,10 +152,11 @@ module Adaptonic = struct
          match cmd with
          | Skip -> s
          | Assign (x, a) -> 
+	    let i = aeval s a in
 	    (match lookup s x with
-	     | None -> ext s x ((aeval s a), 0)
+	     | None -> ext s x (i, 0)
 	     | Some (_, count) ->
-		ext s x ((aeval s a), count + 1))
+		ext s x (i, count + 1))	 
 
          | Seq (c0, c1) -> ceval (ceval s c0) c1
          | If (b, c0, c1) ->
