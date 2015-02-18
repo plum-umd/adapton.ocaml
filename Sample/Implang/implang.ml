@@ -70,10 +70,6 @@ let rec ceval s = function
      (match beval s b with
         true -> ceval s c0
       | false -> ceval s c1)
-  (*  | (While (b, c)) as w ->
-     (match beval s b with
-true -> ceval (ceval s c) w
-      | false -> s)*)
   | (While (b, c)) as w -> ceval s (If (b, Seq(c, w), Skip))
 ;;
 
@@ -105,6 +101,9 @@ module Adaptonic = struct
     | Seq of 'a art_cmd * 'a art_cmd
     | If of bexpr * 'a art_cmd * 'a art_cmd
     | While of bexpr * 'a art_cmd
+    (* Boilerplate cases: *)
+    | Art of 'a
+    | Name of Name.t * 'a art_cmd
          
   module rec Cmd
              : sig
@@ -122,8 +121,26 @@ module Adaptonic = struct
                            let rec equal xs ys = failwith "todo"
                            let rec sanitize x = failwith "todo"
                          end
+                         (* Apply the library's functor: *)
                          module Art = ArtLib.MakeArt(Name)(Data)
                        end
+
+  let rec ceval s =
+    (* next step is to use mk_mfn *)
+    function
+    | Skip -> s
+    | Assign (x, a) -> ext s x (aeval s a)
+    | Seq (c0, c1) -> ceval (ceval s c0) c1
+    | If (b, c0, c1) ->
+       (match beval s b with
+          true -> ceval s c0
+        | false -> ceval s c1)
+    | (While (b, c)) as w -> ceval s (If (b, Seq(c, w), Skip))
+
+    | Art a -> ceval s (Cmd.Art.force a)
+
+    | Name(nm, cmd) -> failwith "todo"
+
 end
   
 
