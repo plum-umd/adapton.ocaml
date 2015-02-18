@@ -150,7 +150,11 @@ module rec Cmd
                        module Art = ArtLib.MakeArt(Name)(Data)
                      end
 
-module StoArt = ArtLib.MakeArt(Name)(StoStringInt)
+let cmd_mfn =
+  Cmd.Art.mk_mfn
+    (Name.gensym "cmd")
+    (module Cmd.Data)
+    (fun _ c -> c)
 
 let rec ceval cmd s =
   (* next step is to use mk_mfn *)
