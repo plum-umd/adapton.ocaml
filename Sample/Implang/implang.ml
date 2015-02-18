@@ -1,44 +1,51 @@
 include Adapton_lib
 
 module type Store = sig
-  type ('a, 'b) sto
-  val mt : ('a, 'b) sto
-  val lookup : ('a, 'b) sto -> 'a -> 'b
-  val ext : ('a, 'b) sto -> 'a -> 'b -> ('a, 'b) sto
-  val hash : int -> ('a, 'b) sto -> int
-  val string : ('a, 'b) sto -> string
-  val sanitize : ('a, 'b) sto -> ('a, 'b) sto
+  type sto
+  type a
+  type b
+  val mt : sto
+  val lookup : sto -> a -> b
+  val ext : sto -> a -> b -> sto
+  val hash : int -> sto -> int
+  val string : sto -> string
+  val sanitize : sto -> sto
 end
 
-module AssocStore : Store = struct
-  type ('a, 'b) sto = ('a * 'b) list
+module AssocStore (KV:sig type a type b end) = struct
+  type a = KV.a
+  type b = KV.b
+
+  type sto = (a * b) list
 
   let mt = []
 
-  let lookup : ('a, 'b) sto -> 'a -> 'b =
+  let lookup : sto -> 'a -> 'b =
     fun s x -> List.assoc x s
 
-  let ext : ('a, 'b) sto -> 'a -> 'b -> ('a, 'b) sto =
+  let ext : sto -> 'a -> 'b -> sto =
     fun s x v ->
     (x, v) :: s
 
   (* FIXME: degenerate hash *)
-  let hash : int -> ('a, 'b) sto -> int =
+  let hash : int -> sto -> int =
     fun seed s ->
       0
 
   (* FIXME: *)
-  let string : ('a, 'b) sto -> string = 
+  let string : sto -> string = 
     fun s ->
       failwith "Not implemented"
 
   (* FIXME: no op *)
-  let sanitize : ('a, 'b) sto -> ('a, 'b) sto = 
+  let sanitize : sto -> sto = 
     fun s -> s
 end
 
-open AssocStore
-type store = (string, int) sto
+module StoStringInt = AssocStore (struct type a = string type b = int end)
+open StoStringInt
+
+type store = sto
 
 type aexpr =
   | Int of int
