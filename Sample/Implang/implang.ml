@@ -1,8 +1,8 @@
 include Adapton_lib
 
 module type Store = sig
-    type sto
-    type t = sto
+  type sto
+  type t = sto
   type a
   type b
   val mt : sto
@@ -11,6 +11,7 @@ module type Store = sig
   val hash : int -> sto -> int
   val string : sto -> string
   val sanitize : sto -> sto
+  val equal : sto -> sto -> bool
 end
                       
 module AssocStore (KV:sig type a type b end) = struct
@@ -42,6 +43,10 @@ module AssocStore (KV:sig type a type b end) = struct
   (* FIXME: no op *)
   let sanitize : sto -> sto = 
     fun s -> s
+
+  let equal : sto -> sto -> bool = 
+    fun s1 s2 -> s1 = s2
+
 end
 
 module StoStringInt = AssocStore (struct type a = string type b = int end)
