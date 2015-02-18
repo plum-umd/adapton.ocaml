@@ -197,7 +197,7 @@ let rec ceval cmd s =
 
 let rec annotate : cmd -> Cmd.Data.t = 
   fun c ->
-  let recur c =
+  let recur (c:cmd) = match c with
     | Skip -> Skip
     | Assign (x, a) -> Assign (x, a)
     | Seq (c1, c2) -> 
@@ -207,7 +207,8 @@ let rec annotate : cmd -> Cmd.Data.t =
     | While (b, c) -> 
        While (b, annotate c)
   in
-  Name (Name.nondet (), Art (cmd_mfn.mfn_nart (Name.nondet ()) (recur c)))
+  Name (Name.nondet (),
+        Art (cmd_mfn.mfn_nart (Name.nondet ()) (recur c)))
 
 (*
   | Art of 'a
