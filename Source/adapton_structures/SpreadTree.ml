@@ -417,6 +417,16 @@ module MakeSeq
           `Cons((data_of x), (loop xs))
     in St.List.Art.cell name (loop list)
 
+  let simple_full_string x =
+    let rec loop = function
+    | `Nil -> "Nil"
+    | `Cons(x,xs) -> (St.Data.string x)^"; "^(loop xs)
+    | `Art(a) -> "Art => "^(loop (LArt.force a))
+    | `Name(_,xs) -> "Name; "^(loop xs)
+    in
+    loop (LArt.force x)
+
+
   let rec insert_elm list_art h nm_tl_opt =
     match nm_tl_opt with
     | Some (nm, tl_art) ->

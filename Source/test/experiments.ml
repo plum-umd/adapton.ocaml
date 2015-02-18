@@ -139,6 +139,9 @@ module type ListRepType = sig
 
   val delete_elm : t -> elm
   val insert_elm : t -> elm -> unit
+
+  val string_of_list : t -> string
+
   val data_of_elm : elm -> Data.t
   val string_of_elm : elm -> string
 
@@ -574,7 +577,7 @@ module Make_experiment ( ListApp : ListAppType ) = struct
       let raw_input = gen_list Params.n [] in
       let input = ListApp.ListRep.of_list raw_input Params.granularity in
       if Params.Flags.print_inout then begin
-        Printf.printf "%d: Initial input:\t%s\n" i (string_of_list (demand_list input None));
+        Printf.printf "%d: Initial input:\t%s\n\n" i (ListApp.ListRep.string_of_list input);
       end;
       let demand_count =
         if Params.fullinit then
@@ -594,7 +597,7 @@ module Make_experiment ( ListApp : ListAppType ) = struct
       let line_prefix = Printf.sprintf "%d:%s" Params.sample_num name in
       stats_print handle Params.sample_num name "initial" Params.n s.Stats.create 0 demand_count demand_percent Params.granularity s ;
       if Params.Flags.print_inout then begin
-        Printf.printf "%d: Initial output:\t%s\n" i (string_of_list (demand_list output None));
+        Printf.printf "%d: Initial output:\t%s\n" i (ListApp.ListRep.string_of_list output);
       end;
       Printf.printf "\n----------------------------------------------------------------------------------\n%!" ;
       Printf.printf "%s: Initial run:\ttime:%.4fs (unit cost %d)\n" line_prefix s.Stats.time s.Stats.unit_cost ;
@@ -684,6 +687,8 @@ struct
   let insert_elm list h = 
     Seq.insert_elm list h None
 
+  let string_of_list = Seq.simple_full_string
+
   let elm_of_int h = h
   let elm_update x y = y
   let data_of_elm x = x
@@ -721,6 +726,8 @@ struct
 
   let insert_elm list h = 
     KvMap.KvSeq.insert_elm list h None
+
+  let string_of_list x = "not implemented"
 
   let elm_of_int h = h
   let elm_update x y = y
