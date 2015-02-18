@@ -158,14 +158,17 @@ module Adaptonic = struct
                          module Art = ArtLib.MakeArt(Name)(Data)
                        end
 
+  module StoArt = ArtLib.MakeArt(Name)(StoStringInt)
+                                        
   let rec ceval cmd s =
     (* next step is to use mk_mfn *)
 
     let mfn =
-      Cmd.Art.mk_mfn
+      StoArt.mk_mfn
         (Name.gensym "ceval")
-        (module Types.Tuple2(Cmd.Data)(StoStringInt))
-        (fun mfn (cmd, s) ->
+        (module Types.Tuple2(StoStringInt)(Cmd.Data))
+        (fun mfn (s, cmd) ->
+         let ceval s c = mfn.mfn_data (s,c) in
          match cmd with
          | Skip -> s
          | Assign (x, a) -> ext s x (aeval s a)
@@ -180,7 +183,7 @@ module Adaptonic = struct
             ceval s (Cmd.Art.force a)
 
          | Name(nm, cmd) ->
-            Cmd.Art.force (mfn.mfn_nart nm cmd)
+            StoArt.force (mfn.mfn_nart nm (s,cmd))
         )
     in
     mfn.mfn_data (cmd, s)
