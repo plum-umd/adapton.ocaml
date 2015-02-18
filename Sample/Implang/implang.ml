@@ -12,6 +12,11 @@ module type Store = sig
   val sanitize : sto -> sto
 end
 
+module Tinacan(S:Store) = struct
+  type t = S.sto
+  include S
+end
+                      
 module AssocStore (KV:sig type a type b end) = struct
   type a = KV.a
   type b = KV.b
@@ -157,7 +162,7 @@ module Adaptonic = struct
     let mfn =
       Cmd.Art.mk_mfn
         (Name.gensym "ceval")
-        (module Types.Tuple2(Cmd)(AssocStore))
+        (module Types.Tuple2(Cmd.Data)(Tinacan(StoStringInt)))
         (fun mfn (cmd, s) ->
          match cmd with
          | Skip -> s
