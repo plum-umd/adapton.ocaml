@@ -183,32 +183,22 @@ let rec ceval cmd s =
   in
   mfn.mfn_data (cmd, s)
 
-
-
+let rec annotate : cmd -> Cmd.Data.t = 
+  fun c ->
+  let recur c =
+    | Skip -> Skip
+    | Assign (x, a) -> Assign (x, a)
+    | Seq (c1, c2) -> 
+       Seq (annotate c1, annotate c2)	   	   
+    | If (b, c1, c2) ->
+       If (b, annotate c1, annotate c2)
+    | While (b, c) -> 
+       While (b, annotate c)
+  in
+  Name (Name.nondet (), Art (cmd_mfn.mfn_nart (Name.nondet ()) (recur c)))
 
 (*
-let rec aevals s = function
-  | Var x -> Int (lookup s x)
-  | Plus (Int n, Int m) -> Int (n+m)
-  | Plus (Int n, b) -> Plus(Int n, aevals s b)
-  | Plus (a, b) -> Plus((aevals s a), b)
-
-let rec bevals s = function
-  | Leq (Int n, Int m) -> if n<=m then True else False
-  | Leq (Int n, a) -> Leq (Int n, aevals s a)
-  | Leq (a1, a2) -> Leq (aevals s a1, a2)
-  | _ -> failwith "Oops!"
-
-let rec cevals (s, c) = match c with
-  | Assign (x, Int n) -> (ext s x n, Skip)
-  | Assign (x, a) -> (s, Assign (x, aevals s a))
-  | Seq (Skip, c2) -> (s, c2)
-  | Seq (c1, c2) ->
-     let s', c' = cevals (s, c1) in
-     (s', Seq (c', c2))
-  | If (True, c1, c2) -> (s, c1)
-  | If (False, c1, c2) -> (s, c2)
-  | If (b, c1, c2) ->
-     (s, (If ((bevals s b), c1, c2)))
-  | While (b, c) as w -> (s, If (b, Seq(c, w), Skip))
+  | Art of 'a
+  | Name of Name.t * 'a art_cmd
  *)
+
