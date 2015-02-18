@@ -1,11 +1,14 @@
 include Adapton_lib
 
 module type Store = sig
-    type ('a, 'b) sto
-    val mt : ('a, 'b) sto
-    val lookup : ('a, 'b) sto -> 'a -> 'b
-    val ext : ('a, 'b) sto -> 'a -> 'b -> ('a, 'b) sto
-  end
+  type ('a, 'b) sto
+  val mt : ('a, 'b) sto
+  val lookup : ('a, 'b) sto -> 'a -> 'b
+  val ext : ('a, 'b) sto -> 'a -> 'b -> ('a, 'b) sto
+  val hash : int -> ('a, 'b) sto -> int
+  val string : ('a, 'b) sto -> string
+  val sanitize : ('a, 'b) sto -> ('a, 'b) sto
+end
 
 module AssocStore : Store = struct
   type ('a, 'b) sto = ('a * 'b) list
@@ -18,6 +21,20 @@ module AssocStore : Store = struct
   let ext : ('a, 'b) sto -> 'a -> 'b -> ('a, 'b) sto =
     fun s x v ->
     (x, v) :: s
+
+  (* FIXME: degenerate hash *)
+  let hash : int -> ('a, 'b) sto -> int =
+    fun seed s ->
+      0
+
+  (* FIXME: *)
+  let string : ('a, 'b) sto -> string = 
+    fun s ->
+      failwith "Not implemented"
+
+  (* FIXME: no op *)
+  let sanitize : ('a, 'b) sto -> ('a, 'b) sto = 
+    fun s -> s
 end
 
 open AssocStore
