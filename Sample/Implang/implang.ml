@@ -30,12 +30,6 @@ type aexpr =
   | Times of aexpr * aexpr
   | Var of string
 
-let rec aevals s = function
-  | Var x -> Int (lookup s x)
-  | Plus (Int n, Int m) -> Int (n+m)
-  | Plus (Int n, b) -> Plus(Int n, aevals s b)
-  | Plus (a, b) -> Plus((aevals s a), b)
-
 type bexpr =
   | True
   | False
@@ -44,32 +38,13 @@ type bexpr =
   | Or of bexpr * bexpr
   | Eq of aexpr * aexpr
   | Leq of aexpr * aexpr
-
-let rec bevals s = function
-  | Leq (Int n, Int m) -> if n<=m then True else False
-  | Leq (Int n, a) -> Leq (Int n, aevals s a)
-  | Leq (a1, a2) -> Leq (aevals s a1, a2)
-  | _ -> failwith "Oops!"
-
+                    
 type cmd =
   | Skip
   | Assign of string * aexpr
   | Seq of cmd * cmd
   | If of bexpr * cmd * cmd
   | While of bexpr * cmd
-
-let rec cevals (s, c) = match c with
-  | Assign (x, Int n) -> (ext s x n, Skip)
-  | Assign (x, a) -> (s, Assign (x, aevals s a))
-  | Seq (Skip, c2) -> (s, c2)
-  | Seq (c1, c2) ->
-     let s', c' = cevals (s, c1) in
-     (s', Seq (c', c2))
-  | If (True, c1, c2) -> (s, c1)
-  | If (False, c1, c2) -> (s, c2)
-  | If (b, c1, c2) ->
-     (s, (If ((bevals s b), c1, c2)))
-  | While (b, c) as w -> (s, If (b, Seq(c, w), Skip))
 
 let rec aeval s = function
   | Int n -> n
@@ -117,3 +92,31 @@ true -> ceval (ceval s c) w
                        Assign("n", Minus(Var "n", Int 1))))));;
 
     lookup (ceval mt fact) "f";;
+
+
+(*
+let rec aevals s = function
+  | Var x -> Int (lookup s x)
+  | Plus (Int n, Int m) -> Int (n+m)
+  | Plus (Int n, b) -> Plus(Int n, aevals s b)
+  | Plus (a, b) -> Plus((aevals s a), b)
+
+let rec bevals s = function
+  | Leq (Int n, Int m) -> if n<=m then True else False
+  | Leq (Int n, a) -> Leq (Int n, aevals s a)
+  | Leq (a1, a2) -> Leq (aevals s a1, a2)
+  | _ -> failwith "Oops!"
+
+let rec cevals (s, c) = match c with
+  | Assign (x, Int n) -> (ext s x n, Skip)
+  | Assign (x, a) -> (s, Assign (x, aevals s a))
+  | Seq (Skip, c2) -> (s, c2)
+  | Seq (c1, c2) ->
+     let s', c' = cevals (s, c1) in
+     (s', Seq (c', c2))
+  | If (True, c1, c2) -> (s, c1)
+  | If (False, c1, c2) -> (s, c2)
+  | If (b, c1, c2) ->
+     (s, (If ((bevals s b), c1, c2)))
+  | While (b, c) as w -> (s, If (b, Seq(c, w), Skip))
+ *)
