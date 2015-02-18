@@ -1,7 +1,14 @@
 adapton.ocaml
 =============
 
-(Nominal) Adapton in OCaml.  Yit's mecurial repo is here: https://bitbucket.org/khooyp/adapton.ocaml
+(Nominal) Adapton in OCaml.
+
+Yit's original mecurial repo is here: https://bitbucket.org/khooyp/adapton.ocaml
+
+To build and run the imp interpreter:
+
+   make imp
+   ./_build/Sample/Implang/implang.native
 
 To run a first experiment:
 
