@@ -140,7 +140,14 @@ module rec Cmd
                            | While (b, c) -> hash (Hashtbl.seeded_hash seed b) c
                            | Art a -> Cmd.Art.hash seed a
                            | Name (nm, c) -> hash (Name.hash seed nm) c
-                         let rec equal xs ys = false
+                         let rec equal c1 c2 = match (c1, c2) with
+                           | Skip, Skip -> true
+                           | Assign(x,a), Assign(y,b) -> x = x && a = b
+                           | Seq(a1, b1), Seq(a2, b2) -> equal a1 a2 && equal a2 b2
+                           | If (a, b, c), If (d, e, f) -> a = d && equal b e && equal c f
+                           | While(b, c), While(d, e) -> b = d && equal c e
+                           | Name(n, a), Name(m, b) -> Name.equal n m && equal a b
+                           | Art a, Art b -> Cmd.Art.equal a b
                          let rec sanitize x = x
                        end
                        (* Apply the library's functor: *)
