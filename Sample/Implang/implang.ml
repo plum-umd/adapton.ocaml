@@ -53,22 +53,10 @@ module AssocStore (A:DatType)(B:DatType) = struct
     let nm1, nm2 = Name.fork nm in
     `Name(nm1, `Art( list_mfn.mfn_nart nm2 (`Cons ((x, v), s))))
 
-  (* FIXME: degenerate hash *)
-  let hash : int -> sto -> int =
-    fun seed s ->
-    0
-
-  (* FIXME: *)
-  let string : sto -> string =
-    fun s ->
-    failwith "Not implemented"
-
-  (* FIXME: no op *)
-  let sanitize : sto -> sto =
-    fun s -> s
-
-  let equal : sto -> sto -> bool =
-    fun s1 s2 -> s1 = s2
+  let hash : int -> sto -> int   = List.Data.hash
+  let string : sto -> string     = List.Data.string
+  let sanitize : sto -> sto      = List.Data.sanitize
+  let equal : sto -> sto -> bool = List.Data.equal
 
 end
 
@@ -141,10 +129,17 @@ module rec Cmd
                                   = struct
                        module Data = struct
                          type t = Cmd.Art.t art_cmd
-                         let rec string x = failwith "todo"
-                         let rec hash seed x = failwith "todo"
-                         let rec equal xs ys = failwith "todo"
-                         let rec sanitize x = failwith "todo"
+                         let rec string x = "cmd"
+                         let rec hash seed x = match x with
+                             Skip as c -> Hashtbl.seeded_hash seed c
+                           | Assign(x,a) as c -> Hashtbl.seeded_hash seed c
+                           | Seq(c1,c2) -> hash (hash seed c1) c2
+                           | If (b, c1, c2) -> hash (hash (Hashtbl.seeded_hash seed b) c1) c2
+                           | While (b, c) -> hash (Hashtbl.seeded_hash seed b) c
+                           | Art a -> Cmd.Art.hash seed a
+                           | Name (nm, c) -> hash (Name.hash seed nm) c
+                         let rec equal xs ys = false
+                         let rec sanitize x = x
                        end
                        (* Apply the library's functor: *)
                        module Art = ArtLib.MakeArt(Name)(Data)
@@ -283,3 +278,7 @@ let main () =
   stats_print "run1" stats1 ;
   stats_print "run2" stats2 ;
   ()
+
+
+let _ = 
+main ()
