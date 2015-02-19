@@ -87,6 +87,7 @@ type cmd =
   | Seq of cmd * cmd
   | If of bexpr * cmd * cmd
   | While of bexpr * cmd
+  | AWhile of aexpr * bexpr * cmd
 
 let rec aeval s = function
   | Int n -> n
@@ -113,7 +114,8 @@ type 'a art_cmd =
   | Assign of string * aexpr
   | Seq of 'a art_cmd * 'a art_cmd
   | If of bexpr * 'a art_cmd * 'a art_cmd
-  | While of bexpr * 'a art_cmd
+  | While of Name.t * bexpr * 'a art_cmd
+  | AWhile of (Name.t * aexpr) * bexpr * 'a art_cmd
   (* Boilerplate cases: *)
   | Art of 'a
   | Name of Name.t * 'a art_cmd
@@ -134,7 +136,8 @@ module rec Cmd
                            | Assign(x,a) -> Printf.sprintf "Assign(%s,_)" x
                            | Seq(c1,c2) -> Printf.sprintf "Seq(%s,%s)" (string c1) (string c2)
                            | If(b,c1,c2) -> Printf.sprintf "If(_,%s,%s)" (string c1) (string c2)
-                           | While(b,c) -> Printf.sprintf "While(_,%s)" (string c)
+                           | While(nm,b,c) -> Printf.sprintf "While(%s,_,%s)" (Name.string nm) (string c)
+                           | AWhile((nm,a),b,c) -> Printf.sprintf "AWhile((%s,_),_,%s)" (Name.string nm) (string c)
                            | Art a -> Printf.sprintf "Art %s" (Cmd.Art.string a)
                            | Name(nm,c) -> Printf.sprintf "Name(%s,%s)" (Name.string nm) (string c)
                          let rec hash seed x = match x with
@@ -142,7 +145,8 @@ module rec Cmd
                            | Assign(x,a) as c -> Hashtbl.seeded_hash seed c
                            | Seq(c1,c2) -> hash (hash seed c1) c2
                            | If (b, c1, c2) -> hash (hash (Hashtbl.seeded_hash seed b) c1) c2
-                           | While (b, c) -> hash (Hashtbl.seeded_hash seed b) c
+                           | While (nm, b, c) -> hash (Hashtbl.seeded_hash (Name.hash seed nm) b) c
+                           | AWhile((nm,a),b,c) -> hash (Hashtbl.seeded_hash (Hashtbl.seeded_hash (Name.hash seed nm) a) b) c
                            | Art a -> Cmd.Art.hash seed a
                            | Name (nm, c) -> hash (Name.hash seed nm) c
                          let rec equal c1 c2 = match (c1, c2) with
@@ -150,7 +154,8 @@ module rec Cmd
                            | Assign(x,a), Assign(y,b) -> x = x && a = b
                            | Seq(a1, b1), Seq(a2, b2) -> equal a1 a2 && equal b1 b2
                            | If (a, b, c), If (d, e, f) -> a = d && equal b e && equal c f
-                           | While(b, c), While(d, e) -> b = d && equal c e
+                           | While(nm1, b, c), While(nm2, d, e) -> Name.equal nm1 nm2 && b = d && equal c e
+                           | AWhile((nm1,a),b,c), AWhile((nm2,d),e,f) -> a = d && Name.equal nm1 nm2 && b = e && equal c f
                            | Name(n, a), Name(m, b) -> Name.equal n m && equal a b
                            | Art a, Art b -> Cmd.Art.equal a b
                            | _, _ -> false
@@ -160,6 +165,7 @@ module rec Cmd
                        module Art = ArtLib.MakeArt(Name)(Data)
                      end
 
+(* Deadcode: *)
 let cmd_mfn =
   Cmd.Art.mk_mfn
     (Name.gensym "cmd")
@@ -167,14 +173,13 @@ let cmd_mfn =
     (fun _ c -> c)
 
 let rec ceval =
-  (* next step is to use mk_mfn *)
-
   let mfn =
     List.Art.mk_mfn
       (Name.gensym "ceval")
-      (module Types.Tuple2(List.Data)(Cmd.Data))
-      (fun mfn (s, cmd) ->
-       let ceval s c = mfn.List.Art.mfn_data (s,c) in
+      (module Types.Tuple4(Name)(Types.IntList)(List.Data)(Cmd.Data))
+      (fun mfn (outernm, coord, s, cmd) ->
+       let ceval outernm coord s c = mfn.List.Art.mfn_data (outernm, coord,s,c) in
+       let ceval_same_loop s c = ceval outernm coord s c in
        match cmd with
        | Skip -> s
        | Assign (x, a) ->
@@ -189,22 +194,39 @@ let rec ceval =
           Printf.printf "s := (%s,%d):(%s,(%d,%d)) :: s\n%!" x cnt x i cnt ;
           ext nm s x (i, cnt)
 
-       | Seq (c0, c1) -> ceval (ceval s c0) c1
+       | Seq (c0, c1) -> ceval_same_loop (ceval_same_loop s c0) c1
 
        | If (b, c0, c1) ->
           (match beval s b with
-             true -> ceval s c0
-           | false -> ceval s c1)
+             true -> ceval_same_loop s c0
+           | false -> ceval_same_loop s c1)
 
-       | (While (b, c)) as w -> ceval s (If (b, Seq(c, w), Skip))
+
+       | (While (nm, b, c)) as w ->
+          if outernm = nm then (* same loop *)
+            ceval nm coord s (If (b, Seq(c, w), Skip))
+
+          else (* entering an inner loop for the first time. *)
+            let coord = 0 :: coord in
+            ceval nm coord s (If (b, Seq(c, w), Skip))
+
+       | (AWhile ((nm,a), b, c)) as w ->
+          (* Compute a new coordinate *)
+          let a_idx = aeval s a in
+          let coord = match coord with
+            | [] -> [a_idx]
+            | _::more when Name.equal outernm nm -> a_idx::more
+            | outer_coord -> a_idx :: outer_coord
+          in
+          ceval nm coord s (If (b, Seq(c, w), Skip))
 
        | Art a ->
-          ceval s (Cmd.Art.force a)
+          ceval_same_loop s (Cmd.Art.force a)
 
        | Name(nm, cmd) ->
           (* Note: nm is not unique enough. *)
           (* Perhaps use the nm at the head of the store? *)
-          let art = mfn.mfn_art (s,cmd) in
+          let art = mfn.mfn_art (outernm,coord,s,cmd) in
           if false then
             Printf.printf "memo:(%s,%s) --> %s\n"
                           (List.Data.string s)
@@ -214,7 +236,7 @@ let rec ceval =
           List.Art.force art
       )
   in
-  fun cmd s -> mfn.mfn_data (cmd, s)
+  fun outernm coord cmd s -> mfn.mfn_data (outernm, coord, cmd, s)
 
 let rec seq : cmd list -> cmd = fun cs ->
   match cs with
@@ -236,7 +258,7 @@ let rec leftmost_assign : Cmd.Data.t -> Cmd.Art.t option = function
      | Assign _ -> Some a
      | Seq (c1, c2) -> leftmost_assign c1
      | If (b, c1, c2) -> leftmost_assign c1
-     | While (b, c) -> leftmost_assign c)
+     | While (a, b, c) -> leftmost_assign c)
 
 let replace_leftmost : Cmd.Data.t -> Cmd.Data.t -> unit =
   fun cmd cmd0 ->
@@ -254,7 +276,7 @@ let rec annotate : cmd -> Cmd.Data.t =
     | If (b, c1, c2) ->
        If (b, annotate c1, annotate c2)
     | While (b, c) ->
-       While (b, annotate c)
+       While (Name.nondet (), b, annotate c)
   in
   Name (Name.nondet (),
         Art (Cmd.Art.cell (*cmd_mfn.mfn_nart*)
@@ -276,16 +298,17 @@ let main =
  *)
 
 let test_cmd_mutation cmd storein mutator =
+  let root_loop = Name.nondet () in
   let (storeout, stats1) =
     AdaptonStatistics.measure (
-        (fun () -> ceval storein cmd)
+        (fun () -> ceval root_loop [] storein cmd)
       )
   in
   Printf.printf "sto1=%s\n" (List.Data.string storeout) ;
   mutator cmd ;
   let (storeout, stats2) =
     AdaptonStatistics.measure (
-        (fun () -> ceval storein cmd)
+        (fun () -> ceval root_loop [] storein cmd)
       )
   in
   Printf.printf "sto2=%s\n" (List.Data.string storeout) ;
