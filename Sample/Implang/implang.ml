@@ -283,6 +283,8 @@ let rec annotate : cmd -> Cmd.Data.t =
        If (b, annotate c1, annotate c2)
     | While (b, c) ->
        While (Name.nondet (), b, annotate c)
+    | AWhile (a, b, c) ->
+       AWhile ((Name.nondet (), a), b, annotate c)
   in
   let nm = Name.nondet () in
   let nm1, nm2 = Name.fork nm in
