@@ -195,7 +195,6 @@ let rec ceval cmd s =
   in
   mfn.mfn_data (cmd, s)
 
-
 let rec seq : cmd list -> cmd = fun cs ->
   match cs with
   | [] -> Skip
@@ -228,11 +227,11 @@ let rec annotate : cmd -> Cmd.Data.t =
   let recur (c:cmd) = match c with
     | Skip -> Skip
     | Assign (x, a) -> Assign (x, a)
-    | Seq (c1, c2) -> 
-       Seq (annotate c1, annotate c2)	   	   
+    | Seq (c1, c2) ->
+       Seq (annotate c1, annotate c2)
     | If (b, c1, c2) ->
        If (b, annotate c1, annotate c2)
-    | While (b, c) -> 
+    | While (b, c) ->
        While (b, annotate c)
   in
   Name (Name.nondet (),
@@ -243,6 +242,7 @@ let rec annotate : cmd -> Cmd.Data.t =
   | Name of Name.t * 'a art_cmd
  *)
 
+(*
 let main =
   let p = annotate fact in
   let s = ceval `Nil p in
@@ -250,5 +250,36 @@ let main =
   replace_leftmost p (Assign ("x", Int 6));
   let s1 = ceval `Nil p in
   print_string (List.Data.string s1)
+ *)
 
+let test_cmd_mutation cmd storein mutator =
+  let (storeout, stats1) =
+    AdaptonStatistics.measure (
+        (fun () -> ceval storein cmd)
+      )
+  in
+  Printf.printf "sto1=%s\n" (List.Data.string storeout) ;
+  mutator cmd ;
+  let (storeout, stats2) =
+    AdaptonStatistics.measure (
+        (fun () -> ceval storein cmd)
+      )
+  in
+  Printf.printf "sto2=%s\n" (List.Data.string storeout) ;
+  (stats1, stats2)
 
+let stats_print msg stats =
+  Printf.printf "%s: create: %d, evaluate: %d\n%!"
+                msg
+                stats.AdaptonStatistics.create
+                stats.AdaptonStatistics.evaluate
+
+let main () =
+  let stats1, stats2 = test_cmd_mutation
+			 (annotate fact)
+			 `Nil
+			 (fun p -> replace_leftmost p (Assign ("n", Int 6)))
+  in
+  stats_print "run1" stats1 ;
+  stats_print "run2" stats2 ;
+  ()
