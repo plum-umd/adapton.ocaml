@@ -187,6 +187,17 @@ let rec ceval =
       (fun mfn (outernm, coord, s, cmd) ->
        let ceval outernm coord s c = mfn.List.Art.mfn_data (outernm, coord,s,c) in
        let ceval_same_loop s c = ceval outernm coord s c in
+       let ceval_memo_point outernm coord cmd_nm cmd =
+         let nm = (name_of_int_list cmd_nm coord) in
+         let art = mfn.mfn_nart nm (outernm,coord,s,cmd) in
+         Printf.printf " | ceval | %s || %s | %s | %s | %s \n"
+                       (Name.string nm)
+                       (Name.string outernm)
+                       (Types.IntList.string coord)
+                       (List.Data.string s)
+                       (Cmd.Data.string cmd) ;
+         List.Art.force art
+       in
        match cmd with
        | Skip -> s
        | Assign (assign_nm, x, a) ->
@@ -208,11 +219,11 @@ let rec ceval =
           if outernm = nm then (* same loop *)
             let default_idx::coord_suff = coord in
             let coord = default_idx+1::coord_suff in
-            ceval nm coord s (If (b, Seq(c, w), Skip))
+            ceval_memo_point nm coord nm (If (b, Seq(c, w), Skip))
 
           else (* entering an inner loop for the first time. *)
             let coord = 0 :: coord in
-            ceval nm coord s (If (b, Seq(c, w), Skip))
+            ceval_memo_point nm coord nm (If (b, Seq(c, w), Skip))
 
        | (AWhile ((nm,a), b, c)) as w ->
           (* Compute a new coordinate *)
@@ -222,23 +233,13 @@ let rec ceval =
             | _::more when Name.equal outernm nm -> a_idx::more
             | outer_coord -> a_idx :: outer_coord
           in
-          ceval nm coord s (If (b, Seq(c, w), Skip))
+          ceval_memo_point nm coord nm (If (b, Seq(c, w), Skip))
 
        | Art a ->
           ceval_same_loop s (Cmd.Art.force a)
 
        | Name(cmd_nm, cmd) ->
-          (* Note: nm is not unique enough. *)
-          (* Perhaps use the nm at the head of the store? *)
-          let nm = (name_of_int_list cmd_nm coord) in
-          let art = mfn.mfn_nart nm (outernm,coord,s,cmd) in
-          Printf.printf " | ceval | %s || %s | %s | %s | %s \n"
-                        (Name.string nm)
-                        (Name.string outernm)
-                        (Types.IntList.string coord)
-                        (List.Data.string s)
-                        (Cmd.Data.string cmd) ;
-          List.Art.force art
+          ceval_memo_point outernm coord cmd_nm cmd
       )
   in
   fun outernm coord cmd s -> mfn.mfn_data (outernm, coord, cmd, s)
@@ -283,9 +284,13 @@ let rec annotate : cmd -> Cmd.Data.t =
     | While (b, c) ->
        While (Name.nondet (), b, annotate c)
   in
-  Name (Name.nondet (),
-        Art (Cmd.Art.cell (*cmd_mfn.mfn_nart*)
-               (Name.nondet ()) (recur c)))
+  let nm = Name.nondet () in
+  let nm1, nm2 = Name.fork nm in
+  let r = recur c in
+  let cell = Cmd.Art.cell nm1 r in
+  let cmd = Name (nm2, Art cell) in
+  Printf.printf " | %s | %s | %s | \n" (Name.string nm) (Cmd.Data.string cmd) (Cmd.Data.string r) ;
+  cmd
 
 (*
   | Art of 'a
@@ -343,7 +348,10 @@ let test_cmd_mutation cmd storein mutator =
 
 let main () =
   let stats1, stats2 = test_cmd_mutation
-			 (annotate fact)
+			 (Printf.printf "Articulated Program: Fact\n-------------\n\n" ;
+                          Printf.printf " | name | Name, Art | Cmd.Data |\n" ;
+                          Printf.printf " |------|-----------|----------|\n" ;
+                          annotate fact)
 			 `Nil
 			 (fun p -> replace_leftmost p (Assign (Name.nondet(), "z", Int 6)))
   in
