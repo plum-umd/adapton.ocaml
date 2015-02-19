@@ -173,6 +173,7 @@ let rec ceval cmd s =
                              (Name.gensym (string_of_int cnt))
           in
 	  let i = aeval s a in
+          Printf.printf "s := ext (%s,%d) s (%d,%d)\n%!" x cnt i cnt ;
           ext nm s x (i, cnt)
 
        | Seq (c0, c1) -> ceval (ceval s c0) c1
@@ -187,7 +188,9 @@ let rec ceval cmd s =
           ceval s (Cmd.Art.force a)
 
        | Name(nm, cmd) ->
-          List.Art.force (mfn.mfn_nart nm (s,cmd))
+          (* Note: nm is not unique enough. *)
+          (* Perhaps use the nm at the head of the store? *)
+          List.Art.force (mfn.mfn_art (s,cmd))
       )
   in
   mfn.mfn_data (cmd, s)
