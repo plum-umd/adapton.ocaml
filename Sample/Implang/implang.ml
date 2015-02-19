@@ -173,12 +173,12 @@ let cmd_mfn =
     (module Cmd.Data)
     (fun _ c -> c)
 
-let name_of_int_list nm ints = 
+let name_of_int_list nm ints =
   PrimList.fold_left
     (fun nm i ->
      Name.pair (Name.gensym (string_of_int i)) nm)
     nm ints
-  
+
 let rec ceval =
   let mfn =
     List.Art.mk_mfn
@@ -192,9 +192,8 @@ let rec ceval =
        | Assign (assign_nm, x, a) ->
           let nm = name_of_int_list assign_nm coord in
 	  let i = aeval s a in
-          Printf.printf " | ext | (%s,%s) | (%s,%d) \n%!"
-                        (Name.string assign_nm)
-                        (Types.IntList.string coord) x i ;
+          Printf.printf " | ext | %s | (%s,%d) \n%!"
+                        (Name.string nm) x i ;
           ext nm s x i
 
        | Seq (c0, c1) -> ceval_same_loop (ceval_same_loop s c0) c1
@@ -228,12 +227,12 @@ let rec ceval =
        | Art a ->
           ceval_same_loop s (Cmd.Art.force a)
 
-       | Name(nm, cmd) ->
+       | Name(cmd_nm, cmd) ->
           (* Note: nm is not unique enough. *)
           (* Perhaps use the nm at the head of the store? *)
-          let nm = (name_of_int_list nm coord) in
+          let nm = (name_of_int_list cmd_nm coord) in
           let art = mfn.mfn_nart nm (outernm,coord,s,cmd) in
-          Printf.printf " | memo | %s | | %s | %s | %s | %s \n"
+          Printf.printf " | ceval | %s || %s | %s | %s | %s \n"
                         (Name.string nm)
                         (Name.string outernm)
                         (Types.IntList.string coord)
@@ -303,23 +302,6 @@ let main =
   print_string (List.Data.string s1)
  *)
 
-let test_cmd_mutation cmd storein mutator =
-  let root_loop = Name.nondet () in
-  let (storeout, stats1) =
-    AdaptonStatistics.measure (
-        (fun () -> ceval root_loop [] storein cmd)
-      )
-  in
-  Printf.printf "sto1=%s\n" (List.Data.string storeout) ;
-  mutator cmd ;
-  let (storeout, stats2) =
-    AdaptonStatistics.measure (
-        (fun () -> ceval root_loop [] storein cmd)
-      )
-  in
-  Printf.printf "sto2=%s\n" (List.Data.string storeout) ;
-  (stats1, stats2)
-
 let stats_print msg stats =
   Printf.printf "%s: dirty:%d, clean:%d, create: %d, evaluate: %d\n%!"
                 msg
@@ -327,6 +309,37 @@ let stats_print msg stats =
                 stats.AdaptonStatistics.clean
                 stats.AdaptonStatistics.create
                 stats.AdaptonStatistics.evaluate
+
+let do_run msg f =
+  let out =
+    AdaptonStatistics.measure (
+        fun () ->
+        Printf.printf "\n\n Run %s\n---------------------------\n\n" msg ;
+        Printf.printf " | mfn | name  |         |  |  |  |\n" ;
+        Printf.printf " |-----|-------|---------|--|--|--|\n" ;
+        let out = f () in
+        Printf.printf "\n" ;
+        out
+      )
+  in
+  stats_print "**Run %s**" (snd out) ;
+  Printf.printf "\n\n" ;
+  out
+
+let test_cmd_mutation cmd storein mutator =
+  let root_loop = Name.nondet () in
+  let (storeout, stats1) =
+    do_run (string_of_int 1)
+           (fun () -> ceval root_loop [] storein cmd)
+  in
+  Printf.printf "sto1=%s\n" (List.Data.string storeout) ;
+  mutator cmd ;
+  let (storeout, stats2) =
+    do_run (string_of_int 2)
+           (fun () -> ceval root_loop [] storein cmd)
+  in
+  Printf.printf "sto2=%s\n" (List.Data.string storeout) ;
+  (stats1, stats2)
 
 let main () =
   let stats1, stats2 = test_cmd_mutation
