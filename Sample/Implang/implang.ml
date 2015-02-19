@@ -190,7 +190,7 @@ let rec ceval =
        let ceval_memo_point outernm coord cmd_nm cmd =
          let nm = (name_of_int_list cmd_nm coord) in
          let art = mfn.mfn_nart nm (outernm,coord,s,cmd) in
-         Printf.printf " | ceval | %s || %s | %s | %s | %s \n"
+         Printf.printf "| ceval | %s || %s | %s | %s | %s \n"
                        (Name.string nm)
                        (Name.string outernm)
                        (Types.IntList.string coord)
@@ -203,7 +203,7 @@ let rec ceval =
        | Assign (assign_nm, x, a) ->
           let nm = name_of_int_list assign_nm coord in
 	  let i = aeval s a in
-          Printf.printf " | ext | %s | (%s,%d) \n%!"
+          Printf.printf "| ext | %s | (%s,%d) \n%!"
                         (Name.string nm) x i ;
           ext nm s x i
 
@@ -289,7 +289,7 @@ let rec annotate : cmd -> Cmd.Data.t =
   let r = recur c in
   let cell = Cmd.Art.cell nm1 r in
   let cmd = Name (nm2, Art cell) in
-  Printf.printf " | %s | %s | %s | \n" (Name.string nm) (Cmd.Data.string cmd) (Cmd.Data.string r) ;
+  Printf.printf "| %s | %s | %s | \n" (Name.string nm) (Cmd.Data.string cmd) (Cmd.Data.string r) ;
   cmd
 
 (*
@@ -320,8 +320,8 @@ let do_run msg f =
     AdaptonStatistics.measure (
         fun () ->
         Printf.printf "\n\n Run %s\n---------------------------\n\n" msg ;
-        Printf.printf " | mfn | name  |         |  |  |  |\n" ;
-        Printf.printf " |-----|-------|---------|--|--|--|\n" ;
+        Printf.printf "| mfn | name | ext  | outernm  | coord | Store | Cmd.Data |\n" ;
+        Printf.printf "|-----|------|---|---|---|---|---|\n" ;
         let out = f () in
         Printf.printf "\n" ;
         out
@@ -349,8 +349,8 @@ let test_cmd_mutation cmd storein mutator =
 let main () =
   let stats1, stats2 = test_cmd_mutation
 			 (Printf.printf "Articulated Program: Fact\n-------------\n\n" ;
-                          Printf.printf " | name | Name, Art | Cmd.Data |\n" ;
-                          Printf.printf " |------|-----------|----------|\n" ;
+                          Printf.printf "| name | Name, Art | Cmd.Data |\n" ;
+                          Printf.printf "|------|-----------|----------|\n" ;
                           annotate fact)
 			 `Nil
 			 (fun p -> replace_leftmost p (Assign (Name.nondet(), "z", Int 6)))
