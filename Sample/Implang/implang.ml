@@ -31,6 +31,8 @@ module AssocStore (A:DatType)(B:DatType) = struct
   module St = SpreadTree.MakeSpreadTree(ArtLib)(Name)
                                        (Types.Tuple2(A)(B))
 
+  module Seq = SpreadTree.MakeSeq ( St )
+
   module List = St.List
   type sto = List.Data.t
   type t = sto
@@ -197,12 +199,12 @@ let rec seq : cmd list -> cmd = fun cs ->
 
 let fact : cmd =
   seq [Assign ("n", Int 5);
-       Assign ("f", Int 1);       
+       Assign ("f", Int 1);
        While (Leq (Int 0, Var "n"),
 	      seq [Assign ("f", Times (Var "n", Var "f"));
 		   Assign ("n", Minus (Var "n", Int 1))])]
 
-let rec leftmost_set : Cmd.Data.t -> Cmd.Art.t option = function 
+let rec leftmost_set : Cmd.Data.t -> Cmd.Art.t option = function
   | Name (nm, Art (a)) ->
      (match (Cmd.Art.force a) with
      | Skip -> None
@@ -210,14 +212,14 @@ let rec leftmost_set : Cmd.Data.t -> Cmd.Art.t option = function
      | Seq (c1, c2) -> leftmost_set c1
      | If (b, c1, c2) -> leftmost_set c1
      | While (b, c) -> leftmost_set c)
-				    
+
 let replace_leftmost : Cmd.Data.t -> Cmd.Data.t -> unit =
   fun cmd cmd0 ->
   let Some a = leftmost_set cmd in
   Cmd.Art.set a cmd0
 
-     
-let rec annotate : cmd -> Cmd.Data.t = 
+
+let rec annotate : cmd -> Cmd.Data.t =
   fun c ->
   let recur (c:cmd) = match c with
     | Skip -> Skip
@@ -230,7 +232,8 @@ let rec annotate : cmd -> Cmd.Data.t =
        While (b, annotate c)
   in
   Name (Name.nondet (),
-        Art (cmd_mfn.mfn_nart (Name.nondet ()) (recur c)))
+        Art (Cmd.Art.cell (*cmd_mfn.mfn_nart*)
+               (Name.nondet ()) (recur c)))
 
 (*
   | Art of 'a
@@ -280,5 +283,5 @@ let main () =
   ()
 
 
-let _ = 
+let _ =
 main ()
