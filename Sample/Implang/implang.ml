@@ -131,7 +131,14 @@ module rec Cmd
                                   = struct
                        module Data = struct
                          type t = Cmd.Art.t art_cmd
-                         let rec string x = "cmd"
+                         let rec string x = match x with
+                           | Skip -> "Skip"
+                           | Assign(x,a) -> Printf.sprintf "Assign(%s,_)" x
+                           | Seq(c1,c2) -> Printf.sprintf "Seq(%s,%s)" (string c1) (string c2)
+                           | If(b,c1,c2) -> Printf.sprintf "If(_,%s,%s)" (string c1) (string c2)
+                           | While(b,c) -> Printf.sprintf "While(_,%s)" (string c)
+                           | Art a -> Printf.sprintf "Art %s" (Cmd.Art.string a)
+                           | Name(nm,c) -> Printf.sprintf "Name(%s,%s)" (Name.string nm) (string c)
                          let rec hash seed x = match x with
                              Skip as c -> Hashtbl.seeded_hash seed c
                            | Assign(x,a) as c -> Hashtbl.seeded_hash seed c
@@ -148,6 +155,7 @@ module rec Cmd
                            | While(b, c), While(d, e) -> b = d && equal c e
                            | Name(n, a), Name(m, b) -> Name.equal n m && equal a b
                            | Art a, Art b -> Cmd.Art.equal a b
+                           | _, _ -> false
                          let rec sanitize x = x
                        end
                        (* Apply the library's functor: *)
@@ -189,6 +197,7 @@ let rec ceval cmd s =
           (match beval s b with
              true -> ceval s c0
            | false -> ceval s c1)
+
        | (While (b, c)) as w -> ceval s (If (b, Seq(c, w), Skip))
 
        | Art a ->
@@ -197,6 +206,7 @@ let rec ceval cmd s =
        | Name(nm, cmd) ->
           (* Note: nm is not unique enough. *)
           (* Perhaps use the nm at the head of the store? *)
+          Printf.printf "memo:(%s,%s)\n" (List.Data.string s) (Cmd.Data.string cmd) ;
           List.Art.force (mfn.mfn_art (s,cmd))
       )
   in
@@ -208,24 +218,25 @@ let rec seq : cmd list -> cmd = fun cs ->
   | c::cs -> Seq (c, seq cs)
 
 let fact : cmd =
-  seq [Assign ("n", Int 5);
+  seq[ Assign ("z", Int 0);
+       Assign ("n", Int 5);
        Assign ("f", Int 1);
        While (Leq (Int 1, Var "n"),
 	      seq [Assign ("f", Times (Var "n", Var "f"));
 		   Assign ("n", Minus (Var "n", Int 1))])]
 
-let rec leftmost_set : Cmd.Data.t -> Cmd.Art.t option = function
+let rec leftmost_assign : Cmd.Data.t -> Cmd.Art.t option = function
   | Name (nm, Art (a)) ->
      (match (Cmd.Art.force a) with
      | Skip -> None
      | Assign _ -> Some a
-     | Seq (c1, c2) -> leftmost_set c1
-     | If (b, c1, c2) -> leftmost_set c1
-     | While (b, c) -> leftmost_set c)
+     | Seq (c1, c2) -> leftmost_assign c1
+     | If (b, c1, c2) -> leftmost_assign c1
+     | While (b, c) -> leftmost_assign c)
 
 let replace_leftmost : Cmd.Data.t -> Cmd.Data.t -> unit =
   fun cmd cmd0 ->
-  let Some a = leftmost_set cmd in
+  let Some a = leftmost_assign cmd in
   Cmd.Art.set a cmd0
 
 
@@ -286,7 +297,7 @@ let main () =
   let stats1, stats2 = test_cmd_mutation
 			 (annotate fact)
 			 `Nil
-			 (fun p -> replace_leftmost p (Assign ("n", Int 6)))
+			 (fun p -> replace_leftmost p (Assign ("z", Int 6)))
   in
   stats_print "run1" stats1 ;
   stats_print "run2" stats2 ;
