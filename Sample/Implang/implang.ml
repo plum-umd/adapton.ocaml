@@ -180,7 +180,7 @@ let rec ceval cmd s =
                              (Name.gensym (string_of_int cnt))
           in
 	  let i = aeval s a in
-          Printf.printf "s := ext (%s,%d) s (%d,%d)\n%!" x cnt i cnt ;
+          Printf.printf "s := (%s,%d):(%s,(%d,%d)) :: s\n%!" x cnt x i cnt ;
           ext nm s x (i, cnt)
 
        | Seq (c0, c1) -> ceval (ceval s c0) c1
@@ -210,7 +210,7 @@ let rec seq : cmd list -> cmd = fun cs ->
 let fact : cmd =
   seq [Assign ("n", Int 5);
        Assign ("f", Int 1);
-       While (Leq (Int 0, Var "n"),
+       While (Leq (Int 1, Var "n"),
 	      seq [Assign ("f", Times (Var "n", Var "f"));
 		   Assign ("n", Minus (Var "n", Int 1))])]
 
