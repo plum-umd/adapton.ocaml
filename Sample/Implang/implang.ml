@@ -327,7 +327,7 @@ let do_run msg f =
         out
       )
   in
-  stats_print "**Run %s**" (snd out) ;
+  stats_print (Printf.sprintf "**Run %s**" msg) (snd out) ;
   Printf.printf "\n\n" ;
   out
 
