@@ -166,7 +166,7 @@ let cmd_mfn =
     (module Cmd.Data)
     (fun _ c -> c)
 
-let rec ceval cmd s =
+let rec ceval =
   (* next step is to use mk_mfn *)
 
   let mfn =
@@ -204,11 +204,17 @@ let rec ceval cmd s =
        | Name(nm, cmd) ->
           (* Note: nm is not unique enough. *)
           (* Perhaps use the nm at the head of the store? *)
-          Printf.printf "memo:(%s,%s)\n" (List.Data.string s) (Cmd.Data.string cmd) ;
-          List.Art.force (mfn.mfn_art (s,cmd))
+          let art = mfn.mfn_art (s,cmd) in
+          if false then
+            Printf.printf "memo:(%s,%s) --> %s\n"
+                          (List.Data.string s)
+                          (Cmd.Data.string cmd)
+                          (List.Art.string art)
+          ;
+          List.Art.force art
       )
   in
-  mfn.mfn_data (cmd, s)
+  fun cmd s -> mfn.mfn_data (cmd, s)
 
 let rec seq : cmd list -> cmd = fun cs ->
   match cs with
