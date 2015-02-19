@@ -292,8 +292,10 @@ let test_cmd_mutation cmd storein mutator =
   (stats1, stats2)
 
 let stats_print msg stats =
-  Printf.printf "%s: create: %d, evaluate: %d\n%!"
+  Printf.printf "%s: dirty:%d, clean:%d, create: %d, evaluate: %d\n%!"
                 msg
+                stats.AdaptonStatistics.dirty
+                stats.AdaptonStatistics.clean
                 stats.AdaptonStatistics.create
                 stats.AdaptonStatistics.evaluate
 
