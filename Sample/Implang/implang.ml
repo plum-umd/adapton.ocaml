@@ -195,6 +195,34 @@ let rec ceval cmd s =
   in
   mfn.mfn_data (cmd, s)
 
+
+let rec seq : cmd list -> cmd = fun cs ->
+  match cs with
+  | [] -> Skip
+  | c::cs -> Seq (c, seq cs)
+
+let fact : cmd =
+  seq [Assign ("n", Int 5);
+       Assign ("f", Int 1);       
+       While (Leq (Int 0, Var "n"),
+	      seq [Assign ("f", Times (Var "n", Var "f"));
+		   Assign ("n", Minus (Var "n", Int 1))])]
+
+let rec leftmost_set : Cmd.Data.t -> Cmd.Art.t option = function 
+  | Name (nm, Art (a)) ->
+     (match (Cmd.Art.force a) with
+     | Skip -> None
+     | Assign _ -> Some a
+     | Seq (c1, c2) -> leftmost_set c1
+     | If (b, c1, c2) -> leftmost_set c1
+     | While (b, c) -> leftmost_set c)
+				    
+let replace_leftmost : Cmd.Data.t -> Cmd.Data.t -> unit =
+  fun cmd cmd0 ->
+  let Some a = leftmost_set cmd in
+  Cmd.Art.set a cmd0
+
+     
 let rec annotate : cmd -> Cmd.Data.t = 
   fun c ->
   let recur (c:cmd) = match c with
@@ -214,4 +242,13 @@ let rec annotate : cmd -> Cmd.Data.t =
   | Art of 'a
   | Name of Name.t * 'a art_cmd
  *)
+
+let main =
+  let p = annotate fact in
+  let s = ceval `Nil p in
+  print_string (List.Data.string s);
+  replace_leftmost p (Assign ("x", Int 6));
+  let s1 = ceval `Nil p in
+  print_string (List.Data.string s1)
+
 
