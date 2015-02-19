@@ -31,8 +31,6 @@ module AssocStore (A:DatType)(B:DatType) = struct
   module St = SpreadTree.MakeSpreadTree(ArtLib)(Name)
                                        (Types.Tuple2(A)(B))
 
-  module Seq = SpreadTree.MakeSeq ( St )
-
   module List = St.List
   type sto = List.Data.t
   type t = sto
