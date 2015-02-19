@@ -13,7 +13,7 @@ end
 module IntList = struct
     type t = int list
     let hash = Hashtbl.seeded_hash
-    let equal = (==)
+    let equal = (=)
     let string = List.fold_left (fun s i -> Printf.sprintf "%d::%s" i s) ""
     let sanitize x = x
 end
