@@ -1,3 +1,4 @@
+module PrimList = List
 include Adapton_lib
 
 open Adapton_structures
@@ -60,7 +61,7 @@ module AssocStore (A:DatType)(B:DatType) = struct
 
 end
 
-module StoStringInt = AssocStore (Types.String)(Types.Tuple2(Types.Int)(Types.Int))
+module StoStringInt = AssocStore (Types.String)(Types.Int)
 open StoStringInt
 
 type store = sto
@@ -96,7 +97,7 @@ let rec aeval s = function
   | Times (e1, e2) -> (aeval s e1) * (aeval s e2)
   | Var x ->
      (match lookup s x with
-      | Some (i, j) -> i
+      | Some i -> i
       | None -> failwith "Unset variable")
 
 let rec beval s = function
@@ -111,7 +112,7 @@ let rec beval s = function
 
 type 'a art_cmd =
   | Skip
-  | Assign of string * aexpr
+  | Assign of Name.t * string * aexpr
   | Seq of 'a art_cmd * 'a art_cmd
   | If of bexpr * 'a art_cmd * 'a art_cmd
   | While of Name.t * bexpr * 'a art_cmd
@@ -133,7 +134,7 @@ module rec Cmd
                          type t = Cmd.Art.t art_cmd
                          let rec string x = match x with
                            | Skip -> "Skip"
-                           | Assign(x,a) -> Printf.sprintf "Assign(%s,_)" x
+                           | Assign(nm,x,a) -> Printf.sprintf "Assign(%s,%s,_)" (Name.string nm) x
                            | Seq(c1,c2) -> Printf.sprintf "Seq(%s,%s)" (string c1) (string c2)
                            | If(b,c1,c2) -> Printf.sprintf "If(_,%s,%s)" (string c1) (string c2)
                            | While(nm,b,c) -> Printf.sprintf "While(%s,_,%s)" (Name.string nm) (string c)
@@ -142,7 +143,7 @@ module rec Cmd
                            | Name(nm,c) -> Printf.sprintf "Name(%s,%s)" (Name.string nm) (string c)
                          let rec hash seed x = match x with
                              Skip as c -> Hashtbl.seeded_hash seed c
-                           | Assign(x,a) as c -> Hashtbl.seeded_hash seed c
+                           | Assign(nm, x,a) as c -> Hashtbl.seeded_hash (Name.hash seed nm) c
                            | Seq(c1,c2) -> hash (hash seed c1) c2
                            | If (b, c1, c2) -> hash (hash (Hashtbl.seeded_hash seed b) c1) c2
                            | While (nm, b, c) -> hash (Hashtbl.seeded_hash (Name.hash seed nm) b) c
@@ -151,7 +152,7 @@ module rec Cmd
                            | Name (nm, c) -> hash (Name.hash seed nm) c
                          let rec equal c1 c2 = match (c1, c2) with
                            | Skip, Skip -> true
-                           | Assign(x,a), Assign(y,b) -> x = x && a = b
+                           | Assign(nm1,x,a), Assign(nm2,y,b) -> Name.equal nm1 nm2 && x = y && a = b
                            | Seq(a1, b1), Seq(a2, b2) -> equal a1 a2 && equal b1 b2
                            | If (a, b, c), If (d, e, f) -> a = d && equal b e && equal c f
                            | While(nm1, b, c), While(nm2, d, e) -> Name.equal nm1 nm2 && b = d && equal c e
@@ -172,6 +173,12 @@ let cmd_mfn =
     (module Cmd.Data)
     (fun _ c -> c)
 
+let name_of_int_list nm ints = 
+  PrimList.fold_left
+    (fun nm i ->
+     Name.pair (Name.gensym (string_of_int i)) nm)
+    nm ints
+  
 let rec ceval =
   let mfn =
     List.Art.mk_mfn
@@ -182,17 +189,13 @@ let rec ceval =
        let ceval_same_loop s c = ceval outernm coord s c in
        match cmd with
        | Skip -> s
-       | Assign (x, a) ->
-          let cnt = match lookup s x with
-	    | None -> 0
-	    | Some (_, count) -> count + 1
-          in
-          let nm = Name.pair (Name.gensym x)
-                             (Name.gensym (string_of_int cnt))
-          in
+       | Assign (assign_nm, x, a) ->
+          let nm = name_of_int_list assign_nm coord in
 	  let i = aeval s a in
-          Printf.printf "s := (%s,%d):(%s,(%d,%d)) :: s\n%!" x cnt x i cnt ;
-          ext nm s x (i, cnt)
+          Printf.printf " | ext | (%s,%s) | (%s,%d) \n%!"
+                        (Name.string assign_nm)
+                        (Types.IntList.string coord) x i ;
+          ext nm s x i
 
        | Seq (c0, c1) -> ceval_same_loop (ceval_same_loop s c0) c1
 
@@ -204,6 +207,8 @@ let rec ceval =
 
        | (While (nm, b, c)) as w ->
           if outernm = nm then (* same loop *)
+            let default_idx::coord_suff = coord in
+            let coord = default_idx+1::coord_suff in
             ceval nm coord s (If (b, Seq(c, w), Skip))
 
           else (* entering an inner loop for the first time. *)
@@ -226,13 +231,14 @@ let rec ceval =
        | Name(nm, cmd) ->
           (* Note: nm is not unique enough. *)
           (* Perhaps use the nm at the head of the store? *)
-          let art = mfn.mfn_art (outernm,coord,s,cmd) in
-          if false then
-            Printf.printf "memo:(%s,%s) --> %s\n"
-                          (List.Data.string s)
-                          (Cmd.Data.string cmd)
-                          (List.Art.string art)
-          ;
+          let nm = (name_of_int_list nm coord) in
+          let art = mfn.mfn_nart nm (outernm,coord,s,cmd) in
+          Printf.printf " | memo | %s | | %s | %s | %s | %s \n"
+                        (Name.string nm)
+                        (Name.string outernm)
+                        (Types.IntList.string coord)
+                        (List.Data.string s)
+                        (Cmd.Data.string cmd) ;
           List.Art.force art
       )
   in
@@ -270,7 +276,7 @@ let rec annotate : cmd -> Cmd.Data.t =
   fun c ->
   let recur (c:cmd) = match c with
     | Skip -> Skip
-    | Assign (x, a) -> Assign (x, a)
+    | Assign (x, a) -> Assign (Name.nondet (), x, a)
     | Seq (c1, c2) ->
        Seq (annotate c1, annotate c2)
     | If (b, c1, c2) ->
@@ -326,7 +332,7 @@ let main () =
   let stats1, stats2 = test_cmd_mutation
 			 (annotate fact)
 			 `Nil
-			 (fun p -> replace_leftmost p (Assign ("z", Int 6)))
+			 (fun p -> replace_leftmost p (Assign (Name.nondet(), "z", Int 6)))
   in
   stats_print "run1" stats1 ;
   stats_print "run2" stats2 ;
