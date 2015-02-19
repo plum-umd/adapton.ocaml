@@ -143,7 +143,7 @@ module rec Cmd
                          let rec equal c1 c2 = match (c1, c2) with
                            | Skip, Skip -> true
                            | Assign(x,a), Assign(y,b) -> x = x && a = b
-                           | Seq(a1, b1), Seq(a2, b2) -> equal a1 a2 && equal a2 b2
+                           | Seq(a1, b1), Seq(a2, b2) -> equal a1 a2 && equal b1 b2
                            | If (a, b, c), If (d, e, f) -> a = d && equal b e && equal c f
                            | While(b, c), While(d, e) -> b = d && equal c e
                            | Name(n, a), Name(m, b) -> Name.equal n m && equal a b
