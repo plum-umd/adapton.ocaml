@@ -534,7 +534,6 @@ module MakeSeq
     in
     fun tree list -> mfn.LArt.mfn_data (tree, list)
 
-  (* OLD version: *)
   let tree_of_list_rec : int -> int -> St.Tree.Data.t -> St.List.Data.t -> St.Tree.Data.t * St.List.Data.t =
     let module P = St.ArtLib.MakeArtTuple2(Name)(St.Tree.Art)(St.List.Art) in
     let tree_of_list_rec =
@@ -556,11 +555,11 @@ module MakeSeq
           | `Art art -> tree_of_list_rec parent_lev tree_lev tree (St.List.Art.force art)
           | `Name(nm, list) -> 
             let nm1, nm  = Name.fork nm in
-            let nm2, nm  = Name.fork nm in
-            let nm3, nm4 = Name.fork nm in
+            let nm2, nm3 = Name.fork nm in
             let tree_rest = r.P.Art.mfn_nart nm1 (parent_lev,tree_lev,tree,list) in
-            let tree,rest = P.split nm2 tree_rest in
-            (`Name(nm3, `Art tree), `Name(nm4, `Art rest))
+            let _, rest = P.Art.force tree_rest in
+            let tree = P.fst nm2 tree_rest in
+            (`Name(nm3, `Art tree), rest)
           ))
       in
       fun pl tl t l -> mfn.P.Art.mfn_data (pl, tl, t, l)
@@ -573,85 +572,6 @@ module MakeSeq
       | tree, `Nil -> tree
       | _ -> failwith "tree_of_list: impossible"
       )
-
-(*
-  (* VVVVVVVVVVVVVV *)
-  let list_hashbal_reduce 
-      (binop_nm : Name.t) 
-      (binop : St.Data.t -> St.Data.t -> St.Data.t) : St.List.Data.t -> St.Data.t =
-    let module M = (* *) in
-    let mfn = M.mk_mfn (St.Name.gensym "list_hashbal_reduce")
-      (module Types.Tuple5(Types.Option(Name))(Types.Int)(Types.Int)(Types.Option(St.Tree.Data))(St.List.Data))
-      (fun r accum list ->
-        let tree_of_list_rec nmopt ul ll accum list = r.M.mfn_data (nmopt, accum, list) in
-        ( match list with
-        | `Nil -> nmopt, accum, list
-        | `Cons (hd, tl) -> (
-          let ffs = AdaptonInternal.Primitives.ffs in
-          let hd_lev = ffs (St.Data.hash 0 hd) in
-          if not (ll <= hd_lev && hd_lev <= ul) then
-            (nmopt, accum, list)
-          else match nmopt with
-          | None ->
-            let nmopt, accum, rest = list_hashbal_reduce None hd_lev (-1) None tl in
-            list_hashbal_reduce nmopt ul hd_lev accum rest
-          | Some nm ->
-            let nm1, nm  = Name.fork nm in
-            let nm2, nm3 = Name.fork nm in
-            let art = r.M.mfn_nart nm1 (None, ul, ll, accum, list) in
-            M.force art in
-        )
-        | `Art art -> list_hashbal_reduce nmopt ul ll accum (St.List.Art.force art)
-        | `Name(nm, list) -> list_hashbal_reduce (Some nm) ul ll accum list
-        ))
-    in
-    fun op list -> 
-      let _, accum, list = mfn.M.mfn_data (None, max_int, -1, None, list) in
-      match list with
-      | `Nil -> accum
-      | _ -> failwith "tree_of_list_eager_rec: impossible"
-*)
-
-  (* !!!!!!!!! *)
-  (* Current version. *)
-  (* Overview example. *)
-  let tree_of_list_eager : St.List.Data.t -> St.Tree.Data.t =
-    let module M = St.ArtLib.MakeArt(Name)(Types.Tuple3(Types.Option(Name))(St.Tree.Data)(St.List.Data)) in
-    let mfn = M.mk_mfn (St.Name.gensym "tree_of_list_rec")
-      (module Types.Tuple5(Types.Option(Name))(Types.Int)(Types.Int)(St.Tree.Data)(St.List.Data))
-      (fun r (nmopt, parent_lev, tree_lev, tree, list) ->
-        let _ = failwith "XXX" in
-        let tree_of_list_rec nmopt pl tl t l = r.M.mfn_data (nmopt, pl,tl,t,l) in
-        ( match list with
-        | `Nil -> nmopt, tree, `Nil
-        | `Cons (hd, tl) -> (
-          let ffs = Primitives.ffs in
-          let hd_lev = ffs (St.Data.hash 0 hd) in
-          if not (tree_lev <= hd_lev && hd_lev <= parent_lev) then
-            nmopt, tree, list
-          else match nmopt with
-          | None ->
-            let nmopt, right, rest = tree_of_list_rec None hd_lev (-1) (`Leaf `Nil) tl in
-            let tree = `Bin(tree, hd, right) in
-            tree_of_list_rec nmopt parent_lev hd_lev tree rest
-          | Some nm ->
-            let nm1, nm  = Name.fork nm in
-            let nm2, nm3 = Name.fork nm in
-            let art = r.M.mfn_nart nm1 (None, parent_lev,tree_lev,tree,list) in
-            let nmopt, tree, rest = M.force art in
-            nmopt, `Name(nm3, `Art (St.Tree.Art.cell nm2 tree)), rest
-        )
-        | `Art art -> tree_of_list_rec nmopt parent_lev tree_lev tree (St.List.Art.force art)
-        | `Name(nm, list) -> 
-          tree_of_list_rec (Some nm) parent_lev tree_lev tree list
-        ))
-    in
-    fun list -> 
-      let _, tree, list = mfn.M.mfn_data (None, max_int, -1, `Leaf `Nil, list) in
-      match list with
-      | `Nil -> tree
-      | _ -> failwith "tree_of_list_eager_rec: impossible"
-
 
   let rope_of_list_rec : int -> int -> St.Rope.Data.t -> St.List.Data.t -> St.Rope.Data.t * St.List.Data.t =
     let module P = St.ArtLib.MakeArtTuple2(Name)(St.Rope.Art)(St.List.Art) in
@@ -676,8 +596,7 @@ module MakeSeq
           | `Art art -> rope_of_list_rec parent_lev rope_lev rope (St.List.Art.force art)
           | `Name(nm, list) -> 
             let nm1, nm  = Name.fork nm in
-            let nm2, nm  = Name.fork nm in
-            let nm3, nm4 = Name.fork nm in
+            let nm2, nm3 = Name.fork nm in
             let rope_rest = r.P.Art.mfn_nart nm1 (parent_lev,rope_lev,rope,list) in
             let _,   rest = P.Art.force rope_rest in
             let rope = P.fst nm2 rope_rest in (* TODO: Perf opt: Avoid making extra thunk here. *)
