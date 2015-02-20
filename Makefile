@@ -9,6 +9,9 @@ lib:
 		ocamlbuild Source/adapton_lib.$$ext; \
 	done
 
+imp:
+	ocamlbuild Sample/Implang/implang.native
+
 #ocamlbuild will put an alias to binaries in the root directory
 test:
 	ocamlbuild Source/test/experiments.native

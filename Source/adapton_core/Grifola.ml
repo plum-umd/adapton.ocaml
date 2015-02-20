@@ -829,7 +829,12 @@ module Make (Params:AParamsType) = struct
       (* all-clean-out assertion. Checks that the user program's run
          is "monotonic", meaning that it does not overwrite (and change)
          the part of the graph that it writes or reads from. *)
-      assert ((dcg_state1 = Consistent) && (dcg_state2 = Consistent)) ;
+      (
+        if ((dcg_state1 = Consistent) && (dcg_state2 = Consistent)) then
+          ()
+        else
+          Printf.eprintf "warning: Unexpected DCG inconsistency (are you using names correctly? are you using `set` correctly?)\n%!"
+      ) ;
       (*C
         ( if dcg_state1 = Consistent && dcg_state2 = Consistent
         then Viz.tick (Viz.Comment "all-clean-out")
