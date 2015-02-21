@@ -1,5 +1,5 @@
 #Using myocamlbuild to take care of dependencies, so all targets are .PHONYs
-.PHONY: lib test opam-pin opam-remove clean clean-all
+.PHONY: lib test opam-pin opam-remove clean clean-all update
 
 #coordinate this with adapton.install for opam use
 LIBS=a cma cmo cmi cmx cmxa
@@ -8,6 +8,11 @@ lib:
 	for ext in $(LIBS); do \
 		ocamlbuild Source/adapton_lib.$$ext; \
 	done
+
+update:
+	git pull
+	make opam-remove
+	make opam-pin
 
 imp:
 	ocamlbuild Sample/Implang/implang.native
