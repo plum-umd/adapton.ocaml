@@ -4,10 +4,10 @@
     demand-driven) incremental computation.
 
     A spread tree can represent:
-    -- a sequence (and in particular, an iterator), 
-    -- a binary search tree, 
-    -- a set, 
-    -- a mapping, 
+    -- a sequence (and in particular, an iterator),
+    -- a binary search tree,
+    -- a set,
+    -- a mapping,
     -- a graph
     -- and more (?)
 
@@ -25,11 +25,11 @@
     GrifolaType.ArtType).
 
     == Tree and List structure:
-    
+
     In Trees, we place data elements in two places: (1) at internal
     tree nodes and (2) at the lists in the leaves.  We use both places
     so as to trade off between tree structure and list structure in a
-    flexible way.  
+    flexible way.
 
     ** This will be helpful for experiments, where we can measure the
     performance penalty of less tree-like data structures.
@@ -263,7 +263,7 @@ struct
     end
     module Art = ArtLib.MakeArt(Name)(Data)
   end
-  
+
   module rec Rope : sig
     module Data : DatType
     module Art  : ArtType
@@ -359,7 +359,7 @@ module MakeSeq
     loop input_list
 
   (* returns a standard list *)
-  let to_list (list : St.List.Data.t) : St.Data.t list = 
+  let to_list (list : St.List.Data.t) : St.Data.t list =
     let rec loop l =
       match l with
       | `Nil -> []
@@ -386,7 +386,7 @@ module MakeSeq
     (list : St.List.Data.t)
     : (St.Data.t * St.List.Data.t) option
   =
-    let rec loop l = 
+    let rec loop l =
       match l with
       | `Nil -> None
       | `Art(a) -> loop (LArt.force a)
@@ -396,16 +396,16 @@ module MakeSeq
     loop list
 
 
-   (* --------------------------- *) 
+   (* --------------------------- *)
 
   let mut_elms_of_list
     ( name : Name.t )
     ( list : 'a list )
     ( data_of : 'a -> St.Data.t )
-    ( name_of : 'a -> Name.t ) 
+    ( name_of : 'a -> Name.t )
     ( gran_level : int )
     : St.List.Art.t
-  = 
+  =
     let rec loop list =
       match list with
       | [] -> `Nil
@@ -417,15 +417,13 @@ module MakeSeq
           `Cons((data_of x), (loop xs))
     in St.List.Art.cell name (loop list)
 
-  let simple_full_string x =
+  let simple_full_string =
     let rec loop = function
-    | `Nil -> "Nil"
-    | `Cons(x,xs) -> (St.Data.string x)^"; "^(loop xs)
-    | `Art(a) -> "Art => "^(loop (LArt.force a))
-    | `Name(_,xs) -> "Name; "^(loop xs)
-    in
-    loop (LArt.force x)
-
+      | `Nil -> "Nil"
+      | `Cons(x,xs) -> (St.Data.string x)^"; "^(loop xs)
+      | `Art(a) -> "Art => "^(loop (LArt.force a))
+      | `Name(_,xs) -> "Name; "^(loop xs)
+    in loop
 
   let rec insert_elm list_art h nm_tl_opt =
     match nm_tl_opt with
@@ -435,20 +433,20 @@ module MakeSeq
       St.List.Art.set tl_art list_art_content
     | None ->
       let list_art_content = St.List.Art.force list_art in
-      St.List.Art.set list_art (`Cons(h, list_art_content))      
+      St.List.Art.set list_art (`Cons(h, list_art_content))
 
   let rec delete_elm list_art =
     let (x,x_tl) =
-      let rec loop list = 
+      let rec loop list =
         match list with
         | `Art art ->
           let elm, tl = loop (St.List.Art.force art) in
           elm, (`Art art)
-            
+
         | `Name (nm, tl) ->
           let elm, tl = loop tl in
           elm, (`Name(nm, tl))
-            
+
         | `Cons(x, tl) -> (x,tl)
         | `Nil -> failwith "delete_elm: Nil: No element to delete"
       in
@@ -470,7 +468,7 @@ module MakeSeq
     | `Art(a) -> next_cons(LArt.force a)
     | `Name(_, xs) -> next_cons xs
 
-  let rec ith_art list count = 
+  let rec ith_art list count =
     ( match count with
     | x when x <= 0 -> list
     | _ -> match list with
@@ -487,7 +485,7 @@ module MakeSeq
     in
     ( match count with
     | Some count when (count <= 0) -> []
-    | _ ->       
+    | _ ->
       match list with
       | `Nil -> []
       | `Cons(x, xs) -> x :: (take xs (dec count))
@@ -503,7 +501,7 @@ module MakeSeq
     | `Name (_,x) -> list_is_empty x
     )
 
-  let list_append = 
+  let list_append =
     let mfn = LArt.mk_mfn (St.Name.gensym "list_append")
       (module Types.Tuple2(St.List.Data)(St.List.Data))
       (fun r (xs, ys) ->
@@ -512,7 +510,7 @@ module MakeSeq
         | `Nil -> ys
         | `Cons(x,tl) -> `Cons(x, list_append tl ys)
         | `Art a -> list_append (LArt.force a) ys
-        | `Name(nm,xs) -> 
+        | `Name(nm,xs) ->
           let nm1, nm2 = Name.fork nm in
           `Name(nm1, `Art (r.LArt.mfn_nart nm2 (xs, ys)))
         ))
@@ -520,7 +518,7 @@ module MakeSeq
     fun xs ys -> mfn.LArt.mfn_data (xs, ys)
 
   let list_of_tree : St.Tree.Data.t -> St.List.Data.t -> St.List.Data.t =
-    let mfn = LArt.mk_mfn (St.Name.gensym "list_of_tree")      
+    let mfn = LArt.mk_mfn (St.Name.gensym "list_of_tree")
       (module Types.Tuple2(St.Tree.Data)(St.List.Data))
       (fun r (tree, rest) ->
         let list_of_tree tree list = r.LArt.mfn_data (tree, list) in
@@ -553,7 +551,7 @@ module MakeSeq
             else
               tree, list
           | `Art art -> tree_of_list_rec parent_lev tree_lev tree (St.List.Art.force art)
-          | `Name(nm, list) -> 
+          | `Name(nm, list) ->
             let nm1, nm  = Name.fork nm in
             let nm2, nm3 = Name.fork nm in
             let tree_rest = r.P.Art.mfn_nart nm1 (parent_lev,tree_lev,tree,list) in
@@ -567,8 +565,8 @@ module MakeSeq
     tree_of_list_rec
 
   let tree_of_list : St.List.Data.t -> St.Tree.Data.t =
-    fun list -> 
-      ( match (tree_of_list_rec max_int (-1) (`Leaf `Nil) list) with 
+    fun list ->
+      ( match (tree_of_list_rec max_int (-1) (`Leaf `Nil) list) with
       | tree, `Nil -> tree
       | _ -> failwith "tree_of_list: impossible"
       )
@@ -589,12 +587,12 @@ module MakeSeq
               let right, rest = rope_of_list_rec hd_lev (-1) (`One hd) tl in
               let rope = `Two(rope, right) in
               rope_of_list_rec parent_lev hd_lev rope rest
-            ) 
+            )
             else (
               rope, list
             )
           | `Art art -> rope_of_list_rec parent_lev rope_lev rope (St.List.Art.force art)
-          | `Name(nm, list) -> 
+          | `Name(nm, list) ->
             let nm1, nm  = Name.fork nm in
             let nm2, nm3 = Name.fork nm in
             let rope_rest = r.P.Art.mfn_nart nm1 (parent_lev,rope_lev,rope,list) in
@@ -608,15 +606,15 @@ module MakeSeq
     rope_of_list_rec
 
   let rope_of_list : St.List.Data.t -> St.Rope.Data.t =
-    fun list -> 
-      let rope, rest = 
+    fun list ->
+      let rope, rest =
         rope_of_list_rec max_int (-1) (`Zero) list
       in
       (* assert (list_is_empty rest) ; *)
       rope
 
   let list_of_rope : St.Rope.Data.t -> St.List.Data.t -> St.List.Data.t =
-    let mfn = LArt.mk_mfn (St.Name.gensym "list_of_rope")      
+    let mfn = LArt.mk_mfn (St.Name.gensym "list_of_rope")
       (module Types.Tuple2(St.Rope.Data)(St.List.Data))
       (fun r (rope, rest) ->
         let list_of_rope rope list = r.LArt.mfn_data (rope, list) in
@@ -649,14 +647,14 @@ module MakeSeq
     fun rope -> mfn.Len.mfn_data rope
 
   (* non-memoised indexed lookup of a rope, using memoized rope_length for speed *)
-  let rope_nth rope n : St.Data.t option = 
+  let rope_nth rope n : St.Data.t option =
     if rope_length rope <= n then None else
     (* main work after initial checks *)
     let rec rope_nth rope n =
       match rope with
       | `Zero -> failwith "rope_nth: bad length reporting"
       | `One(x) -> if n = 0 then Some(x) else failwith "rope_nth: bad length reporting"
-      | `Two(r1,r2) -> 
+      | `Two(r1,r2) ->
         let r1l = rope_length r1 in
         if r1l > n then
           rope_nth r1 n
@@ -666,7 +664,7 @@ module MakeSeq
       | `Name(nm, r) -> rope_nth r n
     in
     rope_nth rope n
-      
+
 
 
 (*
@@ -724,7 +722,7 @@ module MakeSeq
         | `Leaf xs -> `Leaf ( list_reverse xs `Nil )
         | `Bin(left,x,right) -> `Bin( tree_reverse right, x, tree_reverse left)
         | `Art art -> tree_reverse (TArt.force art)
-        | `Name(nm, t) -> 
+        | `Name(nm, t) ->
           let nm1, nm2 = Name.fork nm in
           `Name(nm1, `Art(r.TArt.mfn_nart nm2 t))
         ))
@@ -740,7 +738,7 @@ module MakeSeq
         | `One x -> `One x
         | `Two(x,y) -> `Two(rope_reverse y, rope_reverse x)
         | `Art art -> rope_reverse (RArt.force art)
-        | `Name (nm,rope) -> 
+        | `Name (nm,rope) ->
           let nm1,nm2 = Name.fork nm in
           `Name(nm1, `Art(r.RArt.mfn_nart nm2 rope))
         ))
@@ -808,7 +806,7 @@ module MakeSeq
         | `Cons(x,xs) ->
           if ((SToL.Data.hash seed x) mod 2) = 0 then
             contr_cons(x, xs)
-          else 
+          else
             (match xs with
             | `Nil -> contr_cons(x, `Nil)
             | `Cons(y,ys) -> contr_cons((contract_f x y), ys)
@@ -819,7 +817,7 @@ module MakeSeq
         | `Name(nm, xs) -> contr_n (Some(nm)) xs
       )
     in
-    (* 
+    (*
       reduce by applying contract_f to make progress,
       then calling mfn_contr to handle the rest
     *)
@@ -850,17 +848,17 @@ module MakeSeq
         | `Name(nm, xs) -> LArt.force (reduce_n nm xs)
       )
     in
-    fun list -> 
+    fun list ->
       let sd = Types.Seeds.make() in
       let lol = singletons list in
       mfn_reduce.LArt.mfn_data (sd, lol)
 
-  let list_reduce 
-      (op_nm : St.Name.t) 
-      (op : St.Data.t -> St.Data.t -> St.Data.t) 
+  let list_reduce
+      (op_nm : St.Name.t)
+      (op : St.Data.t -> St.Data.t -> St.Data.t)
       : St.List.Data.t -> St.Data.t option =
     let fnn = St.Name.pair (St.Name.gensym "list_reduce") op_nm in
-    let mfn = ADataOption.mk_mfn fnn 
+    let mfn = ADataOption.mk_mfn fnn
       (module St.List.Data)
       ( fun r list ->
         let list_reduce = r.ADataOption.mfn_data in
@@ -870,12 +868,12 @@ module MakeSeq
           ( match list_reduce tl with
           | None -> Some x
           | Some y -> Some (op x y))
-        
+
         | `Art art -> list_reduce (St.List.Art.force art)
-        | `Name (nm, xs) -> 
+        | `Name (nm, xs) ->
           (* TODO: Use iterative (multi-round) contraction here.. *)
           ADataOption.force (r.ADataOption.mfn_nart nm xs)
-        ))          
+        ))
     in
     fun list -> mfn.ADataOption.mfn_data list
 
@@ -885,7 +883,7 @@ module MakeSeq
       : St.Tree.Data.t -> St.Data.t option =
     let fnn = St.Name.pair (St.Name.gensym "tree_reduce") op_nm in
     let list_reduce = list_reduce op_nm op in
-    let mfn = ADataOption.mk_mfn fnn 
+    let mfn = ADataOption.mk_mfn fnn
       (module St.Tree.Data)
       (fun r tree ->
         let tree_reduce = r.ADataOption.mfn_data in
@@ -903,9 +901,9 @@ module MakeSeq
           | None,   Some r -> Some r
           | None,   None   -> None
           )
-        
+
         | `Art art -> tree_reduce (St.Tree.Art.force art)
-        | `Name (nm, tree) -> 
+        | `Name (nm, tree) ->
           ADataOption.force (r.ADataOption.mfn_nart nm tree)
         ))
     in
@@ -916,7 +914,7 @@ module MakeSeq
       ( op : St.Data.t -> St.Data.t -> St.Data.t )
       : St.Rope.Data.t -> St.Data.t option =
     let fnn = St.Name.pair (St.Name.gensym "rope_reduce") op_nm in
-    let mfn = ADataOption.mk_mfn fnn 
+    let mfn = ADataOption.mk_mfn fnn
       (module St.Rope.Data)
       (fun r rope ->
         let rope_reduce = r.ADataOption.mfn_data in
@@ -930,12 +928,12 @@ module MakeSeq
           | None,   Some r -> Some r
           | None,   None   -> None
           )
-        
-        | `Art art -> rope_reduce (St.Rope.Art.force art)        
-        | `Name (nm1, `Name(nm2, rope)) -> 
+
+        | `Art art -> rope_reduce (St.Rope.Art.force art)
+        | `Name (nm1, `Name(nm2, rope)) ->
           let nm = if Name.height nm1 > Name.height nm2 then nm1 else nm2 in
           rope_reduce (`Name(nm, rope))
-        | `Name (nm, rope) -> 
+        | `Name (nm, rope) ->
           ADataOption.force (r.ADataOption.mfn_nart nm rope)
         ))
     in
@@ -961,17 +959,17 @@ module MakeSeq
       (fun r (nm_opt1,nm_opt2,list1,list2) ->
         let merge xs ys = r.LArt.mfn_data (nm_opt1,nm_opt2,xs,ys) in
         let merge_nms nm1 nm2 xs ys = r.LArt.mfn_data (nm1,nm2,xs,ys) in
-        let merge_cons1 x l1 l2 = 
+        let merge_cons1 x l1 l2 =
           match nm_opt1 with
           | None -> `Cons(x, merge l1 l2)
-          | Some(nms) -> 
+          | Some(nms) ->
             let nm1,nm2 = Name.fork nms in
             `Name(nm1, `Cons(x, `Art(r.LArt.mfn_nart nm2 (None, nm_opt2, l1, l2))))
         in
-        let merge_cons2 y l1 l2 = 
+        let merge_cons2 y l1 l2 =
           match nm_opt2 with
           | None -> `Cons(y, merge l1 l2)
-          | Some(nms) -> 
+          | Some(nms) ->
             let nm1,nm2 = Name.fork nms in
             `Name(nm1, `Cons(y, `Art(r.LArt.mfn_nart nm2 (nm_opt1, None, l1, l2))))
         in
@@ -982,9 +980,9 @@ module MakeSeq
         | _, `Art(a2) -> merge list1 (LArt.force a2)
         | `Name(nm1, xs1), _ -> merge_nms (Some(nm1)) nm_opt2 xs1 list2
         | _, `Name(nm2, xs2) -> merge_nms nm_opt1 (Some(nm2)) list1 xs2
-        | `Cons(x,xs), `Cons(y,ys) -> 
+        | `Cons(x,xs), `Cons(y,ys) ->
           incr Statistics.Counts.unit_cost ;
-          if compare x y <= 0 then 
+          if compare x y <= 0 then
             merge_cons1 x xs list2
           else
             merge_cons2 y list1 ys
@@ -1005,13 +1003,13 @@ module MakeSeq
         let split_list list c l1 l2 = r.M.mfn_data (list, c, l1, l2) in
         ( match list with
         | `Nil -> (l1,l2)
-        | `Cons(x,xs) -> 
+        | `Cons(x,xs) ->
           if compare x c <= 0 then
             split_list xs c (`Cons(x,l1)) l2
           else
             split_list xs c l1 (`Cons(x,l2))
         | `Art(a) -> split_list (LArt.force a) c l1 l2
-        | `Name(nms, xs) -> 
+        | `Name(nms, xs) ->
           let nm1, nms = Name.fork nms in
           let nm2, nms = Name.fork nms in
           let nm3, nm4 = Name.fork nms in
@@ -1025,7 +1023,7 @@ module MakeSeq
   let list_mergesort
       ( nm : St.Name.t )
       ( compare : St.Data.t -> St.Data.t -> int )
-      : St.List.Data.t -> St.List.Data.t = 
+      : St.List.Data.t -> St.List.Data.t =
     let fnn = St.Name.pair (St.Name.gensym "list_mergesort") nm in
     let merge = list_merge fnn compare in
     let contract = list_contract fnn merge in
@@ -1057,13 +1055,13 @@ module MakeSeq
     in
     fun rope -> mfn.LArt.mfn_data rope
 
-  let list_to_rope_mergesort 
+  let list_to_rope_mergesort
       ( compare_nm : St.Name.t )
       ( compare : St.Data.t -> St.Data.t -> int )
       : St.List.Data.t -> St.List.Data.t =
     let sort = rope_mergesort compare_nm compare in
     fun list ->
-      let rope = rope_of_list list in 
+      let rope = rope_of_list list in
       sort rope
 
 end
@@ -1091,7 +1089,7 @@ struct
   module ValSt     = ValSt
 (*   module Kv        = Types.Tuple2 ( KeyData )( ValSt.List.Data ) *)
 (*  let get_key = fst *)
-(*  let empty_kv k = (k, `Nil) *)    
+(*  let empty_kv k = (k, `Nil) *)
 
   module Kv = KeyData (* TEMP *)
   let get_key x = x
@@ -1109,7 +1107,7 @@ struct
     let mfn = ABool.mk_mfn (Name.gensym "is_bst")
       (module (Types.Tuple3(KeyData)(KeyData)(KvSt.Tree.Data)))
       (fun r (lo,hi,tree) ->
-        let is_bst (lo,hi) tree = r.ABool.mfn_data (lo,hi,tree) in        
+        let is_bst (lo,hi) tree = r.ABool.mfn_data (lo,hi,tree) in
         ( match tree with
         | `Leaf `Nil -> true
         | `Leaf `Art art -> is_bst (lo,hi) (`Leaf (KvSt.List.Art.force art))
@@ -1123,7 +1121,7 @@ struct
             && KeyData.compare x hi <= 0
             && is_bst (lo, x) left
             && is_bst (x, hi) right )
-            
+
         | `Art art -> is_bst (lo,hi) (KvSt.Tree.Art.force art)
         | `Name (nm,tree) -> ABool.force (r.ABool.mfn_nart nm (lo,hi,tree))
         ))
@@ -1138,7 +1136,7 @@ struct
     | `Cons(kv, tl) ->
       if KeyData.compare (get_key kv) target = 0 then Some kv
       else list_find tl target
-    
+
     | `Art art -> list_find (KvSt.List.Art.force art) target
     | `Name (_,list) -> list_find list target
     )
@@ -1154,13 +1152,13 @@ struct
       else if ord > 0 then tree_find right target
       else if ord = 0 then Some kv
       else failwith "impossible"
-    
+
     | `Art art -> tree_find (KvSt.Tree.Art.force art) target
     | `Name (_,tree) -> tree_find tree target
     )
 
-  let rec list_remove 
-      : KvSt.List.Data.t -> KeyData.t -> (KvSt.Data.t option) * KvSt.List.Data.t = 
+  let rec list_remove
+      : KvSt.List.Data.t -> KeyData.t -> (KvSt.Data.t option) * KvSt.List.Data.t =
     let module M = ArtLib.MakeArtTuple2(Name)(AKvOption)(KvSt.List.Art) in
     let mfn = M.Art.mk_mfn (Name.gensym "list_remove")
       (module (Types.Tuple2(KvSt.List.Data)(KeyData)))
@@ -1174,9 +1172,9 @@ struct
           else
             let res, rem = list_remove rest target in
             (res, `Cons(kv, rem))
-    
+
         | `Art art -> list_remove (KvSt.List.Art.force art) target
-        | `Name (nm, list) -> 
+        | `Name (nm, list) ->
           let nm1,nm  = Name.fork nm in
           let nm2,nm3 = Name.fork nm in
           let elm_rem = r.M.Art.mfn_nart nm1 (list, target) in
@@ -1203,9 +1201,9 @@ struct
           else if ord > 0 then tree_remove right target
           else if ord = 0 then (Some kv, `Bin(left, empty_kv (get_key kv), right))
           else failwith "impossible"
-            
+
         | `Art art -> tree_remove (KvSt.Tree.Art.force art) target
-        | `Name (nm, tree) -> 
+        | `Name (nm, tree) ->
           let nm1, nm  = Name.fork nm in
           let nm2, nm3 = Name.fork nm in
           let elm_rem = r.M.Art.mfn_nart nm1 (tree, target) in
@@ -1213,9 +1211,9 @@ struct
           M.Art1.force elm, `Name(nm3, `Art rem)
         ))
     in
-    fun tree target -> mfn.M.Art.mfn_data (tree, target)          
+    fun tree target -> mfn.M.Art.mfn_data (tree, target)
 
-  let tree_height 
+  let tree_height
       : KvSt.Tree.Data.t -> int =
     let module M = ArtLib.MakeArt(Name)(Types.Int) in
     let mfn = M.mk_mfn (Name.gensym "tree_height")
@@ -1228,7 +1226,7 @@ struct
           let hleft = tree_height left in
           let hright = tree_height right in
           1 + (if hleft > hright then hleft else hright)
-            
+
         | `Art art -> tree_height (KvSt.Tree.Art.force art)
         | `Name (nm, tree) -> M.force (r.M.mfn_nart nm tree)
         ))
@@ -1253,20 +1251,20 @@ struct
         | `Bin(t1, x, t2) ->
           let rec loop = function
             | `Leaf _ -> failwith "impossible rr2"
-            | `Bin(t21, y, t22) -> `Bin(`Bin(t1, x, t21), y, t22)              
+            | `Bin(t21, y, t22) -> `Bin(`Bin(t1, x, t21), y, t22)
             | `Art art -> loop (TArt.force art)
             | `Name(_, t) -> loop t
           in loop t2
-          
+
         | `Art art -> rotate_right (TArt.force art)
-        | `Name(nm, t) -> 
+        | `Name(nm, t) ->
           if false then let nm1,nm2 = Name.fork nm in
                         `Name(nm1, `Art(r.TArt.mfn_nart nm2 t))
           else `Name(nm, rotate_right t)
         ))
     in
     fun tree -> mfn.TArt.mfn_data tree
-      
+
   let rec rotate_left : KvSt.Tree.Data.t -> KvSt.Tree.Data.t =
     let mfn = TArt.mk_mfn (Name.gensym "rotate_left")
       (module KvSt.Tree.Data)
@@ -1281,9 +1279,9 @@ struct
             | `Art art -> loop (TArt.force art)
             | `Name(_, t) -> loop t
           in loop t1
-          
+
         | `Art art -> rotate_left (TArt.force art)
-        | `Name(nm, t) -> 
+        | `Name(nm, t) ->
           if false then
             let nm1,nm2 = Name.fork nm in
             `Name(nm1, `Art(r.TArt.mfn_nart nm2 t))
@@ -1291,13 +1289,13 @@ struct
         ))
     in
     fun tree -> mfn.TArt.mfn_data tree
-      
+
   let nm_tree : Name.t -> KvSt.Tree.Data.t -> KvSt.Tree.Data.t =
-    let mfn = TArt.mk_mfn (Name.gensym "nm_tree") 
-      (module KvSt.Tree.Data) 
+    let mfn = TArt.mk_mfn (Name.gensym "nm_tree")
+      (module KvSt.Tree.Data)
       (fun r tree -> tree)
-    in 
-    fun nm tree -> 
+    in
+    fun nm tree ->
       let nm1,nm2 = Name.fork nm in
       `Name(nm1, `Art (mfn.TArt.mfn_nart nm2 tree))
 
@@ -1312,7 +1310,7 @@ struct
           assert (h = 0 || h = 1 || h = -1);
           (nm_tree nm tree)
         in
-        ( match tree with              
+        ( match tree with
         | `Art art -> avl_insert insert_nm (KvSt.Tree.Art.force art) kv
         | `Name(tree_nm, tree) -> avl_insert insert_nm tree kv
         | `Leaf `Nil -> nm_tree insert_nm (`Bin (`Leaf `Nil, kv, `Leaf `Nil))
@@ -1352,7 +1350,7 @@ struct
             failwith "impossible ilast"
         ))
     in
-    fun nm tree kv -> 
+    fun nm tree kv ->
       let nm1, nm2 = Name.fork nm in
       TArt.force (mfn.TArt.mfn_nart nm1 (nm2, tree, kv))
 
@@ -1366,12 +1364,12 @@ struct
         (match rope with
         | `Zero -> tree
         | `One kv -> (*>>>  *) avl_insert nm tree kv
-        | `Two (rope1, rope2) -> 
+        | `Two (rope1, rope2) ->
           let nm1, nm2 = Name.fork nm in
           let tree' = (avl_tree_of_rope nm1 rope1 tree) in
           avl_tree_of_rope nm2 rope2 tree'
         | `Art(art) -> avl_tree_of_rope nm (KvSt.Rope.Art.force art) tree
-        | `Name(nm, rope) -> 
+        | `Name(nm, rope) ->
           let nm1, nm2 = Name.fork nm in
           TArt.force (r.TArt.mfn_nart nm1 (nm2,rope,tree))
         ))
@@ -1386,8 +1384,8 @@ struct
         let avl_tree_of_list nm list tree = r.TArt.mfn_data (nm, list, tree) in
         (match list with
         | `Nil -> tree
-        
-        | `Cons(x, tl) ->           
+
+        | `Cons(x, tl) ->
           let nm1,nm2 = Name.fork nm in
           let tree' = avl_insert nm1 tree x in
           avl_tree_of_list nm2 tl tree'
@@ -1493,17 +1491,17 @@ end
 *)
 
 module ExprLang = struct
-  
+
   module type ExprLangType = sig
     module ArtLib : ArtLibType
     module Name : NameType
     module Value : DatType
-    
+
     type binop = string * (Value.t -> Value.t -> Value.t)
     type uniop = string * (Value.t -> Value.t)
-    
+
     (* articulated expression for an arithmetic language with 'let'. *)
-    type 'art art_expr = [   
+    type 'art art_expr = [
        | `Let of string * 'art art_expr * 'art art_expr
     | `Var of string
     | `Value of Value.t
@@ -1511,7 +1509,7 @@ module ExprLang = struct
     | `Uniop of uniop * 'art art_expr
     | `Art of 'art
     | `Name of Name.t * 'art art_expr
-    ]      
+    ]
     module rec Expr : sig
       module Data : DatType
       module Art  : ArtType
@@ -1520,7 +1518,7 @@ module ExprLang = struct
       and type Art.Data.t = Expr.Art.t art_expr
       and type Art.Name.t = Name.t
   end
-    
+
   module Make
     (ArtLib : ArtLibType)
     (Name   : NameType)
@@ -1528,12 +1526,12 @@ module ExprLang = struct
       module ArtLib = ArtLib
       module Name = Name
       module Value = Value
-        
+
       type binop = string * (Value.t -> Value.t -> Value.t)
       type uniop = string * (Value.t -> Value.t)
-        
+
       (* articulated expression for an arithmetic language with 'let'. *)
-      type 'art art_expr = [   
+      type 'art art_expr = [
       | `Let of string * 'art art_expr * 'art art_expr
       | `Var of string
       | `Value of Value.t
@@ -1542,7 +1540,7 @@ module ExprLang = struct
       | `Art of 'art
       | `Name of Name.t * 'art art_expr
       ]
-        
+
       module rec Expr : sig
         module Data : DatType
         module Art : ArtType
@@ -1550,11 +1548,11 @@ module ExprLang = struct
         with type Data.t = Expr.Art.t art_expr
         and type Art.Data.t = Expr.Art.t art_expr
         and type Art.Name.t = Name.t
-              = 
+              =
       struct
         module Data = struct
           type t = Expr.Art.t art_expr
-            
+
           let rec string exp =
             ( match exp with
             | `Value v -> Value.string v
@@ -1565,7 +1563,7 @@ module ExprLang = struct
             | `Art a -> "Art("^Expr.Art.string a^")"
             | `Name(nm, e) -> "Name("^Name.string nm^","^string e^")"
             )
-              
+
           let rec hash seed x =
             ( match x with
             | `Value v -> Value.hash seed v
@@ -1576,7 +1574,7 @@ module ExprLang = struct
             | `Art a -> Expr.Art.hash seed a
             | `Name(nm, e) -> Name.hash (hash seed e) nm
             )
-              
+
           let rec equal (exp1:Expr.Art.t art_expr) (exp2:Expr.Art.t art_expr) =
             ( match exp1, exp2 with
             | `Value v1, `Value v2 -> Value.equal v1 v2
@@ -1589,7 +1587,7 @@ module ExprLang = struct
             | `Name(nm1, e1), `Name(nm2, e2) -> Name.equal nm1 nm2 && equal e1 e2
             | _ -> false
             )
-              
+
           let rec sanitize x =
             ( match x with
             | `Value v -> `Value (Value.sanitize v)
@@ -1606,8 +1604,8 @@ module ExprLang = struct
     end
 
   module MakeEval ( ExprLang : ExprLangType )
-    = 
-  struct    
+    =
+  struct
     (* TODO: Write small-step evaluator, and driver loop. *)
     open ExprLang
     module VArt = ArtLib.MakeArt(Name)(Value)
@@ -1622,14 +1620,14 @@ module ExprLang = struct
     type nm = Name.t
 
     let eval_big : nm -> env -> expr -> value option
-      = 
+      =
       let mfn = VOptionArt.mk_mfn (Name.gensym "eval_big")
         (module Types.Tuple3(Name)(Env.KvSt.Tree.Data)(Expr.Data))
         (fun r (nm,env,expr) ->
           let eval nm env exp = r.VOptionArt.mfn_data (nm,env,exp) in
           (match expr with
           | `Value v -> Some v
-          
+
           | `Binop((_, binop), e1, e2) ->
             let nm1,nm2 = Name.fork nm in
             let v1 = eval nm1 env e1 in
@@ -1646,7 +1644,7 @@ module ExprLang = struct
             | _ -> None
             )
 
-(*              
+(*
           | `Let(var, e1, e2) ->
             let nm1, nm = Name.fork nm in
             let nm2, nm3 = Name.fork nm in
@@ -1663,7 +1661,7 @@ module ExprLang = struct
             | Some (_, `Cons(value,_)) -> Some value
             | _ -> None
           )
-*)          
+*)
           | `Art a -> eval nm env (Expr.Art.force a)
           | `Name(nm, exp) ->
             let nm1, nm2 = Name.fork nm in
@@ -1678,20 +1676,20 @@ module ExprLang = struct
 (*
     type cxt = [ `Cxt_Union of env * uniop
                | `Cxt_Binop of env * binop * expr
-               | `Cxt_Let of env * string * expr 
+               | `Cxt_Let of env * string * expr
                ]
 
     let eval_small : nm -> cxt -> env -> expr -> (cxt, env, expr) option
-      = 
+      =
       let mfn = VOptionArt.mk_mfn (Name.gensym "eval")
         (module Types.Tuple3(Name)(Env.KvSt.Tree.Data)(Expr.Data))
-        (fun r (nm,cxt,env,expr) ->          
+        (fun r (nm,cxt,env,expr) ->
           let eval nm env exp = r.VOptionArt.mfn_data (nm,cxt,env,exp) in
           (match expr with
           | None -> (cxt, env, None)
-          | Some expr -> 
-            (match expr with 
-            | `Value v -> 
+          | Some expr ->
+            (match expr with
+            | `Value v ->
               let cxt_subst cxt v = match cxt with
                 | `Cxt_Uniop(env, (s,uniop)) -> `Cxt_emp, env, Some (`Value (uniop v))
                 | `Cxt_Binop(env, (s,binop), e) -> `Cxt_uniop(s,binop v), env, Some e
@@ -1699,24 +1697,24 @@ module ExprLang = struct
               in
               let cxt, env, expr = cxt_subst cxt v in
               (cxt, env, expr)
-                
+
             | `Var var ->
               ( match tree_find env var with
               | Some v -> Some (`Value v)
               | None   -> None
               )
-                  
+
             | `Binop((s, binop), e1, e2) ->
               (`Cxt_Binop(env, (s, binop), e2), env, Some e1)
-                
+
             | `Uniop((s, uniop), e) ->
               (`Cxt_Uniop(env, (s, uniop)), env, Some e)
-                
+
             | `Let(var, e1, e2) ->
               (`Cxt_Let(env, var, e2), env, Some e1)
-                
+
             | `Art a -> (cxt, env, Some (Expr.Art.force a))
-              
+
             | `Name(nm, exp) ->
               let nm1, nm2 = Name.fork nm in
               VOptionArt.force (r.VOptionArt.mfn_nart nm1 (nm2,env,exp))
@@ -1724,7 +1722,6 @@ module ExprLang = struct
       in
       fun nm cxt env exp -> mfn.VOptionArt.mfn_data (nm,cxt,env,exp)
 *)
-    
-  end    
+
+  end
 end
-  

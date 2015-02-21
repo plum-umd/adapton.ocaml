@@ -687,7 +687,7 @@ struct
   let insert_elm list h = 
     Seq.insert_elm list h None
 
-  let string_of_list = Seq.simple_full_string
+  let string_of_list art = Seq.simple_full_string (`Art art)
 
   let elm_of_int h = h
   let elm_update x y = y
