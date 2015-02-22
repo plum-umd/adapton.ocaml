@@ -946,6 +946,22 @@ module MakeSeq
     let mid = len/2 in
     rope_nth rope mid
 
+  let name_opt_fork nm =
+    match nm with
+    | None -> None, None
+    | Some nm ->
+       let nm1,nm2 = Name.fork nm in
+       (Some nm1, Some nm2)
+
+  let name_opt_seq nm1 nm2 =
+    match nm1 with
+    | Some nm1 -> Some nm1
+    | None ->
+       ( match nm2 with
+         | None -> None
+         | Some nm2 -> Some nm2
+       )
+
   let list_merge_full
       (compare_nm : St.Name.t)
       (compare : St.Data.t -> St.Data.t -> int)
@@ -977,8 +993,8 @@ module MakeSeq
             `Name(nm1, `Cons(y, `Art(r.LArt.mfn_nart nm2 (nm_opt1, None, l1, l2))))
         in
         match list1, list2 with
-        | `Nil, _ -> list2
-        | _, `Nil -> list1
+        | `Nil, _ -> (match nm_opt2 with None -> list2 | Some nm -> `Name(nm,list2))
+        | _, `Nil -> (match nm_opt1 with None -> list1 | Some nm -> `Name(nm,list1))
         | `Art(a1), _ -> merge (LArt.force a1) list2
         | _, `Art(a2) -> merge list1 (LArt.force a2)
         | `Name(nm1, xs1), _ -> merge_nms (Some(nm1)) nm_opt2 xs1 list2
@@ -1070,13 +1086,6 @@ module MakeSeq
       let rope = rope_of_list list in
       sort rope
 
-  let name_opt_fork nm =
-    match nm with
-    | None -> None, None
-    | Some nm ->
-       let nm1,nm2 = Name.fork nm in
-       (Some nm1, Some nm2)
-
   (* Not yet improved, actually. *)
   let rope_mergesort_improved
       ( compare_nm : St.Name.t )
@@ -1090,7 +1099,11 @@ module MakeSeq
         let rope_mergesort nm rope = r.LArt.mfn_data (nm,rope) in
         ( match rope with
         | `Zero -> `Nil
-        | `One x -> merge nm None (`Cons(x, `Nil)) `Nil
+        | `One x ->
+           ( match nm with
+             | None -> `Cons(x,`Nil)
+             | Some nm -> `Name(nm, `Cons(x, `Nil))
+           )
         | `Two(x, y) ->
            let nm1,nm  = name_opt_fork nm in
            let nm2,nm  = name_opt_fork nm in
