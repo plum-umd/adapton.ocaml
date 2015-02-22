@@ -1070,6 +1070,13 @@ module MakeSeq
       let rope = rope_of_list list in
       sort rope
 
+  let name_opt_fork nm =
+    match nm with
+    | None -> None, None
+    | Some nm ->
+       let nm1,nm2 = Name.fork nm in
+       (Some nm1, Some nm2)
+
   (* Not yet improved, actually. *)
   let rope_mergesort_improved
       ( compare_nm : St.Name.t )
@@ -1085,13 +1092,12 @@ module MakeSeq
         | `Zero -> `Nil
         | `One x -> merge nm None (`Cons(x, `Nil)) `Nil
         | `Two(x, y) ->
-           let x_sorted = rope_mergesort None x in
-           let y_sorted = rope_mergesort None y in
-           let nm1,nm2 = match nm with
-             | None -> None, None
-             | Some nm -> let nm1,nm2 = Name.fork nm in (Some nm1, Some nm2)
-           in
-           merge nm1 nm2 x_sorted y_sorted
+           let nm1,nm  = name_opt_fork nm in
+           let nm2,nm  = name_opt_fork nm in
+           let nm3,nm4 = name_opt_fork nm in
+           let x_sorted = rope_mergesort nm1 x in
+           let y_sorted = rope_mergesort nm2 y in
+           merge nm3 nm4 x_sorted y_sorted
 
         | `Art art -> rope_mergesort nm (RArt.force art)
         | `Name (nm, rope) ->
