@@ -946,10 +946,13 @@ module MakeSeq
     let mid = len/2 in
     rope_nth rope mid
 
-  let list_merge
+  let list_merge_full
       (compare_nm : St.Name.t)
       (compare : St.Data.t -> St.Data.t -> int)
-      : St.List.Data.t -> St.List.Data.t -> St.List.Data.t =
+      : Name.t option ->
+        Name.t option ->
+        St.List.Data.t ->
+        St.List.Data.t -> St.List.Data.t =
     let fnn = St.Name.pair (St.Name.gensym "list_merge") compare_nm in
     let mfn = LArt.mk_mfn fnn
       (module Types.Tuple4
@@ -988,7 +991,10 @@ module MakeSeq
             merge_cons2 y list1 ys
       )
     in
-    fun xs ys -> mfn.LArt.mfn_data (None,None,xs,ys)
+    fun nm1 nm2 l1 l2 -> mfn.LArt.mfn_data (nm1, nm2, l1, l2)
+
+  let list_merge cmp_nm cmp l1 l2 =
+    list_merge_full cmp_nm cmp None None l1 l2
 
   (* prep for quicksort - untested *)
   let list_split_on_pivot
@@ -1060,6 +1066,45 @@ module MakeSeq
       ( compare : St.Data.t -> St.Data.t -> int )
       : St.List.Data.t -> St.List.Data.t =
     let sort = rope_mergesort compare_nm compare in
+    fun list ->
+      let rope = rope_of_list list in
+      sort rope
+
+  let rope_mergesort_improved
+      ( compare_nm : St.Name.t )
+      ( compare : St.Data.t -> St.Data.t -> int )
+      : St.Rope.Data.t -> St.List.Data.t =
+    let fnn = St.Name.pair (St.Name.gensym "rope_mergesort") compare_nm in
+    let merge = list_merge_full compare_nm compare in
+    let mfn = St.List.Art.mk_mfn fnn
+      (module Types.Tuple2(Types.Option(Name))(St.Rope.Data))
+      (fun r (nm,rope) ->
+        let rope_mergesort nm rope = r.LArt.mfn_data (nm,rope) in
+        ( match rope with
+        | `Zero -> `Nil
+        | `One x -> `Cons(x, `Nil)
+        | `Two(x, y) ->
+           let x_sorted = rope_mergesort None x in
+           let y_sorted = rope_mergesort None y in
+           let nm1,nm2 = match nm with
+             | None -> None, None
+             | Some nm -> let nm1,nm2 = Name.fork nm in (Some nm1, Some nm2)
+           in
+           merge nm1 nm2 x_sorted y_sorted
+
+        | `Art art -> rope_mergesort nm (RArt.force art)
+        | `Name (nm, rope) ->
+           let nm1,nm2 = Name.fork nm in
+           `Art (r.LArt.mfn_nart nm1 (Some nm2,rope))
+        ))
+    in
+    fun rope -> mfn.LArt.mfn_data (None,rope)
+
+  let list_to_rope_mergesort_improved
+      ( compare_nm : St.Name.t )
+      ( compare : St.Data.t -> St.Data.t -> int )
+      : St.List.Data.t -> St.List.Data.t =
+    let sort = rope_mergesort_improved compare_nm compare in
     fun list ->
       let rope = rope_of_list list in
       sort rope
