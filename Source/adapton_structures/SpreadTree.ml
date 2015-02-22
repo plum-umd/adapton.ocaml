@@ -993,8 +993,8 @@ module MakeSeq
     in
     fun nm1 nm2 l1 l2 -> mfn.LArt.mfn_data (nm1, nm2, l1, l2)
 
-  let list_merge cmp_nm cmp l1 l2 =
-    list_merge_full cmp_nm cmp None None l1 l2
+  let list_merge cmp_nm cmp =
+    list_merge_full cmp_nm cmp None None
 
   (* prep for quicksort - untested *)
   let list_split_on_pivot
