@@ -1083,7 +1083,7 @@ module MakeSeq
         let rope_mergesort nm rope = r.LArt.mfn_data (nm,rope) in
         ( match rope with
         | `Zero -> `Nil
-        | `One x -> `Cons(x, `Nil)
+        | `One x -> merge nm None (`Cons(x, `Nil)) `Nil
         | `Two(x, y) ->
            let x_sorted = rope_mergesort None x in
            let y_sorted = rope_mergesort None y in
@@ -1095,8 +1095,9 @@ module MakeSeq
 
         | `Art art -> rope_mergesort nm (RArt.force art)
         | `Name (nm, rope) ->
-           let nm1,nm2 = Name.fork nm in
-           `Art (r.LArt.mfn_nart nm1 (Some nm2,rope))
+           let nm1,nm = Name.fork nm in
+           let nm2,nm3 = Name.fork nm in
+           `Name(nm1,`Art (r.LArt.mfn_nart nm2 (Some nm3,rope)))
         ))
     in
     fun rope -> mfn.LArt.mfn_data (None,rope)
