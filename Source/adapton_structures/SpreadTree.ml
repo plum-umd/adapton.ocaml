@@ -1106,11 +1106,10 @@ module MakeSeq
            )
         | `Two(x, y) ->
            let nm1,nm  = name_opt_fork nm in
-           let nm2,nm  = name_opt_fork nm in
-           let nm3,nm4 = name_opt_fork nm in
+           let nm2,nm3 = name_opt_fork nm in
            let x_sorted = rope_mergesort nm1 x in
-           let y_sorted = rope_mergesort nm2 y in
-           merge nm3 nm4 x_sorted y_sorted
+           let y_sorted = rope_mergesort None y in
+           merge nm2 nm3 x_sorted y_sorted
 
         | `Art art -> rope_mergesort nm (RArt.force art)
         | `Name (nm, rope) ->
