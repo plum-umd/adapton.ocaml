@@ -58,13 +58,13 @@ module MakeCommonStruct
   module Data = Data
 
   type 'art art_struct = [ (* articulated sequence. *)
-  | `Nil
-  | `Ready of 'art
-  | `Data of Data.t * 'art art_struct
-  | `Art of Name.t * 'art
-  | `Branch of 'art art_struct * 'art art_struct
+  | `Nil                                            (* end of branch *)
+  | `Ready of 'art                                  (* an art ready to be forced *)
+  | `Data of Data.t * 'art art_struct               (* Data node *)
+  | `Art of Name.t * 'art                           (* Nominal articulation point with seed name *)
+  | `Branch of 'art art_struct * 'art art_struct    (* Branch Node - good place for arts *)
     (* constrain `Continue to branches? *)  
-  | `Continue of 'art art_struct
+  | `Continue of 'art art_struct                    (* TODO: implement! Pointer to next item, for threaded structs *)
   ]
 
   module rec Datastruct : sig
@@ -222,7 +222,8 @@ module MakeSequence
     with type ArtLib.lib_id = ArtLib.lib_id
     and type Name.t = Name.t
     and type Data.t = Data.t 
- *)  = struct
+ *)
+  = struct
     include (MakeCommonStruct(ArtLib)(Name)(Data)(Params))
   end
   

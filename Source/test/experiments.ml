@@ -8,6 +8,9 @@ open Adapton_core
 module Viz = Viz
 module Statistics = AdaptonStatistics
 module Types = AdaptonTypes
+module Key = Key
+module Int = Types.Int
+
 
 (** ---------------------------------------------------------------------- *)
 (** Flags and Params that are common to all experiments: *)
@@ -127,9 +130,15 @@ let stats_print (handle:out_channel)
 
 module type ListRepType = sig
   type t
+  module ArtLib : GrifolaType.ArtLibType
+  module LArt : GrifolaType.ArtType
   module Data : Primitives.ResultType (* XXX *) with type t = int
   module Memotables : Primitives.MemotablesType
+  module Seq : StructModTypes.SeqType
   type elm
+
+  val thunk : Key.t -> (unit -> t) -> LArt.t
+  val force : LArt.t -> Data.t
 
   val of_list : Data.t list -> int -> t
   val next : t -> t option
@@ -146,6 +155,7 @@ module type ListRepType = sig
   val string_of_elm : elm -> string
 
   val take : t -> int option -> Data.t list
+
 end
 
 module type ListAppType = sig
@@ -654,15 +664,13 @@ end (* Make_experiment *)
 
 (* ------------------------------------------------------------------------------- *)
 
-module Key = Key
-module Int = Types.Int
-
 module SpreadTreeRep 
   (ArtLib : GrifolaType.ArtLibType) 
   (* : ListRepType *) =
 struct
   module ArtLib = ArtLib
   module St = SpreadTree.MakeSpreadTree(ArtLib)(Key)(Int)
+  module LArt = St.List.Art
   module Seq = SpreadTree.MakeSeq(St)
   module Data = Int
   module Memotables = ArtLib.Memotables
@@ -671,14 +679,17 @@ struct
   type t   = St.List.Art.t
   type elm = Data.t
 
+  let thunk = LArt.thunk
+  let force = LArt.force
+
   let of_list x gran = 
     Seq.mut_elms_of_list (Key.nondet()) 
       (List.map (fun x -> (x, Key.nondet())) x) 
       fst snd gran
 
-  let next x = Seq.next_art (St.List.Art.force x)
+  let next x = Seq.next_art (force x)
 
-  let take x count = Seq.take (St.List.Art.force x) count
+  let take x count = Seq.take (force x) count
 
   let delete_elm list = 
     let h,_ = Seq.delete_elm list in 
@@ -693,6 +704,7 @@ struct
   let elm_update x y = y
   let data_of_elm x = x
   let string_of_elm x = Printf.sprintf "%d" x
+
 end
 
 module RepOfSpreadTree
@@ -733,176 +745,126 @@ struct
   let elm_update x y = y
   let data_of_elm x = x
   let string_of_elm x = Printf.sprintf "%d" x
+
+  let thunk = KvMap.KvSt.List.Art.thunk
+  let force = KvMap.KvSt.List.Art.force
 end
 
-(* ------------------------------------------------------------------------------- *)
-
-(* module AKListRepGrifola = struct
-  module Grifola = Grifola.Default
-  module AKList  = AdaptonUtil.AKList.Make( Grifola.ATypeImpl )
-  module IL = AKList.Make( Int )
-  module Memotables = Grifola.Memotables
-  type t = IL.t
-  module Data = Int
-  type elm = Data.t * Key.t * IL.t
-      
-  let next l = match IL.force l with
-    | `Nil -> None
-    | `Cons(_,_,tl) -> Some tl
-
-  let of_list ints = IL.of_list ints
-
-  let take l optional_max0 =
-    let rec demand_list l optional_max =
-      match (IL.force l), optional_max with
-        | `Nil, None   -> []
-        | _   , Some 0 -> []
-        | `Nil, Some n ->
-            let n0 = match optional_max0 with Some n -> n | None -> failwith "impossible" in
-	    Printf.fprintf stdout "Warning: reached end of list before demanding all elements: demanded %d of %d\n%!" (n0-n) n0 ;
-            []
-
-        | `Cons(x, _, t), Some n ->
-            x :: (demand_list t (Some (n-1)))
-        | `Cons(x, _, t), None ->
-            x :: (demand_list t None)
-    in
-    demand_list l optional_max0
-
-  let delete_elm list =
-    let (h,k,tl) = IL.remove' 0 list in (h,k,tl)
-
-  let insert_elm list (h,k,tl) =
-    IL.insert' 0 h k list tl
-
-  let data_of_elm (h,_,_) = h
-  let string_of_elm (h,k,tl) = Printf.sprintf "%d %s" h (Key.string k)
-    
-  let elm_of_int h = (h,Key.nondet(),IL.const `Nil)
-
-  let elm_update (_,key,tl) x = (x,key,tl)
+module Engines = struct
+  module type EngineType = sig
+    module Lib : GrifolaType.ArtLibType
+    module Rep : ListRepType
+    val name : string
+  end
+  module ST_name = struct
+    module Pack = Grifola.Make(
+      struct
+        include Grifola.Default_params
+      end )
+    module Lib = Pack.ArtLib
+    module Rep = SpreadTreeRep(Lib)
+    let name = "name"
+  end
+  module ST_arg = struct
+    module Pack = Grifola.Make(
+      struct
+        include Grifola.Default_params
+        let disable_names = true
+      end )
+    module Lib = Pack.ArtLib
+    module Rep = SpreadTreeRep(Lib)
+    let name = "arg"
+  end
+  module ST_arggen = struct
+    module Pack = Grifola.Make(
+      struct
+        include Grifola.Default_params
+        let disable_names = true
+        let generative_ids = true
+      end )
+    module Lib = Pack.ArtLib
+    module Rep = SpreadTreeRep(Lib)
+    let name = "arggen"
+  end
+  module ST_nocheck = struct
+    module Pack = Grifola.Make(
+      struct
+        include Grifola.Default_params
+        let check_receipt = false
+      end )
+    module Lib = Pack.ArtLib
+    module Rep = SpreadTreeRep(Lib)
+    let name = "nocheck"
+  end
+  (* does not propagate changes *)
+  module ST_EagerNonInc = struct
+    module Pack = Alternatives.EagerNonInc
+    module Lib = Pack.ArtLib
+    module Rep = SpreadTreeRep(Lib)
+    let name = "eagernoninc"
+  end
+  (* does not propagate changes *)
+  module ST_LazyNonInc = struct
+    module Pack = Alternatives.LazyNonInc
+    module Lib = Pack.ArtLib
+    module Rep = SpreadTreeRep(Lib)
+    let name = "lazynoninc"
+  end
+  module ST_LazyRecalc = struct
+    module Pack = Alternatives.LazyRecalc
+    module Lib = Pack.ArtLib
+    module Rep = SpreadTreeRep(Lib)
+    let name = "lazyrecalc"
+  end
 end
- *)
-(* ------------------------------------------------------------------------------- *)
-
-(* module AKListRep ( A : AdaptonUtil.Signatures.AType ) = struct
-  module Data = Int
-  module AKList = AdaptonUtil.AKList.Make( A )
-  module IL = AKList.Make( Data )
-  type t = IL.t
-  type elm = Data.t * Key.t * IL.t
-  module Memotables = A.Memotables
-
-  let of_list ints = IL.of_list ints
-      
-  let next l = match IL.force l with
-    | `Nil -> None
-    | `Cons(_,_,tl) -> Some tl
-
-  let take l optional_max0 =
-    let rec demand_list l optional_max =
-      match (IL.force l), optional_max with
-        | `Nil, None   -> []
-        | _   , Some 0 -> []
-        | `Nil, Some n ->
-            let n0 = match optional_max0 with Some n -> n | None -> failwith "impossible" in
-	    Printf.fprintf stdout "Warning: reached end of list before demanding all elements: demanded %d of %d\n%!" (n0-n) n0 ;
-            []
-
-        | `Cons(x, _, t), Some n ->
-            x :: (demand_list t (Some (n-1)))
-        | `Cons(x, _, t), None ->
-            x :: (demand_list t None)
-    in
-    demand_list l optional_max0
-
-  let delete_elm list =
-    let (h,k,tl) = IL.remove' 0 list in (h,k,tl)
-
-  let insert_elm list (h,k,tl) =
-    IL.insert' 0 h k list tl
-
-  let data_of_elm (h,_,_) = h
-  let string_of_elm (h,k,tl) = Printf.sprintf "%d %s" h (Key.string k)
-    
-  let elm_of_int h = (h,Key.nondet(),IL.const `Nil)
-
-  let elm_update (_,key,tl) x = (x,key,tl)
-end
- *)
-(* ------------------------------------------------------------------------------- *)
 
 module Mergesorts = struct
 
-(* 
-  module AKList_mergesort (N : sig val name : string end) ( A : AdaptonUtil.Signatures.AType ) = struct
-    let name = "AKList_mergesort_" ^ N.name
-    module ListRep = AKListRep ( A )
-    let compute inp =
-      ListRep.IL.memo_mergesort Pervasives.compare (Key.nondet ()) inp
-    let min_of_ints x y = (
-      incr AdaptonUtil.Statistics.Counts.unit_cost ;
-      if x < y then x else y
-    )
-    let trusted = List.sort Pervasives.compare
-    let flush = ListRep.IL.flush
-  end
- *)
-
-  module List_mergesort 
-    ( N : sig val name : string end ) 
-    ( AL : GrifolaType.ArtLibType ) = 
+  module List_mergesort (E : Engines.EngineType) = 
   struct
-    let name = "List_mergesort_" ^ N.name
+    let name = "List_mergesort_" ^ E.name
     let int_compare : int -> int -> int = Pervasives.compare
-    module ListRep = SpreadTreeRep ( AL )
     let compute inp =
       let nm = Key.fork (Key.nondet ()) in
-      let mergesort = ListRep.Seq.list_mergesort (fst nm) int_compare in
-      ListRep.St.List.Art.thunk (snd nm) ( fun () ->        
-        mergesort (ListRep.St.List.Art.force inp)
+      let mergesort = E.Rep.Seq.list_mergesort (fst nm) int_compare in
+      E.Rep.thunk (snd nm) ( fun () ->        
+        mergesort (E.Rep.force inp)
       )
     let trusted = List.sort int_compare
-    let flush = AL.Eviction.flush
+    let flush = E.Lib.Eviction.flush
   end
 
-  module Rope_mergesort 
-    ( N : sig val name : string end ) 
-    ( AL : GrifolaType.ArtLibType ) = 
+  module Rope_mergesort (E : Engines.EngineType) = 
   struct
-    let name = "Rope_mergesort_" ^ N.name
+    let name = "Rope_mergesort_" ^ E.name
     let int_compare : int -> int -> int = Pervasives.compare
-    module ListRep = SpreadTreeRep ( AL )
     let compute inp =
       let nm = Key.fork (Key.nondet ()) in
-      let mergesort = ListRep.Seq.list_to_rope_mergesort (fst nm) int_compare in
-      ListRep.St.List.Art.thunk (snd nm) ( fun () ->        
-        mergesort (ListRep.St.List.Art.force inp)
+      let mergesort = E.Rep.Seq.list_to_rope_mergesort (fst nm) int_compare in
+      E.Rep.thunk (snd nm) ( fun () ->        
+        mergesort (E.Rep.force inp)
       )
     let trusted = List.sort int_compare
-    let flush = AL.Eviction.flush
+    let flush = E.Lib.Eviction.flush
   end
 
 end
 
 module Median = struct
 
-  module Rope_median
-    ( N : sig val name : string end )
-    ( AL : GrifolaType.ArtLibType ) = 
+  module Rope_median (E : Engines.EngineType) = 
   struct
-    let name = "Rope_median_" ^ N.name
+    let name = "Rope_median_" ^ E.name
     let int_compare : int -> int -> int = Pervasives.compare
-    module ListRep = SpreadTreeRep ( AL )
     let compute inp = 
       let nm1, nm2 = Key.fork (Key.nondet()) in
-      let mergesort = ListRep.Seq.list_to_rope_mergesort nm1 int_compare in
-      let rope_of_list = ListRep.Seq.rope_of_list in
-      let rope_median = ListRep.Seq.rope_median in
-      ListRep.St.List.Art.thunk (nm2) ( fun() ->
+      let mergesort = E.Rep.Seq.list_to_rope_mergesort nm1 int_compare in
+      let rope_of_list = E.Rep.Seq.rope_of_list in
+      let rope_median = E.Rep.Seq.rope_median in
+      E.Rep.thunk (nm2) ( fun() ->
         let result =
           rope_median @@ rope_of_list @@
-          mergesort @@ (ListRep.St.List.Art.force inp)
+          mergesort @@ (E.Rep.force inp)
         in
         match result with
         | None -> `Nil
@@ -913,24 +875,21 @@ module Median = struct
       let middle = len/2 in
       let sorted = List.sort int_compare inp in
       [List.nth sorted middle]
-    let flush = AL.Eviction.flush
+    let flush = E.Lib.Eviction.flush
   end
 
-  module Rope_center
-    ( N : sig val name : string end )
-    ( AL : GrifolaType.ArtLibType ) = 
+  module Rope_center (E : Engines.EngineType) = 
   struct
-    let name = "Rope_center_" ^ N.name
+    let name = "Rope_center_" ^ E.name
     let int_compare : int -> int -> int = Pervasives.compare
-    module ListRep = SpreadTreeRep ( AL )
     let compute inp = 
       let nm1 = Key.nondet() in
-      let rope_of_list = ListRep.Seq.rope_of_list in
-      let rope_median = ListRep.Seq.rope_median in
-      ListRep.St.List.Art.thunk (nm1) ( fun() ->
+      let rope_of_list = E.Rep.Seq.rope_of_list in
+      let rope_median = E.Rep.Seq.rope_median in
+      E.Rep.thunk (nm1) ( fun() ->
         let result =
           rope_median @@ rope_of_list @@
-          (ListRep.St.List.Art.force inp)
+          (E.Rep.force inp)
         in
         match result with
         | None -> `Nil
@@ -940,30 +899,25 @@ module Median = struct
       let len = List.length inp in
       let middle = len/2 in
       [List.nth inp middle]
-    let flush = AL.Eviction.flush
+    let flush = E.Lib.Eviction.flush
   end
-
 
 end
 
-
 module Iteration = struct
-  module Rope_iter 
-    ( N : sig val name : string end ) 
-    ( AL : GrifolaType.ArtLibType ) = 
+  module Rope_iter (E : Engines.EngineType) = 
   struct
-    let name = "Rope_iter_" ^ N.name
-    module ListRep = SpreadTreeRep ( AL )
+    let name = "Rope_iter_" ^ E.name
     let compute inp =
-      let rope_of_list = ListRep.Seq.rope_of_list in
-      let list_of_rope = ListRep.Seq.list_of_rope in
-      ListRep.St.List.Art.thunk (Key.nondet ()) ( 
+      let rope_of_list = E.Rep.Seq.rope_of_list in
+      let list_of_rope = E.Rep.Seq.list_of_rope in
+      E.Rep.thunk (Key.nondet ()) ( 
         fun () ->
-          let rope = rope_of_list (ListRep.St.List.Art.force inp) in
+          let rope = rope_of_list (E.Rep.force inp) in
           list_of_rope rope `Nil
       )
     let trusted = List.map (fun x -> x)
-    let flush = AL.Eviction.flush
+    let flush = E.Lib.Eviction.flush
   end
 end
 
@@ -975,22 +929,20 @@ end
 
 module Reduction = struct
 
-  module Rope_reduce_monoid
-    ( N : sig val name : string end ) 
-    ( AL : GrifolaType.ArtLibType )
+  module Rope_reduce_monoid 
+    (E : Engines.EngineType) 
     ( Monoid : sig val name : string 
                    val id_elm : int 
                    val bin : int -> int -> int end ) = 
   struct
-    let name = "Rope_" ^ Monoid.name ^ "_" ^ N.name
-    module ListRep = SpreadTreeRep ( AL )
+    let name = "Rope_" ^ Monoid.name ^ "_" ^ E.name
     let min_of_ints x y = (
       incr Statistics.Counts.unit_cost ;
       Monoid.bin x y
     )
     let compute inp =
-      let rope_reduce = ListRep.Seq.rope_reduce (Key.nondet()) min_of_ints in
-      ListRep.St.List.Art.thunk (Key.nondet ()) ( fun () ->
+      let rope_reduce = E.Rep.Seq.rope_reduce (Key.nondet()) min_of_ints in
+      E.Rep.thunk (Key.nondet ()) ( fun () ->
           let rope = ListRep.Seq.rope_of_list (`Art inp) in
           match rope_reduce rope with
           | None -> `Nil
@@ -999,14 +951,12 @@ module Reduction = struct
     let trusted x = match x with 
       | [] -> [] 
       | _ -> [ List.fold_left Monoid.bin Monoid.id_elm x ]
-    let flush = AL.Eviction.flush
+    let flush = E.Lib.Eviction.flush
   end
 
-  module Rope_min 
-    ( N : sig val name : string end ) 
-    ( AL : GrifolaType.ArtLibType ) =
+  module Rope_min (E : Engines.EngineType) =
   struct
-    include Rope_reduce_monoid(N)(AL)
+    include Rope_reduce_monoid(E)
       (struct 
         let name = "min"
         let id_elm = max_int 
@@ -1014,11 +964,9 @@ module Reduction = struct
        end)
   end
 
-  module Rope_sum 
-    ( N : sig val name : string end ) 
-    ( AL : GrifolaType.ArtLibType ) =
+  module Rope_sum (E : Engines.EngineType) =
   struct
-    include Rope_reduce_monoid(N)(AL)
+    include Rope_reduce_monoid(E)
       (struct 
         let name = "sum"
         let id_elm = 0 
@@ -1045,7 +993,7 @@ module Reduction = struct
       let module S = Set.Make(struct type t = int let compare = Pervasives.compare end) in
       let set = List.fold_left (fun set elm -> S.add elm set) S.empty x in
       (S.elements set)
-    let flush = AL.Eviction.flush
+    let flush = ListRep.ArtLib.Eviction.flush
   end
 
 end
@@ -1053,32 +1001,6 @@ end
 (* ----------------------------------------------------------------------------------------------------- *)
 (* ----------------------------------------------------------------------------------------------------- *)
 (* ----------------------------------------------------------------------------------------------------- *)
-
-module Engines = struct
-  module Grifola_name = Grifola.Make(
-    struct
-      include Grifola.Default_params
-    end )
-  module Grifola_arg = Grifola.Make(
-    struct
-      include Grifola.Default_params
-      let disable_names = true
-    end )
-  module Grifola_arggen = Grifola.Make(
-    struct
-      include Grifola.Default_params
-      let disable_names = true
-      let generative_ids = true
-    end )
-  module Grifola_nocheck = Grifola.Make(
-    struct
-      include Grifola.Default_params
-      let check_receipt = false
-    end )
-  module EagerNonInc = Alternatives.EagerNonInc
-  module LazyNonInc = Alternatives.LazyNonInc
-  module LazyRecalc = Alternatives.LazyRecalc
-end
 
 module type ExperimentType = sig
   val name : string
@@ -1089,54 +1011,54 @@ module Experiments = struct
   open Engines
       
   module Rope_mergesort = struct
-    module ListApp_name = Mergesorts.Rope_mergesort(struct let name = "name" end)(Grifola_name.ArtLib)      
-    module ListApp_arg = Mergesorts.Rope_mergesort(struct let name = "arg" end)(Grifola_arg.ArtLib)
-    module ListApp_arggen = Mergesorts.Rope_mergesort(struct let name = "arggen" end)(Grifola_arggen.ArtLib)
-    module ListApp_lazy_recalc = Mergesorts.Rope_mergesort(struct let name = "lazyrecalc" end)(LazyRecalc.ArtLib)
-    module ListApp_eager_noninc = Mergesorts.Rope_mergesort(struct let name = "eagernoninc" end)(EagerNonInc.ArtLib)
-    module ListApp_lazy_noninc = Mergesorts.Rope_mergesort(struct let name = "lazynoninc" end)(LazyNonInc.ArtLib)
+    module ListApp_name = Mergesorts.Rope_mergesort(ST_name)      
+    module ListApp_arg = Mergesorts.Rope_mergesort(ST_arg)
+    module ListApp_arggen = Mergesorts.Rope_mergesort(ST_arggen)
+    module ListApp_lazy_recalc = Mergesorts.Rope_mergesort(ST_LazyRecalc)
+    module ListApp_eager_noninc = Mergesorts.Rope_mergesort(ST_EagerNonInc)
+    module ListApp_lazy_noninc = Mergesorts.Rope_mergesort(ST_LazyNonInc)
   end
 
   module List_mergesort = struct
-    module ListApp_name = Mergesorts.List_mergesort(struct let name = "name" end)(Grifola_name.ArtLib)      
-    module ListApp_arg = Mergesorts.List_mergesort(struct let name = "arg" end)(Grifola_arg.ArtLib)
-    module ListApp_arggen = Mergesorts.List_mergesort(struct let name = "arggen" end)(Grifola_arggen.ArtLib)
-    module ListApp_lazy_recalc = Mergesorts.List_mergesort(struct let name = "lazyrecalc" end)(LazyRecalc.ArtLib)
+    module ListApp_name = Mergesorts.List_mergesort(ST_name)      
+    module ListApp_arg = Mergesorts.List_mergesort(ST_arg)
+    module ListApp_arggen = Mergesorts.List_mergesort(ST_arggen)
+    module ListApp_lazy_recalc = Mergesorts.List_mergesort(ST_LazyRecalc)
   end
 
   module Rope_median = struct
-    module ListApp_name = Median.Rope_median(struct let name = "name" end)(Grifola_name.ArtLib)
-    module ListApp_arg = Median.Rope_median(struct let name = "arg" end)(Grifola_arg.ArtLib)
-    module ListApp_arggen = Median.Rope_median(struct let name = "arggen" end)(Grifola_arggen.ArtLib)
-    module ListApp_lazy_recalc = Median.Rope_median(struct let name = "lazyrecalc" end)(LazyRecalc.ArtLib)
-    module ListApp_eager_noninc = Median.Rope_median(struct let name = "eagernoninc" end)(EagerNonInc.ArtLib)
+    module ListApp_name = Median.Rope_median(ST_name)
+    module ListApp_arg = Median.Rope_median(ST_arg)
+    module ListApp_arggen = Median.Rope_median(ST_arggen)
+    module ListApp_lazy_recalc = Median.Rope_median(ST_LazyRecalc)
+    module ListApp_eager_noninc = Median.Rope_median(ST_EagerNonInc)
   end
 
   (* to test the median, this finds center without sorting first *)
   module Rope_center = struct
-    module ListApp_name = Median.Rope_center(struct let name = "name" end)(Grifola_name.ArtLib)
-    module ListApp_arg = Median.Rope_center(struct let name = "arg" end)(Grifola_arg.ArtLib)
-    module ListApp_arggen = Median.Rope_center(struct let name = "arggen" end)(Grifola_arggen.ArtLib)
-    module ListApp_lazy_recalc = Median.Rope_center(struct let name = "lazyrecalc" end)(LazyRecalc.ArtLib)
-    module ListApp_eager_noninc = Median.Rope_center(struct let name = "eagernoninc" end)(EagerNonInc.ArtLib)
+    module ListApp_name = Median.Rope_center(ST_name)
+    module ListApp_arg = Median.Rope_center(ST_arg)
+    module ListApp_arggen = Median.Rope_center(ST_arggen)
+    module ListApp_lazy_recalc = Median.Rope_center(ST_LazyRecalc)
+    module ListApp_eager_noninc = Median.Rope_center(ST_EagerNonInc)
   end
 
   module Rope_iter = struct
-    module ListApp_name = Iteration.Rope_iter(struct let name = "name" end)(Grifola_name.ArtLib)
-    module ListApp_arg = Iteration.Rope_iter(struct let name = "arg" end)(Grifola_arg.ArtLib)
-    module ListApp_arggen = Iteration.Rope_iter(struct let name = "arggen" end)(Grifola_name.ArtLib)
+    module ListApp_name = Iteration.Rope_iter(ST_name)
+    module ListApp_arg = Iteration.Rope_iter(ST_arg)
+    module ListApp_arggen = Iteration.Rope_iter(ST_arggen)
   end
 
   module Rope_min = struct
-    module ListApp_name = Reduction.Rope_min(struct let name = "name" end)(Grifola_name.ArtLib)      
-    module ListApp_arg = Reduction.Rope_min(struct let name = "arg" end)(Grifola_arg.ArtLib)
-    module ListApp_arggen = Reduction.Rope_min(struct let name = "arggen" end)(Grifola_arggen.ArtLib)
+    module ListApp_name = Reduction.Rope_min(ST_name)      
+    module ListApp_arg = Reduction.Rope_min(ST_arg)
+    module ListApp_arggen = Reduction.Rope_min(ST_arggen)
   end
 
   module Rope_sum = struct
-    module ListApp_name = Reduction.Rope_sum(struct let name = "name" end)(Grifola_name.ArtLib)      
-    module ListApp_arg = Reduction.Rope_sum(struct let name = "arg" end)(Grifola_arg.ArtLib)
-    module ListApp_arggen = Reduction.Rope_sum(struct let name = "arggen" end)(Grifola_arggen.ArtLib)
+    module ListApp_name = Reduction.Rope_sum(ST_name)      
+    module ListApp_arg = Reduction.Rope_sum(ST_arg)
+    module ListApp_arggen = Reduction.Rope_sum(ST_arggen)
   end
 
   module AVL_name = Reduction.AVL_of_rope(struct let name = "grifola_name" end)(Grifola_name.ArtLib)

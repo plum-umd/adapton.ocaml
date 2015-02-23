@@ -747,7 +747,6 @@ module MakeSeq
       | `Name(nm, r) -> rope_nth r n
     in
     rope_nth rope n
-      
 
 
 (*
