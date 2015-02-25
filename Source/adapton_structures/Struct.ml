@@ -126,7 +126,7 @@ module MakeCommonStruct
 
   let art_struct_of_valued_list
     ?n:(name = Name.nondet())                   (* name for this structure *)
-    ?b:(branch_arts = 1)                        (* guarenteed articulation points per branch *)
+    ?b:(branch_arts = 1)                        (* guarenteed articulation points per branch {0,1,2} *)
     ?max:(max_elm = Params.max_unarticulated)   (* maximum number of elements per art *)
     ?min:(min_val = Params.min_value_branched)  (* there is no branching with values under this *)
     (value_of : 'a -> int)                      (* function to access structure value *)
@@ -248,8 +248,8 @@ module MakeSequence
       input
 
 
-  let insert elm pos = ()
+  let insert elm pos = failwith "insert - unimplemented"
 
-  let more_funs = ()
+  let more_funs = failwith "more_funs - unimplemented"
 
 end

@@ -672,7 +672,9 @@ struct
   type elm = Data.t
 
   let of_list x gran =
-    Seq.mut_elms_of_list (Key.nondet())
+    Seq.mut_elms_of_list
+      (* ~c=false *) (* true/default: Cons-Name-Art, false: Name-Cons-Art *)
+      (Key.nondet())
       (List.map (fun x -> (x, Key.nondet())) x)
       fst snd gran
 
@@ -901,6 +903,24 @@ module Mergesorts = struct
     let flush = AL.Eviction.flush
   end
 
+  module Rope_mergesort_improved2
+    ( N : sig val name : string end )
+    ( AL : GrifolaType.ArtLibType ) =
+  struct
+    let name = "Rope_mergesort_improved2_" ^ N.name
+    let int_compare : int -> int -> int = Pervasives.compare
+    module ListRep = SpreadTreeRep ( AL )
+    let compute inp =
+      let nm = Key.fork (Key.nondet ()) in
+      let mergesort = ListRep.Seq.list_to_rope_mergesort_improved2
+                        (fst nm) int_compare in
+      ListRep.St.List.Art.thunk (snd nm) ( fun () ->
+        mergesort (ListRep.St.List.Art.force inp)
+      )
+    let trusted = List.sort int_compare
+    let flush = AL.Eviction.flush
+  end
+
 end
 
 module Median = struct
@@ -914,7 +934,7 @@ module Median = struct
     module ListRep = SpreadTreeRep ( AL )
     let compute inp =
       let nm1, nm2 = Key.fork (Key.nondet()) in
-      let mergesort = ListRep.Seq.list_to_rope_mergesort nm1 int_compare in
+      let mergesort = ListRep.Seq.list_to_rope_mergesort_improved2 nm1 int_compare in
       let rope_of_list = ListRep.Seq.rope_of_list in
       let rope_median = ListRep.Seq.rope_median in
       ListRep.St.List.Art.thunk (nm2) ( fun() ->
@@ -1124,6 +1144,15 @@ module Experiments = struct
     module ListApp_lazy_noninc = Mergesorts.Rope_mergesort_improved(struct let name = "lazynoninc" end)(LazyNonInc.ArtLib)
   end
 
+  module Rope_mergesort_improved2 = struct
+    module ListApp_name = Mergesorts.Rope_mergesort_improved2(struct let name = "name" end)(Grifola_name.ArtLib)
+    module ListApp_arg = Mergesorts.Rope_mergesort_improved2(struct let name = "arg" end)(Grifola_arg.ArtLib)
+    module ListApp_arggen = Mergesorts.Rope_mergesort_improved2(struct let name = "arggen" end)(Grifola_arggen.ArtLib)
+    module ListApp_lazy_recalc = Mergesorts.Rope_mergesort_improved2(struct let name = "lazyrecalc" end)(LazyRecalc.ArtLib)
+    module ListApp_eager_noninc = Mergesorts.Rope_mergesort_improved2(struct let name = "eagernoninc" end)(EagerNonInc.ArtLib)
+    module ListApp_lazy_noninc = Mergesorts.Rope_mergesort_improved2(struct let name = "lazynoninc" end)(LazyNonInc.ArtLib)
+  end
+
   module List_mergesort = struct
     module ListApp_name = Mergesorts.List_mergesort(struct let name = "name" end)(Grifola_name.ArtLib)
     module ListApp_arg = Mergesorts.List_mergesort(struct let name = "arg" end)(Grifola_arg.ArtLib)
@@ -1202,6 +1231,13 @@ let raw_experiments =
   (module Experiments.Rope_mergesort_improved.ListApp_eager_noninc : ListAppType) ;
   (module Experiments.Rope_mergesort_improved.ListApp_lazy_noninc  : ListAppType) ;
   (module Experiments.Rope_mergesort_improved.ListApp_lazy_recalc  : ListAppType) ;
+
+  (* Rope mergesort improved2 *)
+  (module Experiments.Rope_mergesort_improved2.ListApp_name         : ListAppType) ;
+  (module Experiments.Rope_mergesort_improved2.ListApp_arggen       : ListAppType) ;
+  (module Experiments.Rope_mergesort_improved2.ListApp_eager_noninc : ListAppType) ;
+  (module Experiments.Rope_mergesort_improved2.ListApp_lazy_noninc  : ListAppType) ;
+  (module Experiments.Rope_mergesort_improved2.ListApp_lazy_recalc  : ListAppType) ;
 
   (* List mergesort *)
   (module Experiments.List_mergesort.ListApp_name         : ListAppType) ;

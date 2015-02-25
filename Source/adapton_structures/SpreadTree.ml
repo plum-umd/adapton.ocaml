@@ -399,6 +399,7 @@ module MakeSeq
    (* --------------------------- *)
 
   let mut_elms_of_list
+    ?c:(cons_first=true)
     ( name : Name.t )
     ( list : 'a list )
     ( data_of : 'a -> St.Data.t )
@@ -412,7 +413,10 @@ module MakeSeq
       | x :: xs ->
         if ffs (St.Data.hash 0 (data_of x)) >= gran_level then
           let nm1, nm2 = Name.fork (name_of x) in
-          `Cons((data_of x), `Name(nm1, `Art (St.List.Art.cell nm2 (loop xs))))
+          if cons_first then
+            `Cons((data_of x), `Name(nm1, `Art (St.List.Art.cell nm2 (loop xs))))
+          else
+            `Name(nm1, `Cons((data_of x), `Art (St.List.Art.cell nm2 (loop xs))))          
         else
           `Cons((data_of x), (loop xs))
     in St.List.Art.cell name (loop list)
@@ -1125,6 +1129,56 @@ module MakeSeq
       ( compare : St.Data.t -> St.Data.t -> int )
       : St.List.Data.t -> St.List.Data.t =
     let sort = rope_mergesort_improved compare_nm compare in
+    fun list ->
+      let rope = rope_of_list list in
+      sort rope
+
+  (* Not yet improved, actually. *)
+  let rope_mergesort_improved2
+      ( compare_nm : St.Name.t )
+      ( compare : St.Data.t -> St.Data.t -> int )
+      : St.Rope.Data.t -> St.List.Data.t =
+    let fnn = St.Name.pair (St.Name.gensym "rope_mergesort") compare_nm in
+    let merge = list_merge_full compare_nm compare in
+    let mfn = St.List.Art.mk_mfn fnn
+      (module Types.Tuple2(Types.Option(Name))(St.Rope.Data))
+      (fun r (nm,rope) ->
+        let rope_mergesort nm rope = r.LArt.mfn_data (nm,rope) in
+        ( match rope with
+        | `Zero -> `Nil
+        | `One x ->
+           ( match nm with
+             | None -> `Cons(x,`Nil)
+             | Some nm -> `Name(nm, `Cons(x, `Nil))
+           )
+        | `Two(x, y) ->
+          (* send the name to the first `Cons *)
+          let x_sorted = rope_mergesort nm x in
+          let y_sorted = rope_mergesort None y in
+          merge None None x_sorted y_sorted
+
+        | `Art art -> rope_mergesort nm (RArt.force art)
+        | `Name (nnm, rope) ->
+          let nm1,nm2 = Name.fork nnm in
+          match nm with
+          | None ->
+            (* 
+              suspend, but don't create a name-seed to here,
+              they need to be associated with 'Cons
+            *)
+            `Art (r.LArt.mfn_nart nm1 (Some nm2,rope))
+            (* keep both names active *)
+          | Some(nm) ->
+            `Name(nm,`Art (r.LArt.mfn_nart nm1 (Some nm2,rope)))
+        ))
+    in
+    fun rope -> mfn.LArt.mfn_data (None,rope)
+
+  let list_to_rope_mergesort_improved2
+      ( compare_nm : St.Name.t )
+      ( compare : St.Data.t -> St.Data.t -> int )
+      : St.List.Data.t -> St.List.Data.t =
+    let sort = rope_mergesort_improved2 compare_nm compare in
     fun list ->
       let rope = rope_of_list list in
       sort rope
