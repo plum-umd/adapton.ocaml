@@ -1133,7 +1133,7 @@ module MakeSeq
       let rope = rope_of_list list in
       sort rope
 
-  (* Not yet improved, actually. *)
+  (* This one is actually improved *)
   let rope_mergesort_improved2
       ( compare_nm : St.Name.t )
       ( compare : St.Data.t -> St.Data.t -> int )

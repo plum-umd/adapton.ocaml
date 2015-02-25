@@ -15,7 +15,7 @@ for len in 1000 2000 3000 4000 5000 6000 7000 8000 9000 10000; do
   #dem - amount of the list that is demended
   for dem in 10.0 50.0 100.0; do
     #ver - adapton version that is being tested, as well as the test set.
-    for ver in name arggen lazyrecalceagernoninc ; do 
+    for ver in name arggen lazyrecalc eagernoninc; do 
       #gran - 2^n average distance between articulation points
       for gran in 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do
         #samp - sample number, is the random seed that is used to create the initial data to be modified
