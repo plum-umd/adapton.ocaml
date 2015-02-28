@@ -13,7 +13,7 @@ TESTER=../experiments.native
 #len - length of the list, must be a multiple of --num-changes, which has a default of 10
 for len in 1000 2000 3000 4000 5000 6000 7000 8000 9000 10000; do
   #dem - amount of the list that is demended
-  for dem in 10.0 50.0 100.0; do
+  for dem in 100.0; do
     #ver - adapton version that is being tested, as well as the test set.
     for ver in name arggen lazyrecalc eagernoninc; do 
       #gran - 2^n average distance between articulation points

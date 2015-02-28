@@ -936,12 +936,17 @@ module Median = struct
       let nm1, nm2 = Key.fork (Key.nondet()) in
       let mergesort = ListRep.Seq.list_to_rope_mergesort_improved2 nm1 int_compare in
       let rope_of_list = ListRep.Seq.rope_of_list in
-      let rope_median = ListRep.Seq.rope_median in
+      let rope_nth = ListRep.Seq.rope_nth in
+      let list_len = ListRep.Seq.list_length in
+      let force = ListRep.St.List.Art.force in
       ListRep.St.List.Art.thunk (nm2) ( fun() ->
-        let result =
-          rope_median @@ rope_of_list @@
+        let l = force inp in
+        let mid = (list_len l)/2 in
+        let sorted =
+          rope_of_list @@
           mergesort @@ (ListRep.St.List.Art.force inp)
         in
+        let result = rope_nth sorted mid in
         match result with
         | None -> `Nil
         | Some x -> `Cons(x,`Nil)

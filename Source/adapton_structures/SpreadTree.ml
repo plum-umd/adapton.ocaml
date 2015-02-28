@@ -505,6 +505,23 @@ module MakeSeq
     | `Name (_,x) -> list_is_empty x
     )
 
+  let list_length : St.List.Data.t -> int =
+    let module Len = St.ArtLib.MakeArt(Name)(Types.Int) in
+    let mfn = Len.mk_mfn (St.Name.gensym "list_length")
+      (module St.List.Data)
+      (fun r l ->
+        let len l = r.Len.mfn_data l in
+        let memo_len n l = r.Len.mfn_nart n l in
+        match l with
+        | `Nil -> 0
+        | `Cons(_,l) -> 1 + (len l)
+        | `Art(a) -> len (LArt.force a)
+        | `Name(nm, l) -> Len.force (memo_len nm l)
+      )
+    in
+    fun l -> mfn.Len.mfn_data l
+
+
   let list_append =
     let mfn = LArt.mk_mfn (St.Name.gensym "list_append")
       (module Types.Tuple2(St.List.Data)(St.List.Data))
