@@ -798,6 +798,7 @@ module MakeSeq
     fun list -> mfn.LoLArt.mfn_data (None, list)
 
   (* TODO: bring out some internal funs *)
+  (* This function needs optmization, it computes incremental changes much slower than rope_reduce *)
   (* repeatedly applies the contraction function probabilistically until we reach a single value *)
   let list_contract
       (f_nm : St.Name.t)
