@@ -931,6 +931,23 @@ module MakeSeq
     in
     fun tree -> mfn.ADataOption.mfn_data tree
 
+  let name_opt_fork nm =
+    match nm with
+    | None -> None, None
+    | Some nm ->
+       let nm1,nm2 = Name.fork nm in
+       (Some nm1, Some nm2)
+
+  let name_opt_seq nm1 nm2 =
+    match nm1 with
+    | Some nm1 -> Some nm1
+    | None ->
+       ( match nm2 with
+         | None -> None
+         | Some nm2 -> Some nm2
+       )
+
+  (* TODO: simplify this as a special case of rope_reduce_name below *)
   let rec rope_reduce
       ( op_nm : St.Name.t )
       ( op : St.Data.t -> St.Data.t -> St.Data.t )
@@ -961,28 +978,49 @@ module MakeSeq
     in
     fun rope -> mfn.ADataOption.mfn_data rope
 
+  let rec rope_reduce_name
+    ( op_nm : St.Name.t )
+    ( op : St.Data.t -> St.Data.t -> St.Data.t )
+    : St.Rope.Data.t -> St.Data.t option * St.Name.t option =
+    let fnn = St.Name.pair (St.Name.gensym "rope_reduce_name") op_nm in
+    let module M = St.ArtLib.MakeArt(Name)(Types.Tuple2
+      (Types.Option(St.Data))(Types.Option(Name))
+    ) in
+    let mfn = M.mk_mfn fnn
+    (module Types.Tuple2(St.Rope.Data)(Types.Option(Name)))
+    (fun r (rope, nm_opt)->
+      let rope_reduce frag = r.M.mfn_data (frag, nm_opt) in
+      match rope with
+      | `Zero  -> None, nm_opt
+      | `One x -> Some x, nm_opt
+      | `Two(left,right) ->
+        let r1,no1 = rope_reduce left in
+        let r2,no2 = rope_reduce right in
+        (* find a useful name of the three available *)
+        let nm_opt = name_opt_seq nm_opt (name_opt_seq no1 no2) in
+        ( match r1, r2 with
+        | Some l, Some r -> Some (op l r), nm_opt
+        | Some l, None   -> Some l, nm_opt
+        | None,   Some r -> Some r, nm_opt
+        | None,   None   -> None, nm_opt
+        )
+      | `Art art -> rope_reduce (St.Rope.Art.force art)
+      | `Name (nm1, `Name(nm2, rope)) ->
+        let nm = if Name.height nm1 > Name.height nm2 then nm1 else nm2 in
+        rope_reduce (`Name(nm, rope))
+      | `Name (nm, rope) ->
+        let nm1, nm2 = Name.fork nm in
+        M.force (r.M.mfn_nart nm1 (rope, Some(nm2)))
+    )
+    in
+    fun rope -> mfn.M.mfn_data (rope, None)
+
   (* finds the median of a rope in current order, sort first to find true median *)
   let rope_median rope : St.Data.t option =
     let len = rope_length rope in
     if len = 0 then None else
     let mid = len/2 in
     rope_nth rope mid
-
-  let name_opt_fork nm =
-    match nm with
-    | None -> None, None
-    | Some nm ->
-       let nm1,nm2 = Name.fork nm in
-       (Some nm1, Some nm2)
-
-  let name_opt_seq nm1 nm2 =
-    match nm1 with
-    | Some nm1 -> Some nm1
-    | None ->
-       ( match nm2 with
-         | None -> None
-         | Some nm2 -> Some nm2
-       )
 
   let list_merge_full
       (compare_nm : St.Name.t)
