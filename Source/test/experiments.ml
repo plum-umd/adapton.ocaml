@@ -833,6 +833,42 @@ end
 end
  *)
 (* ------------------------------------------------------------------------------- *)
+module Linear = struct
+  module List_filter
+    (N : sig val name : string end)
+    (AL : GrifolaType.ArtLibType) =
+  struct
+    let name = "List_filter_" ^ N.name
+    module ListRep = SpreadTreeRep (AL )
+    let filter_even x = x mod 2 = 0
+    let compute inp =
+      let nm1, nm2 = Key.fork (Key.nondet()) in
+      let filter = ListRep.Seq.list_filter nm1 filter_even in
+      ListRep.St.List.Art.thunk nm2 ( fun () -> 
+        filter (ListRep.St.List.Art.force inp)
+      )
+    let trusted = List.filter filter_even
+    let flush = AL.Eviction.flush
+  end
+
+  module List_map
+    (N : sig val name : string end)
+    (AL : GrifolaType.ArtLibType) =
+  struct
+    let name = "List_map_" ^ N.name
+    module ListRep = SpreadTreeRep (AL )
+    let almost_triple x = x * 2 - 1
+    let compute inp =
+      let nm1, nm2 = Key.fork (Key.nondet()) in
+      let map = ListRep.Seq.list_map nm1 almost_triple in
+      ListRep.St.List.Art.thunk nm2 ( fun () -> 
+        map (ListRep.St.List.Art.force inp)
+      )
+    let trusted = List.map almost_triple
+    let flush = AL.Eviction.flush
+  end
+
+end
 
 module Mergesorts = struct
 
@@ -1128,6 +1164,24 @@ end
 module Experiments = struct
   open Engines
 
+  module List_filter = struct
+    module ListApp_name = Linear.List_filter(struct let name = "name" end)(Grifola_name.ArtLib)
+    module ListApp_arg = Linear.List_filter(struct let name = "arg" end)(Grifola_arg.ArtLib)
+    module ListApp_arggen = Linear.List_filter(struct let name = "arggen" end)(Grifola_arggen.ArtLib)
+    module ListApp_lazy_recalc = Linear.List_filter(struct let name = "lazyrecalc" end)(LazyRecalc.ArtLib)
+    module ListApp_eager_noninc = Linear.List_filter(struct let name = "eagernoninc" end)(EagerNonInc.ArtLib)
+    module ListApp_lazy_noninc = Linear.List_filter(struct let name = "lazynoninc" end)(LazyNonInc.ArtLib)
+  end
+
+  module List_map = struct
+    module ListApp_name = Linear.List_map(struct let name = "name" end)(Grifola_name.ArtLib)
+    module ListApp_arg = Linear.List_map(struct let name = "arg" end)(Grifola_arg.ArtLib)
+    module ListApp_arggen = Linear.List_map(struct let name = "arggen" end)(Grifola_arggen.ArtLib)
+    module ListApp_lazy_recalc = Linear.List_map(struct let name = "lazyrecalc" end)(LazyRecalc.ArtLib)
+    module ListApp_eager_noninc = Linear.List_map(struct let name = "eagernoninc" end)(EagerNonInc.ArtLib)
+    module ListApp_lazy_noninc = Linear.List_map(struct let name = "lazynoninc" end)(LazyNonInc.ArtLib)
+  end
+
   module Rope_mergesort = struct
     module ListApp_name = Mergesorts.Rope_mergesort(struct let name = "name" end)(Grifola_name.ArtLib)
     module ListApp_arg = Mergesorts.Rope_mergesort(struct let name = "arg" end)(Grifola_arg.ArtLib)
@@ -1219,6 +1273,16 @@ let raw_experiments =
   (module Experiments.Rope_iter.ListApp_name           : ListAppType) ;
   (module Experiments.Rope_iter.ListApp_arg            : ListAppType) ;
   (module Experiments.Rope_iter.ListApp_arggen         : ListAppType) ;
+
+  (* List filter *)
+  (module Experiments.List_filter.ListApp_name         : ListAppType) ;
+  (module Experiments.List_filter.ListApp_arggen       : ListAppType) ;
+  (module Experiments.List_filter.ListApp_lazy_recalc  : ListAppType) ;
+
+  (* List map *)
+  (module Experiments.List_map.ListApp_name         : ListAppType) ;
+  (module Experiments.List_map.ListApp_arggen       : ListAppType) ;
+  (module Experiments.List_map.ListApp_lazy_recalc  : ListAppType) ;
 
   (* Rope mergesort *)
   (module Experiments.Rope_mergesort.ListApp_name         : ListAppType) ;
