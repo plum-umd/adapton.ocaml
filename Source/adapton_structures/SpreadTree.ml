@@ -482,6 +482,32 @@ module MakeSeq
       | `Art a -> ith_art (St.List.Art.force a) count
     )
 
+  (*
+  This function returns the final art of a list, which contains exactly `Nil
+  if it's not available, it's created first, mutating the input list directly
+  *)
+  let get_or_create_final_art (list : LArt.t) =
+    let rec find_last art =
+      match next_art (LArt.force art) with
+      | None -> art
+      | Some(a) -> find_last a
+    in
+    let la = find_last list in
+    (* return it if it already contains `Nil *)
+    if LArt.force la = `Nil then la else
+    let rec create_nil_art elm =
+      match elm with
+      | `Nil ->
+        let nm1, nm2 = Name.fork (Name.nondet()) in
+        `Name(nm1, `Art(LArt.cell nm2 `Nil))
+      | `Cons(x,xs) -> `Cons(x, create_nil_art xs)
+      | `Art(a) -> failwith "two last arts!"
+      | `Name(nm, xs) -> `Name(nm, create_nil_art xs)
+    in
+    (* add articulated `Nil to the end and return that art *)
+    LArt.set la (create_nil_art (LArt.force la));
+    find_last la
+
   let rec take list count =
     let dec = function
       | Some count -> Some (count-1)

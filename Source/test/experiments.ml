@@ -127,18 +127,23 @@ let stats_print (handle:out_channel)
 
 module type ListRepType = sig
   type t
+  module St : SpreadTree.SpreadTreeType
   module Data : Primitives.ResultType (* XXX *) with type t = int
   module Memotables : Primitives.MemotablesType
   type elm
 
   val of_list : Data.t list -> int -> t
   val next : t -> t option
+  val last : t -> t
 
   val elm_of_int : int -> elm
   val elm_update : elm -> Data.t -> elm
 
   val delete_elm : t -> elm
   val insert_elm : t -> elm -> unit
+
+  val set_art : t -> St.List.Data.t -> unit
+  val force_art : t -> St.List.Data.t
 
   val string_of_list : t -> string
 
@@ -255,7 +260,7 @@ module Make_experiment ( ListApp : ListAppType ) = struct
     (* let random_input_int ()   = Random.int (Params.n * 32) in *)
     let random_new_elm_int () = (Params.n * 128) + (Random.int (Params.n * 32)) in
 
-    let benchmark_demand name n roundi handle graphout l computation initial_dcg_size =
+    let benchmark_demand name n roundi handle graphout l computation final_art initial_dcg_size =
       let input_art = l in
       let output_art = computation in
 
@@ -507,6 +512,47 @@ module Make_experiment ( ListApp : ListAppType ) = struct
         [("ss-swap1",swap1Stats); ("ss-swap2",swap2Stats)]
       in
 
+      let do_bigswap_interaction pos mid_art demand_count =
+        let msg () =
+          Printf.sprintf "bs-bswap1 %d; demand %d" pos demand_count
+        in
+        let _, bswap1Stats = Stats.measure begin fun () ->
+          let temp = ListApp.ListRep.force_art input_art in
+          ListApp.ListRep.set_art input_art (ListApp.ListRep.force_art mid_art);
+          ListApp.ListRep.set_art mid_art `Nil;
+          ListApp.ListRep.set_art final_art temp;
+          if Params.Flags.print_changes then Printf.fprintf stdout "%s: %s\n%!" name (msg ()) ;
+          ignore ( demand_list computation (Some demand_count) );
+        end in
+        print_inout (msg ());
+        if Params.Flags.check_output then assert_correct_output (msg ()) pos mid_art ;
+        if Params.Flags.print_changes then begin
+          Memotables.print_stats stdout ;
+          Viz.flush_ticks_out graphout ;
+          output_graphstate ~label:(msg ()) graphout ;
+        end ;
+        let msg () =
+          Printf.sprintf "bs-bswap2 %d; demand %d" pos demand_count
+        in
+        let _, bswap2Stats = Stats.measure begin fun () ->
+          let temp = ListApp.ListRep.force_art input_art in
+          ListApp.ListRep.set_art input_art (ListApp.ListRep.force_art final_art);
+          ListApp.ListRep.set_art mid_art temp;
+          ListApp.ListRep.set_art final_art `Nil;
+          if Params.Flags.print_changes then Printf.fprintf stdout "%s: %s\n%!" name (msg ()) ;
+          ignore ( demand_list computation (Some demand_count) ) ;
+        end
+        in
+        print_inout (msg ()) ;
+        if Params.Flags.check_output then assert_correct_output (msg ()) pos mid_art ;
+        if Params.Flags.print_changes then begin
+          Memotables.print_stats stdout ;
+          Viz.flush_ticks_out graphout ;
+          output_graphstate ~label:(msg ()) graphout ;
+        end ;
+        [("bs-bswap1",bswap1Stats); ("bs-bswap2",bswap2Stats)]
+      in
+
       let rec benchmark_demand (demand:float) = if demand <= 0.0 then () else
           let demand_count = int_of_float (( float Params.n) *. (demand /. 100.0)) in
           let demand_count = if demand_count = 0 then 1 else demand_count in
@@ -517,11 +563,12 @@ module Make_experiment ( ListApp : ListAppType ) = struct
             let stats_list3 = if List.mem "di" Params.interactions then do_delete_insert_interaction   change_pos_idx change_pos_inp demand_count else [] in
             let stats_list4 = if List.mem "id" Params.interactions then do_insert_delete_interaction   change_pos_idx change_pos_inp demand_count else [] in
             let stats_list5 = if List.mem "ss" Params.interactions then do_swap_swap_interaction       change_pos_idx change_pos_inp demand_count else [] in
+            let stats_list6 = if List.mem "bs" Params.interactions then do_bigswap_interaction         change_pos_idx change_pos_inp demand_count else [] in
             List.iter (fun (interaction_desc,stats) ->
               stats_print handle Params.sample_num name interaction_desc
                 Params.n initial_dcg_size
                 change_pos_idx demand_count demand Params.granularity stats)
-              ( stats_list1 @ stats_list2 @ stats_list3 @ stats_list4 @ stats_list5 ) ;
+              ( stats_list1 @ stats_list2 @ stats_list3 @ stats_list4 @ stats_list5 @ stats_list6) ;
           done;
           (* HACK -- print the final 'live works' right away, with the value in the heap position *)
           if true then (
@@ -576,6 +623,7 @@ module Make_experiment ( ListApp : ListAppType ) = struct
       Random.init (Params.sample_num + i); (* Fix seed. *)
       let raw_input = gen_list Params.n [] in
       let input = ListApp.ListRep.of_list raw_input Params.granularity in
+      let final_art = ListApp.ListRep.last input in
       if Params.Flags.print_inout then begin
         Printf.printf "%d: Initial input:\t%s\n\n" i (ListApp.ListRep.string_of_list input);
       end;
@@ -620,10 +668,10 @@ module Make_experiment ( ListApp : ListAppType ) = struct
         Printf.printf "--------------------\n%s: Interacting..\n%!" line_prefix ;
         let interact_begin_time = Unix.gettimeofday () in
         if true then
-          benchmark_demand name Params.n i handle graphout input output total_size
+          benchmark_demand name Params.n i handle graphout input output final_art total_size
         else
           (try
-             benchmark_demand name Params.n i handle graphout input output total_size
+             benchmark_demand name Params.n i handle graphout input output final_art total_size
            with
            | exn -> (
              Viz.flush_ticks_out graphout ;
@@ -686,6 +734,13 @@ struct
     let h,_ = Seq.delete_elm list in
     h
 
+  let last list =
+    Seq.get_or_create_final_art list
+
+  (* needed to break the higher level abstraction to swap whole chunks of a list *)
+  let set_art art data = Seq.LArt.set art data
+  let force_art art = Seq.LArt.force art
+
   let insert_elm list h =
     Seq.insert_elm list h None
 
@@ -701,6 +756,7 @@ module RepOfSpreadTree
   (St : SpreadTree.SpreadTreeType)
   (* : ListRepType *) =
 struct
+  module St = St
   module ArtLib = St.ArtLib
   module Name = St.Name
   module Seq = SpreadTree.MakeSeq(St)
@@ -719,6 +775,7 @@ struct
       fst snd
 
   let next x = KvMap.KvSeq.next_art (KvMap.KvSt.List.Art.force x)
+  let last x = failwith "unimplemented"
 
   let take x count = KvMap.KvSeq.take (KvMap.KvSt.List.Art.force x) count
 
@@ -728,6 +785,9 @@ struct
 
   let insert_elm list h =
     KvMap.KvSeq.insert_elm list h None
+
+  let force_art art = failwith "unimplemented"
+  let set_art art data = failwith "unimplemented"
 
   let string_of_list x = "not implemented"
 
@@ -1346,7 +1406,7 @@ module Default_perf_params : ParamsType = struct
   let num_lists = 1    (* Number of distinct input lists. *)
   let fullinit = false
   let granularity = 0
-  let interactions = [ "di"; "id"; "ss"; "rr"; "r"]
+  let interactions = [ "di"; "id"; "ss"; "rr"; "r"; "bs"]
   let experiment = ""
   let outfile = default_outfile
   module Flags = struct
@@ -1462,6 +1522,7 @@ module Commandline_params : ParamsType = struct
     ("--r",   Arg.Unit  (fun () -> interactions_ := "r"  :: !interactions_), " add interaction: replace");
     ("--rr",  Arg.Unit  (fun () -> interactions_ := "rr" :: !interactions_), " add interaction: replace, replace");
     ("--ss",  Arg.Unit  (fun () -> interactions_ := "ss" :: !interactions_), " add interaction: swap, swap");
+    ("--bs",  Arg.Unit  (fun () -> interactions_ := "bs" :: !interactions_), " add interaction: swap entire list");
 
     ("--perf-flags",  Arg.Unit  (fun () -> flags_ := (module Perf_flags)), " performance flags");
     ("--test-flags",  Arg.Unit  (fun () -> flags_ := (module Test_flags)), " testing flags");
