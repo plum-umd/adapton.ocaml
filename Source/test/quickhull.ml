@@ -111,14 +111,11 @@ module StMake (IntsSt : SpreadTree.SpreadTreeType
     )
     (fun r ((p1,p2) as line, points, hull_accum) ->
       let quickhull l p h = r.QH.mfn_data (l,p,h) in
-      let filter = Seq.rope_filter in
+      let filter = Seq.rope_filter (Name.gensym "side_of_line") (line_side_test (p1, p2))in
       match points with
       | `Zero -> hull_accum
       | _ ->
-        let points_above_line = filter 
-          (line_side_test (p1, p2))
-          (PList.force points)
-        in
+        let points_above_line = filter (PList.force points) in
         let pivot_point, p_nm = PointName.force (furthest_point_from_line line points) in
         let nm1, nm2 = Name.fork p_nm in
         let l_line = (p1, pivot_point) in

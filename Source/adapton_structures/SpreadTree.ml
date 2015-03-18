@@ -792,6 +792,28 @@ module MakeSeq
     in
     fun rope -> mfn.RArt.mfn_data rope
 
+  (* TODO: optimize, compact zeros *)
+  let rope_filter
+    (op_nm : Name.t)
+    (op : St.Data.t -> bool)
+    : St.Rope.Data.t -> St.Rope.Data.t = 
+    let fnn = Name.pair (Name.gensym "rope_filter") op_nm in
+    let mfn = RArt.mk_mfn fnn
+      (module St.Rope.Data)
+      (fun r rope ->
+        let rope_filter = r.RArt.mfn_data in
+        match rope with
+        | `Zero -> `Zero
+        | `One(x) -> if (op x) then `One(x) else `Zero
+        | `Two(x,y) -> `Two(rope_filter x, rope_filter y)
+        | `Art(a) -> rope_filter (RArt.force a)
+        | `Name(nm, rp) ->
+          let nm1, nm2 = Name.fork nm in
+          `Name(nm1, `Art(r.RArt.mfn_nart nm2 rp))
+      )
+    in
+    fun rope -> mfn.RArt.mfn_data rope
+
   (* packs each element as a single item list inside a list of lists *)
   let list_to_singletons
       : St.List.Data.t -> SToL.List.Data.t =
