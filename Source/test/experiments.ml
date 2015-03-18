@@ -517,10 +517,12 @@ module Make_experiment ( ListApp : ListAppType ) = struct
           Printf.sprintf "bs-bswap1 %d; demand %d" pos demand_count
         in
         let _, bswap1Stats = Stats.measure begin fun () ->
-          let temp = ListApp.ListRep.force_art input_art in
-          ListApp.ListRep.set_art input_art (ListApp.ListRep.force_art mid_art);
-          ListApp.ListRep.set_art mid_art `Nil;
-          ListApp.ListRep.set_art final_art temp;
+          if not (input_art == mid_art) then (
+            let temp = ListApp.ListRep.force_art input_art in
+            ListApp.ListRep.set_art input_art (ListApp.ListRep.force_art mid_art);
+            ListApp.ListRep.set_art mid_art `Nil;
+            ListApp.ListRep.set_art final_art temp;
+          );
           if Params.Flags.print_changes then Printf.fprintf stdout "%s: %s\n%!" name (msg ()) ;
           ignore ( demand_list computation (Some demand_count) );
         end in
@@ -535,10 +537,12 @@ module Make_experiment ( ListApp : ListAppType ) = struct
           Printf.sprintf "bs-bswap2 %d; demand %d" pos demand_count
         in
         let _, bswap2Stats = Stats.measure begin fun () ->
-          let temp = ListApp.ListRep.force_art input_art in
-          ListApp.ListRep.set_art input_art (ListApp.ListRep.force_art final_art);
-          ListApp.ListRep.set_art mid_art temp;
-          ListApp.ListRep.set_art final_art `Nil;
+          if not (input_art == mid_art) then (
+            let temp = ListApp.ListRep.force_art input_art in
+            ListApp.ListRep.set_art input_art (ListApp.ListRep.force_art final_art);
+            ListApp.ListRep.set_art mid_art temp;
+            ListApp.ListRep.set_art final_art `Nil;
+          );
           if Params.Flags.print_changes then Printf.fprintf stdout "%s: %s\n%!" name (msg ()) ;
           ignore ( demand_list computation (Some demand_count) ) ;
         end
