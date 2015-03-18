@@ -1185,85 +1185,6 @@ module MakeSeq
       ( compare : St.Data.t -> St.Data.t -> int )
       : St.Rope.Data.t -> St.List.Data.t =
     let fnn = St.Name.pair (St.Name.gensym "rope_mergesort") compare_nm in
-    let merge = list_merge compare_nm compare in
-    let mfn = St.List.Art.mk_mfn fnn
-      (module St.Rope.Data)
-      (fun r rope ->
-        let rope_mergesort = r.LArt.mfn_data in
-        ( match rope with
-        | `Zero -> `Nil
-        | `One x -> `Cons(x, `Nil)
-        | `Two(x, y) ->
-          let x_sorted = rope_mergesort x in
-          let y_sorted = rope_mergesort y in
-          merge x_sorted y_sorted
-
-        | `Art art -> rope_mergesort (RArt.force art)
-        | `Name (nm, rope) ->
-          let nm1,nm2 = Name.fork nm in
-          `Name(nm1, `Art (r.LArt.mfn_nart nm2 rope))
-        ))
-    in
-    fun rope -> mfn.LArt.mfn_data rope
-
-  let list_to_rope_mergesort
-      ( compare_nm : St.Name.t )
-      ( compare : St.Data.t -> St.Data.t -> int )
-      : St.List.Data.t -> St.List.Data.t =
-    let sort = rope_mergesort compare_nm compare in
-    fun list ->
-      let rope = rope_of_list list in
-      sort rope
-
-  (* Not yet improved, actually. *)
-  let rope_mergesort_improved
-      ( compare_nm : St.Name.t )
-      ( compare : St.Data.t -> St.Data.t -> int )
-      : St.Rope.Data.t -> St.List.Data.t =
-    let fnn = St.Name.pair (St.Name.gensym "rope_mergesort") compare_nm in
-    let merge = list_merge_full compare_nm compare in
-    let mfn = St.List.Art.mk_mfn fnn
-      (module Types.Tuple2(Types.Option(Name))(St.Rope.Data))
-      (fun r (nm,rope) ->
-        let rope_mergesort nm rope = r.LArt.mfn_data (nm,rope) in
-        ( match rope with
-        | `Zero -> `Nil
-        | `One x ->
-           ( match nm with
-             | None -> `Cons(x,`Nil)
-             | Some nm -> `Name(nm, `Cons(x, `Nil))
-           )
-        | `Two(x, y) ->
-           let nm1,nm  = name_opt_fork nm in
-           let nm2,nm3 = name_opt_fork nm in
-           let x_sorted = rope_mergesort nm1 x in
-           let y_sorted = rope_mergesort None y in
-           merge nm2 nm3 x_sorted y_sorted
-
-        | `Art art -> rope_mergesort nm (RArt.force art)
-        | `Name (nm, rope) ->
-           let nm1,nm = Name.fork nm in
-           let nm2,nm3 = Name.fork nm in
-           `Name(nm1,`Art (r.LArt.mfn_nart nm2 (Some nm3,rope)))
-        ))
-    in
-    fun rope -> mfn.LArt.mfn_data (None,rope)
-
-  let list_to_rope_mergesort_improved
-      ( compare_nm : St.Name.t )
-      ( compare : St.Data.t -> St.Data.t -> int )
-      : St.List.Data.t -> St.List.Data.t =
-    let sort = rope_mergesort_improved compare_nm compare in
-    fun list ->
-      let rope = rope_of_list list in
-      sort rope
-
-  (* This one is actually improved *)
-  let rope_mergesort_improved2
-      ( compare_nm : St.Name.t )
-      ( compare : St.Data.t -> St.Data.t -> int )
-      : St.Rope.Data.t -> St.List.Data.t =
-    let fnn = St.Name.pair (St.Name.gensym "rope_mergesort") compare_nm in
     let merge = list_merge_full compare_nm compare in
     let mfn = St.List.Art.mk_mfn fnn
       (module Types.Tuple2(Types.Option(Name))(St.Rope.Data))
@@ -1299,11 +1220,11 @@ module MakeSeq
     in
     fun rope -> mfn.LArt.mfn_data (None,rope)
 
-  let list_to_rope_mergesort_improved2
+  let list_to_rope_mergesort
       ( compare_nm : St.Name.t )
       ( compare : St.Data.t -> St.Data.t -> int )
       : St.List.Data.t -> St.List.Data.t =
-    let sort = rope_mergesort_improved2 compare_nm compare in
+    let sort = rope_mergesort compare_nm compare in
     fun list ->
       let rope = rope_of_list list in
       sort rope
