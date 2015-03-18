@@ -1714,3 +1714,10 @@ let old_params = [
   ) params
  *)
 module Default = Make( Default_params )
+module Structural = Make(
+    struct
+      include Default_params
+      let disable_names = true
+      let generative_ids = true
+    end )
+module FromScratch = Alternatives.LazyRecalc
