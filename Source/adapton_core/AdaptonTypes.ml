@@ -9,14 +9,25 @@ module Int = struct
     let string = string_of_int
     let sanitize x = x
 end
-             
-module IntList = struct
-    type t = int list
-    let hash = Hashtbl.seeded_hash
-    let equal = (=)
-    let string = List.fold_left (fun s i -> Printf.sprintf "%d::%s" i s) ""
-    let sanitize x = x
+
+module List (A : DatType) = struct
+    type t = A.t list
+    let rec hash seed = function
+        | a::l -> A.hash (hash seed l) a
+        | nil  -> Hashtbl.seeded_hash seed nil
+    let equal x x' =
+      try (x == x') || (List.for_all2 A.equal x x')
+      with Invalid_argument _ -> false
+    let sanitize = List.map A.sanitize
+    let string l =
+      if List.length l > 0 then
+        let elts = List.fold_right (fun elt a -> (A.string elt)^", "^a) l "" in
+        "["^(String.sub elts 0 ((String.length elts)-2))^"]"
+      else "[]"
+    let compare : t -> t -> int = compare
 end
+
+module IntList = List(Int)
 
 module Char = struct
     type t = char
@@ -122,6 +133,34 @@ module Tuple5 (A : DatType) (B : DatType) (C : DatType) (D : DatType) (E: DatTyp
     let string (a,b,c,d,e) = "("^(A.string a)^","^(B.string b)^","^(C.string c)^","^(D.string d)^","^(E.string e)^")"
 end
 
+module Tuple6 (A : DatType) (B : DatType) (C : DatType) (D : DatType) (E: DatType) (F : DatType) = struct
+    type t = A.t * B.t * C.t * D.t * E.t * F.t
+    let hash seed ( a, b, c, d, e, f ) = F.hash (E.hash (D.hash (C.hash (B.hash (A.hash seed a) b) c) d) e) f
+    let equal ( a, b, c, d, e, f as x ) ( a', b', c', d', e', f' as x' ) = x == x' || A.equal a a' && B.equal b b' && C.equal c c' && D.equal d d' && E.equal e e' && F.equal f f'
+    let sanitize (a, b, c, d, e, f) = (A.sanitize a, B.sanitize b, C.sanitize c, D.sanitize d, E.sanitize e, F.sanitize f)
+    let string (a,b,c,d,e,f) = "("^(A.string a)^","^(B.string b)^","^(C.string c)^","^(D.string d)^","^(E.string e)^","^(F.string f)^")"
+end
+
+module Tuple7 (A : DatType) (B : DatType) (C : DatType) (D : DatType) (E: DatType) (F : DatType) (G: DatType) = struct
+    type t = A.t * B.t * C.t * D.t * E.t * F.t * G.t
+    let hash seed ( a, b, c, d, e, f, g ) = G.hash (F.hash (E.hash (D.hash (C.hash (B.hash (A.hash seed a) b) c) d) e) f) g
+    let equal ( a, b, c, d, e, f, g as x ) ( a', b', c', d', e', f', g' as x' ) = x == x' || A.equal a a' && B.equal b b' && C.equal c c' && D.equal d d' && E.equal e e' && F.equal f f' && G.equal g g'
+    let sanitize (a, b, c, d, e, f, g) = (A.sanitize a, B.sanitize b, C.sanitize c, D.sanitize d, E.sanitize e, F.sanitize f, G.sanitize g)
+    let string (a,b,c,d,e,f,g) = "("^(A.string a)^","^(B.string b)^","^(C.string c)^","^(D.string d)^","^(E.string e)^","^(F.string f)^","^(G.string g)^")"
+end
+
+module Tuple8 (A : DatType) (B : DatType) (C : DatType) (D : DatType) (E: DatType) (F : DatType) (G: DatType) (H: DatType) = struct
+    type t = A.t * B.t * C.t * D.t * E.t * F.t * G.t * H.t
+    let hash seed ( a, b, c, d, e, f, g, h ) =
+      H.hash (G.hash (F.hash (E.hash (D.hash (C.hash (B.hash (A.hash seed a) b) c) d) e) f) g) h
+    let equal ( a, b, c, d, e, f, g, h as x ) ( a', b', c', d', e', f', g', h' as x' ) =
+      x == x' || A.equal a a' && B.equal b b' && C.equal c c' && D.equal d d' && E.equal e e' && F.equal f f' && G.equal g g' && H.equal h h'
+    let sanitize (a, b, c, d, e, f, g, h) =
+      (A.sanitize a, B.sanitize b, C.sanitize c, D.sanitize d, E.sanitize e, F.sanitize f, G.sanitize g, H.sanitize h)
+    let string (a,b,c,d,e,f,g,h) =
+      "("^(A.string a)^","^(B.string b)^","^(C.string c)^","^(D.string d)^","^(E.string e)^","^(F.string f)^","^(G.string g)^","^(H.string h)^")"
+end
+
 module Unit = struct
     type t = unit
     let hash seed () = seed
@@ -167,3 +206,21 @@ let makeFunction (type a) (type b) () : (module DatType with type t = a -> b) =
         let string x = "Types.ml: makeFunction: no string"
         let sanitize x = x (* Lookout! XXX: May not actually sanitize!! *)
     end)
+
+module Sum2 (A : DatType) (B : DatType) = struct
+  type t = InL of A.t | InR of B.t
+  let rec equal lhs rhs =
+    match (lhs, rhs) with
+    | (InL lhs0,InL rhs0) -> A.equal lhs0 rhs0
+    | (InR lhs0,InR rhs0) -> B.equal lhs0 rhs0
+    | _ -> false
+  let hash seed = function
+    | InL a -> A.hash seed a
+    | InR b -> B.hash seed b
+  let sanitize = function
+    | InL a -> InL (A.sanitize a)
+    | InR b -> InR (B.sanitize b)
+  let string = function
+    | InL a -> Printf.sprintf "InL (%s)" (A.string a)
+    | InR b -> Printf.sprintf "InR (%s)" (B.string b)
+end
