@@ -69,14 +69,14 @@ module StMake (IntsSt : SpreadTree.SpreadTreeType
   (* type points = point list *)
   module PointsSt = SpreadTree.MakeSpreadTree
     (ArtLib)(Name)(Types.Tuple2(Types.Float)(Types.Float))
-  module PList = PointsSt.Rope.Art
-  module AccumList = PointsSt.List.Art
+  module PList = PointsSt.Rope
+  module AccumList = PointsSt.List
   module Seq = SpreadTree.MakeSeq(PointsSt)
   module Point = PointsSt.Data
-  (* to provide a point with an associated name *)
-  module PointName = ArtLib.MakeArt(Name)(Types.Tuple2(Point)(Name))
 
-  let furthest_point_from_line : line -> PList.t -> PointName.t =
+  let make_point_rope : IntsSt.List.Data.t -> PList.Data.t = failwith "unimplemented"
+
+  let furthest_point_from_line : line -> PList.Data.t -> Point.t * Name.t =
     (* Used in the "pivot step".  the furthest point defines the two
        lines that we use for the "filter step".
        Note: To make this into an efficient IC algorithm, need to use a
@@ -88,45 +88,49 @@ module StMake (IntsSt : SpreadTree.SpreadTreeType
         let d2 = line_point_distance (l1, l2) pt2 in
         if d1 > d2 then pt1 else pt2
       in
-      let nm1, nm2 = Name.fork (Name.gensym "fpfl") in
-      let reduce = Seq.rope_reduce_name nm1 max_point in
-      PointName.thunk(nm2)(fun () -> 
-        match reduce (PList.force points) with
-        | None, _ -> failwith "no points"
-        | _, None -> failwith "no name"
-        | Some(x), Some(nm) -> x, nm
-      )
+      let reduce = Seq.rope_reduce_name (Name.gensym "fpfl") max_point in
+      match reduce points with
+      | None, _ -> failwith "no points"
+      | _, None -> failwith "no name"
+      | Some(x), Some(nm) -> x, nm
 
 
-  let quickhull_rec : line -> PList.t -> AccumList.t -> AccumList.t =
+  let quickhull_rec : line -> PList.Data.t -> AccumList.Data.t -> AccumList.Data.t =
     (* Adapton: Use a memo table here.  Our accumulator, hull_accum, is
        a nominal list.  We need to use names because otherwise, the
        accumulator will be unlikely to match after a small change. *)
-    let module QH = ArtLib.MakeArt(Name)(AccumList) in
-    let mfn = QH.mk_mfn (Name.gensym "quick_hull")
-    (module Types.Tuple3
-      (Types.Tuple2(PointsSt.Data)(PointsSt.Data))
-      (PointsSt.Rope.Data)
-      (PointsSt.List.Data)
-    )
-    (fun r ((p1,p2) as line, points, hull_accum) ->
-      let quickhull l p h = r.QH.mfn_data (l,p,h) in
-      let filter = Seq.rope_filter (Name.gensym "side_of_line") (line_side_test (p1, p2))in
-      match points with
-      | `Zero -> hull_accum
-      | _ ->
-        let points_above_line = filter (PList.force points) in
-        let pivot_point, p_nm = PointName.force (furthest_point_from_line line points) in
-        let nm1, nm2 = Name.fork p_nm in
-        let l_line = (p1, pivot_point) in
-        let r_line = (pivot_point, p2) in
-        let hull_accum = `Cons(pivot_point,
-          `Name(nm1, `Art(QH.mfn_nart nm2 (
-            quickhull_rec r_line points_above_line hull_accum)))
-        ) in
-        quickhull_rec l_line points_above_line hull_accum
-    ) in
-    fun l p h -> mfn.QH.mfn_data (l,p,h)
+    let module AA = AccumList.Art in
+    let mfn = AA.mk_mfn (Name.gensym "quick_hull")
+      (module Types.Tuple3
+        (Types.Tuple2(Point)(Point))
+        (PList.Data)
+        (AccumList.Data)
+      )
+      (fun r ((p1,p2) as line, points, hull_accum) ->
+        let quickhull l p h = r.AA.mfn_data (l,p,h) in
+        let filter = Seq.rope_filter (Name.gensym "side_of_line") (line_side_test line)in
+        match points with
+        | `Zero -> hull_accum
+        | `Art(a) -> quickhull line (PList.Art.force a) hull_accum
+        | `Name(_, ps) -> quickhull line ps hull_accum
+        | _ ->
+          let points_above_line = filter points in
+          let pivot_point, p_nm = furthest_point_from_line line points in
+          let nm1, nms = Name.fork p_nm in
+          let nm2, nms = Name.fork nms in
+          let nm3, nm4 = Name.fork nms in
+          let l_line = (p1, pivot_point) in
+          let r_line = (pivot_point, p2) in
+          (* two lazy recursive steps *)
+          let hull_accum = `Cons(pivot_point,
+            `Name(nm1, `Art(r.AA.mfn_nart nm2 (r_line, points_above_line, hull_accum)))
+          ) in
+          let hull_accum = `Cons(pivot_point,
+            `Name(nm3, `Art(r.AA.mfn_nart nm4 (l_line, points_above_line, hull_accum)))
+          ) in
+          hull_accum
+      ) in
+    fun l p h -> mfn.AA.mfn_data (l,p,h)
 
   (* 
     for this fun, we need to:
