@@ -74,7 +74,7 @@
     defined and used separately from the usual cases of the structure,
     which are defined in the usual (eager) fashion.
 *)
-open Adapton_core_logging
+open Adapton_core
 open Primitives
 open GrifolaType
 module Types = AdaptonTypes
@@ -968,7 +968,7 @@ module MakeSeq
       )
     in
     fun list -> mfn.LArt.mfn_data list
-    
+
   let list_map 
     (op_nm : Name.t)
     (op : St.Data.t -> St.Data.t)
@@ -988,7 +988,39 @@ module MakeSeq
       )
     in
     fun list -> mfn.LArt.mfn_data list
-    
+   
+  let list_map_paired
+    (op_nm : Name.t)
+    (op : St.Data.t -> St.Data.t -> St.Data.t)
+    : St.List.Data.t -> St.List.Data.t =
+    let fnn = Name.pair (Name.gensym "list_map_paired") op_nm in
+    let mfn = LArt.mk_mfn fnn
+      (module St.List.Data)
+      (fun r list ->
+        let map2 = r.LArt.mfn_data in
+        match list with
+        | `Nil -> `Nil
+        (* ignore last value if unpaired *)
+        | `Cons(_, `Nil) -> `Nil
+        | `Cons(x, `Cons(y, ys)) -> `Cons(op x y, map2 ys)
+        | `Cons(x, `Art(a)) -> map2 (`Cons(x, LArt.force a))
+        (* move the name to the outside, to catch in a later case *)
+        | `Cons(x, `Name(nm,xs)) -> map2 (`Name(nm, `Cons(x,xs)))
+        | `Art(a) -> map2 (LArt.force a)
+        (* deal with double names from both data *)
+        | `Name(nm, `Cons(x, `Art(a))) -> map2 (`Name(nm, `Cons(x, LArt.force a)))
+        | `Name(nm1, `Cons(x, `Name(nm2, xs))) ->
+          (* should we pair ane fork these names for tracking purposes? *)
+          (* let nm1, nm2 = Name.fork @@ Name.pair nm1 nm2 in *)
+          `Name(nm1, `Art(r.LArt.mfn_nart nm2 (`Cons(x,xs))))
+        | `Name(nm, `Art(a)) -> map2 (`Name(nm, LArt.force a))
+        (* after all the double name cases are delt with, handle the default *)
+        | `Name(nm, xs) -> 
+          let nm1, nm2 = Name.fork nm in
+          `Name(nm1, `Art(r.LArt.mfn_nart nm2 xs))
+     )
+    in
+    fun list -> mfn.LArt.mfn_data list
 
   let rec tree_reduce
       ( op_nm : St.Name.t )

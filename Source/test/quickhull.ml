@@ -59,7 +59,7 @@ let line_point_distance : line -> point -> float =
       if cross <= 0.0 then false else true
 
 module StMake (IntsSt : SpreadTree.SpreadTreeType 
-  (* with type Data.t = Types.Int) *)
+  with type Data.t = Types.Int.t
 )
 = struct
 
@@ -74,7 +74,63 @@ module StMake (IntsSt : SpreadTree.SpreadTreeType
   module Seq = SpreadTree.MakeSeq(PointsSt)
   module Point = PointsSt.Data
 
-  let make_point_rope : IntsSt.List.Data.t -> PList.Data.t = failwith "unimplemented"
+  (* modified from Spreadtree list_map_paired to convert between data types *)
+  let points_of_ints
+    : IntsSt.List.Data.t -> PointsSt.List.Data.t =
+    let module LArt = IntsSt.List.Art in
+    let module PArt = PointsSt.List.Art in
+    let op a b = (float_of_int a, float_of_int b) in
+    let mfn = PArt.mk_mfn (Name.gensym "points_of_ints")
+      (module IntsSt.List.Data)
+      (fun r list ->
+        let map2 = r.PArt.mfn_data in
+        match list with
+        | `Nil -> `Nil
+        | `Cons(_, `Nil) -> `Nil
+        | `Cons(x, `Cons(y, ys)) -> `Cons(op x y, map2 ys)
+        | `Cons(x, `Art(a)) -> map2 (`Cons(x, LArt.force a))
+        | `Cons(x, `Name(nm,xs)) -> map2 (`Name(nm, `Cons(x,xs)))
+        | `Art(a) -> map2 (LArt.force a)
+        | `Name(nm, `Cons(x, `Art(a))) -> map2 (`Name(nm, `Cons(x, LArt.force a)))
+        | `Name(nm1, `Cons(x, `Name(nm2, xs))) ->
+          `Name(nm1, `Art(r.PArt.mfn_nart nm2 (`Cons(x,xs))))
+        | `Name(nm, `Art(a)) -> map2 (`Name(nm, LArt.force a))
+        | `Name(nm, xs) -> 
+          let nm1, nm2 = Name.fork nm in
+          `Name(nm1, `Art(r.PArt.mfn_nart nm2 xs))
+     )
+    in
+    fun list -> mfn.PArt.mfn_data list
+
+  (* modified from SpreadTree list_map to convert between data types *)
+  let ints_of_points
+    : PointsSt.List.Data.t -> IntsSt.List.Data.t = 
+    let module LArt = IntsSt.List.Art in
+    let module PArt = PointsSt.List.Art in
+    let mfn = LArt.mk_mfn (Name.gensym "ints_of_points")
+      (module PointsSt.List.Data)
+      (fun r list -> 
+        let list_map = r.LArt.mfn_data in
+        match list with
+        | `Nil -> `Nil
+        | `Cons((x,y), xs) -> `Cons(int_of_float x, `Cons(int_of_float y, list_map xs))
+        | `Art(a) -> list_map (PArt.force a)
+        | `Name(nm, xs) -> 
+          let nm1, nm2 = Name.fork nm in
+          `Name(nm1, `Art(r.LArt.mfn_nart nm2 xs))
+      )
+    in
+    fun list -> mfn.LArt.mfn_data list
+
+  let points_of_int_list : IntsSt.List.Data.t -> PList.Data.t =
+  fun inp ->
+    let pointslist = points_of_ints inp in
+    Seq.rope_of_list pointslist
+
+  let int_list_of_points : PList.Data.t -> IntsSt.List.Data.t =
+  fun inp ->
+    let pointslist = Seq.list_of_rope inp `Nil in
+    ints_of_points pointslist
 
   let furthest_point_from_line : line -> PList.Data.t -> Point.t * Name.t =
     (* Used in the "pivot step".  the furthest point defines the two

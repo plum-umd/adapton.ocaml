@@ -932,6 +932,30 @@ module Linear = struct
     let flush = AL.Eviction.flush
   end
 
+  module List_map_paired
+    (N : sig val name : string end)
+    (AL : GrifolaType.ArtLibType) =
+  struct
+    let name = "List_map_paired_" ^ N.name
+    module ListRep = SpreadTreeRep (AL )
+    let compute inp =
+      let nm1, nm2 = Key.fork (Key.nondet()) in
+      let map = ListRep.Seq.list_map_paired nm1 (+) in
+      ListRep.St.List.Art.thunk nm2 ( fun () -> 
+        map (ListRep.St.List.Art.force inp)
+      )
+    let trusted inp =
+      let choose = ref false in
+      let every_other _ =
+        choose:= not !choose;
+        !choose
+      in
+      let l1,l2 = List.partition every_other inp in
+      (* TODO: update this to deal with different length of lists (insert/delete) *)
+      List.map2 (+) l1 l2
+    let flush = AL.Eviction.flush
+  end
+
 end
 
 module Mergesorts = struct
@@ -1211,6 +1235,15 @@ module Experiments = struct
     module ListApp_lazy_noninc = Linear.List_map(struct let name = "lazynoninc" end)(LazyNonInc.ArtLib)
   end
 
+  module List_map_paired = struct
+    module ListApp_name = Linear.List_map_paired(struct let name = "name" end)(Grifola_name.ArtLib)
+    module ListApp_arg = Linear.List_map_paired(struct let name = "arg" end)(Grifola_arg.ArtLib)
+    module ListApp_arggen = Linear.List_map_paired(struct let name = "arggen" end)(Grifola_arggen.ArtLib)
+    module ListApp_lazy_recalc = Linear.List_map_paired(struct let name = "lazyrecalc" end)(LazyRecalc.ArtLib)
+    module ListApp_eager_noninc = Linear.List_map_paired(struct let name = "eagernoninc" end)(EagerNonInc.ArtLib)
+    module ListApp_lazy_noninc = Linear.List_map_paired(struct let name = "lazynoninc" end)(LazyNonInc.ArtLib)
+  end
+
   module Rope_mergesort = struct
     module ListApp_name = Mergesorts.Rope_mergesort(struct let name = "name" end)(Grifola_name.ArtLib)
     module ListApp_arg = Mergesorts.Rope_mergesort(struct let name = "arg" end)(Grifola_arg.ArtLib)
@@ -1294,6 +1327,13 @@ let raw_experiments =
   (module Experiments.List_map.ListApp_name         : ListAppType) ;
   (module Experiments.List_map.ListApp_arggen       : ListAppType) ;
   (module Experiments.List_map.ListApp_lazy_recalc  : ListAppType) ;
+
+  (* List map paired *)
+    (* checking this will fail when list lengths are
+    not even numbers, like after insert or delete *)
+  (module Experiments.List_map_paired.ListApp_name         : ListAppType) ;
+  (module Experiments.List_map_paired.ListApp_arggen       : ListAppType) ;
+  (module Experiments.List_map_paired.ListApp_lazy_recalc  : ListAppType) ;
 
   (* Rope mergesort *)
   (module Experiments.Rope_mergesort.ListApp_name         : ListAppType) ;
