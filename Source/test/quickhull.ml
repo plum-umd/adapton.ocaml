@@ -19,6 +19,13 @@ module Types = AdaptonTypes
 type point  = float * float
 type line   = point * point
 
+(* breaks an int in to a pair of floats *)
+(* takes lower 8 bits and next 8 bits as ints, converts to floats *)
+let point_of_int i =
+  let x = float_of_int (i land 255) in
+  let y = float_of_int ((i lsr 8) land 255) in
+  (x, y)
+
 let point_sub : point -> point -> point =
   fun p q -> (fst p -. fst q, snd p -. snd q)
                  
@@ -35,6 +42,15 @@ let magnitude : point -> float =
 let cross_product : point -> point -> float =
   (* (p->x * q->y) - (p->y * q->x) *)
   fun p q -> ((fst p) *. (snd q)) -. ((snd p) *. (fst q))
+
+let x_max p q =
+  if (fst p) > (fst q) then p else q
+let y_max p q =
+  if (snd p) > (snd q) then p else q
+let x_min p q =
+  if (fst p) < (fst q) then p else q
+let y_min p q =
+  if (snd p) < (snd q) then p else q
 
 let line_point_distance : line -> point -> float =
   fun line point ->
@@ -74,31 +90,23 @@ module StMake (IntsSt : SpreadTree.SpreadTreeType
   module Seq = SpreadTree.MakeSeq(PointsSt)
   module Point = PointsSt.Data
 
-  (* modified from Spreadtree list_map_paired to convert between data types *)
+  (* modified from SpreadTree list_map to convert between data types *)
   let points_of_ints
     : IntsSt.List.Data.t -> PointsSt.List.Data.t =
     let module LArt = IntsSt.List.Art in
     let module PArt = PointsSt.List.Art in
-    let op a b = (float_of_int a, float_of_int b) in
-    let mfn = PArt.mk_mfn (Name.gensym "points_of_ints")
+    let mfn = PArt.mk_mfn (Name.gensym "ints_of_points")
       (module IntsSt.List.Data)
-      (fun r list ->
-        let map2 = r.PArt.mfn_data in
+      (fun r list -> 
+        let list_map = r.PArt.mfn_data in
         match list with
         | `Nil -> `Nil
-        | `Cons(_, `Nil) -> `Nil
-        | `Cons(x, `Cons(y, ys)) -> `Cons(op x y, map2 ys)
-        | `Cons(x, `Art(a)) -> map2 (`Cons(x, LArt.force a))
-        | `Cons(x, `Name(nm,xs)) -> map2 (`Name(nm, `Cons(x,xs)))
-        | `Art(a) -> map2 (LArt.force a)
-        | `Name(nm, `Cons(x, `Art(a))) -> map2 (`Name(nm, `Cons(x, LArt.force a)))
-        | `Name(nm1, `Cons(x, `Name(nm2, xs))) ->
-          `Name(nm1, `Art(r.PArt.mfn_nart nm2 (`Cons(x,xs))))
-        | `Name(nm, `Art(a)) -> map2 (`Name(nm, LArt.force a))
+        | `Cons(x, xs) -> `Cons(point_of_int x, list_map xs)
+        | `Art(a) -> list_map (LArt.force a)
         | `Name(nm, xs) -> 
           let nm1, nm2 = Name.fork nm in
           `Name(nm1, `Art(r.PArt.mfn_nart nm2 xs))
-     )
+      )
     in
     fun list -> mfn.PArt.mfn_data list
 
@@ -188,24 +196,24 @@ module StMake (IntsSt : SpreadTree.SpreadTreeType
       ) in
     fun l p h -> mfn.AA.mfn_data (l,p,h)
 
-  (* 
-    for this fun, we need to:
-    take an Int St.List, reduce it to a Point St.Rope,
-    apply the algorithm, convert it back to an Int St.List
-
-    This should probably be done in two steps, one interfacing
-    with experiments.ml and the other as the main routine
-  *)
-(*   let quickhull : points -> points =
+  let quickhull : PList.Data.t -> AccumList.Data.t =
     (* A convex hull consists of an upper and lower hull, each computed
        recursively using quickhull_rec.  We distinguish these two
        sub-hulls using an initial line that is defined by the points
        with the max and min X value. *)
     fun points ->
-    let p_min_x = List.fold_left (fun p q -> if (fst p) < (fst q) then p else q) (max_float, 0.0) points in
-    let p_max_x = List.fold_left (fun p q -> if (fst p) > (fst q) then p else q) (min_float, 0.0) points in
-    let hull = quickhull_rec (p_min_x, p_max_x) [p_max_x] points in
-    let hull = quickhull_rec (p_max_x, p_min_x) (p_min_x :: hull) points in
-    hull
- *)
+      let min = Seq.rope_reduce (Name.gensym "points_min") x_min in
+      let max = Seq.rope_reduce (Name.gensym "points_max") x_max in
+      let p_min_x = match min points with None -> failwith "no points" | Some(x) -> x in
+      let p_max_x = match max points with None -> failwith "no points" | Some(x) -> x in
+      let nm1, nm2 = Name.fork (Name.nondet()) in
+      let hull = quickhull_rec (p_min_x, p_max_x) points (`Name(nm1, `Cons(p_max_x, `Nil))) in
+      let hull = quickhull_rec (p_max_x, p_min_x) points (`Name(nm2, `Cons(p_min_x, hull))) in
+      hull
+
+  let list_quickhull : IntsSt.List.Data.t -> IntsSt.List.Data.t = fun l ->
+    let points = points_of_int_list l in
+    let hull = quickhull points in
+    ints_of_points hull
+
 end
