@@ -3,7 +3,7 @@ This file contains alternative inputs to Adapton functors
 to produce non-adapton results
 *)
 
-(* module S = SelfAdjMachine *) (* <<<<<<<<<<<<< !!!!!!!!!! *)
+(* module S = SelfAdjMachine *) 
 
 open Primitives
 
