@@ -239,7 +239,6 @@ module StMake (IntsSt : SpreadTree.SpreadTreeType
       )
       (* INVARIANT: All the input points are *above* the given line. *)
       (fun r ((p1,p2) as line, points, hull_accum) ->
-        let quickhull l p h = r.AA.mfn_data (l,p,h) in
         (* using length because rope_filter is not guarenteed to be minimal, ei, might be `Two(`Zero, One(x)) *)
         if Seq.rope_length points <= 0 then hull_accum else
         let pivot_point, p_nm = furthest_point_from_line line points in
@@ -258,6 +257,8 @@ module StMake (IntsSt : SpreadTree.SpreadTreeType
           `Name(nm3, `Art(r.AA.mfn_nart nm4 (l_line, l_points, hull_accum)))
         in
         hull_accum
+      )
+    in
     fun l p h -> mfn.AA.mfn_data (l,p,h)
 
   let quickhull : PointRope.Data.t -> AccumList.Data.t =

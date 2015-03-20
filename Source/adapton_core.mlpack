@@ -10,4 +10,7 @@ Primitives
 AdaptonTypes
 AdaptonStatistics
 SelfAdjMachine
+PrioritySet
+WeakDyn
+TotalOrder
 Alternatives

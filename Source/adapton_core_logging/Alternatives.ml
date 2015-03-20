@@ -3,7 +3,6 @@ This file contains alternative inputs to Adapton functors
 to produce non-adapton results
 *)
 
-
 open Primitives
 
 (*
@@ -251,9 +250,8 @@ module LazyNonInc = struct
 
     let string n = "&"^(string_of_int n.id)
     let hash seed n = Hashtbl.seeded_hash seed n.id
-    let equal {id=id1; thunk=lazy value1} {id=id2; thunk=lazy value2} = 
-      id1 = id2 || value1 = value2
-    let force { thunk=lazy value; _ } = (* incr Statistics.Counts.evaluate;  *) value
+    let equal {id=id1} {id=id2} = id1 = id2
+    let force n = (* incr Statistics.Counts.evaluate;  *) failwith "TODO"
     let sanitize n = n
 
     let cell _ x = { id = next_count(); thunk = lazy x }
@@ -276,6 +274,51 @@ module LazyNonInc = struct
         }
       in mfn
   end
+
+  module ArtLib : GrifolaType.ArtLibType = struct
+    type lib_id
+    module Memotables = struct
+      let register _ = ()
+      let print_stats _ = ()
+      let fold a _ = a
+    end
+    module Eviction = struct
+      let flush _ = ()
+      let set_policy _ = ()
+      let set_limit _ = ()
+    end
+
+    module MakeArt = MakeArt
+    module MakeArtTuple2
+      (Name:GrifolaType.NameType) 
+      (Art1:GrifolaType.ArtType with type Name.t = Name.t) 
+      (Art2:GrifolaType.ArtType with type Name.t = Name.t) 
+      : GrifolaType.ArtTuple2Type
+      with type Name.t = Name.t
+      and  type Art1.t = Art1.t and type Art1.Data.t = Art1.Data.t and type Art1.Name.t = Name.t
+      and  type Art2.t = Art2.t and type Art2.Data.t = Art2.Data.t and type Art1.Name.t = Name.t =
+    struct
+      module Name = Name
+      module Art1 = Art1
+      module Art2 = Art2
+      module Art = MakeArt(Name)(AdaptonTypes.Tuple2(Art1.Data)(Art2.Data))        
+      
+      let mfn_fst = Art1.mk_mfn (Name.gensym "fst") (module Art) (fun r art -> fst (Art.force art))
+      let mfn_snd = Art2.mk_mfn (Name.gensym "snd") (module Art) (fun r art -> snd (Art.force art))
+
+      let fst nm art = if true then mfn_fst.Art1.mfn_art art else mfn_fst.Art1.mfn_nart nm art
+      let snd nm art = if true then mfn_snd.Art2.mfn_art art else mfn_snd.Art2.mfn_nart nm art
+
+      let split nm x = let nm1,nm2 = Name.fork nm in (fst nm1 x, snd nm2 x)
+    end
+  end
+end
+                      
+
+module Sac = struct
+
+  module S = SelfAdjMachine
+  module MakeArt = S.MakeArt
 
   module ArtLib : GrifolaType.ArtLibType = struct
     type lib_id
