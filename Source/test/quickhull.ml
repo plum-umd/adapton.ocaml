@@ -163,12 +163,13 @@ module StMake (IntsSt : SpreadTree.SpreadTreeType
       | Some(x), Some(nm) -> x, nm
 
 
-  let quickhull_rec : line -> PList.Data.t -> AccumList.Data.t -> AccumList.Data.t =
+  let quickhull_rec : Name.t -> line -> PList.Data.t -> AccumList.Data.t -> AccumList.Data.t =
     (* Adapton: Use a memo table here.  Our accumulator, hull_accum, is
        a nominal list.  We need to use names because otherwise, the
        accumulator will be unlikely to match after a small change. *)
+    fun (namespace : Name.t) ->
     let module AA = AccumList.Art in
-    let mfn = AA.mk_mfn (Name.gensym "quick_hull")
+    let mfn = AA.mk_mfn (Name.pair (Name.gensym "quick_hull") namespace)
       (module Types.Tuple3
         (Types.Tuple2(Point)(Point))
         (PList.Data)
@@ -206,6 +207,9 @@ else (* eager *)
     fun l p h -> mfn.AA.mfn_data (l,p,h)
 
   let quickhull : PList.Data.t -> AccumList.Data.t =
+    (* Allocate these two memoized tables *statically* *)
+    let qh_upper = quickhull_rec (Name.gensym "upper") in
+    let qh_lower = quickhull_rec (Name.gensym "lower") in
     (* A convex hull consists of an upper and lower hull, each computed
        recursively using quickhull_rec.  We distinguish these two
        sub-hulls using an initial line that is defined by the points
@@ -216,8 +220,8 @@ else (* eager *)
       let p_min_x = match min points with None -> failwith "no points min_x" | Some(x) -> x in
       let p_max_x = match max points with None -> failwith "no points min_y" | Some(x) -> x in
       let nm1, nm2 = Name.fork (Name.nondet()) in
-      let hull = quickhull_rec (p_min_x, p_max_x) points (`Name(nm1, `Cons(p_max_x, `Nil))) in
-      let hull = quickhull_rec (p_max_x, p_min_x) points (`Name(nm2, `Cons(p_min_x, hull))) in
+      let hull = qh_upper (p_min_x, p_max_x) points (`Name(nm1, `Cons(p_max_x, `Nil))) in
+      let hull = qh_lower (p_max_x, p_min_x) points (`Name(nm2, `Cons(p_min_x, hull))) in
       hull
 
   let list_quickhull : IntsSt.List.Data.t -> IntsSt.List.Data.t =

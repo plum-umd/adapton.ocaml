@@ -70,21 +70,27 @@ let furthest_point_from_line : line -> points -> (point * float) =
        (p,line_point_distance line p)
        points
 
-
 let rec quickhull_rec : line -> points -> points -> points =
   (* Adapton: Use a memo table here.  Our accumulator, hull_accum, is
    a nominal list.  We need to use names because otherwise, the
    accumulator will be unlikely to match after a small change. *)
+
+  (* INVARIANT: All the input points are *above* the given line. *)
   fun line points hull_accum ->
   match points with
   | [] -> []
   | _ ->
-     let points_above_line = List.filter (line_side_test line) points in  (* List filter: Uses a memo table. *)
-     let pivot_point, _    = furthest_point_from_line line points in
+     let pivot_point, _ = furthest_point_from_line line points in
      let l_line = (fst line, pivot_point) in
      let r_line = (pivot_point, snd line) in
-     let hull_accum = quickhull_rec l_line points_above_line hull_accum in
-     quickhull_rec r_line points_above_line (pivot_point :: hull_accum)
+
+     (* Avoid DCG Inconsistency: *)
+     (* Use *two different* memo tables ('namespaces') here, since we process the same list twice! *)
+     let l_points = List.filter (line_side_test l_line) points in
+     let r_points = List.filter (line_side_test r_line) points in
+
+     let hull_accum = quickhull_rec l_line l_points hull_accum in
+     quickhull_rec r_line r_points (pivot_point :: hull_accum)
 
 let quickhull : points -> points =
   (* A convex hull consists of an upper and lower hull, each computed
@@ -94,6 +100,10 @@ let quickhull : points -> points =
   fun points ->
   let p_min_x = List.fold_left (fun p q -> if (fst p) < (fst q) then p else q) (max_float, 0.0) points in
   let p_max_x = List.fold_left (fun p q -> if (fst p) > (fst q) then p else q) (min_float, 0.0) points in
-  let hull = quickhull_rec (p_min_x, p_max_x) [p_max_x] points in
-  let hull = quickhull_rec (p_max_x, p_min_x) hull points in
+  let line_above = (p_min_x, p_max_x) in
+  let line_below = (p_max_x, p_min_x) in (* "below" here means swapped coordinates from "above". *)
+  let points_above = List.filter (line_side_test line_above) points in
+  let points_below = List.filter (line_side_test line_below) points in
+  let hull = quickhull_rec line_above [p_max_x] points_above in
+  let hull = quickhull_rec line_below hull points_below in
   p_min_x :: hull
