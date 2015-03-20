@@ -105,11 +105,13 @@ module T = struct
               eager_now := meta.start_timestamp;
               eager_finger := meta.end_timestamp;
               meta.evaluate ();
-              TotalOrder.splice !eager_now meta.end_timestamp;
+              TotalOrder.splice ~db:"refresh_until" !eager_now meta.end_timestamp;
               refresh ()
             ))
         in
-        refresh ()
+        let old_finger = !eager_finger in
+        refresh () ;
+        eager_finger := old_finger
 
     (** Recompute EagerTotalOrder thunks if necessary. *)
     let refresh () =
@@ -120,7 +122,7 @@ module T = struct
                 eager_now := meta.start_timestamp;
                 eager_finger := meta.end_timestamp;
                 meta.evaluate ();
-                TotalOrder.splice !eager_now meta.end_timestamp;
+                TotalOrder.splice ~db:"refresh" !eager_now meta.end_timestamp;
                 refresh ()
             in
             refresh ()
@@ -217,7 +219,7 @@ let update_const m x =
       m.meta.evaluate <- nop;
       unqueue m.meta;
       TotalOrder.reset_invalidator m.meta.start_timestamp;
-      TotalOrder.splice ~inclusive:true m.meta.start_timestamp m.meta.end_timestamp;
+      TotalOrder.splice ~db:"update_const" ~inclusive:true m.meta.start_timestamp m.meta.end_timestamp;
       m.meta.start_timestamp <- TotalOrder.null;
       m.meta.end_timestamp <- TotalOrder.null
     end;
@@ -238,6 +240,7 @@ let evaluate_meta meta f =
 let make_evaluate m f =
   fun () -> update m (evaluate_meta m.meta f)
 
+                   (*
 (** Update an EagerTotalOrder thunk with a function that may depend on other EagerTotalOrder thunks. *)
 let update_thunk m f =
   incr Statistics.Counts.update;
@@ -257,6 +260,7 @@ let update_thunk m f =
   m.meta.end_timestamp <- add_timestamp ();
   TotalOrder.set_invalidator m.meta.start_timestamp (invalidator m.meta);
   m.meta.evaluate <- evaluate
+                    *)
 
 let cell nm v = const v (* TODO: Use the name; workaround: use mfn_nart interface instead. *)
 let set = update_const
@@ -331,7 +335,7 @@ let mk_mfn (type a)
                       && TotalOrder.compare m.meta.start_timestamp !eager_now > 0
                       && TotalOrder.compare m.meta.end_timestamp !eager_finger < 0 ->
            incr Statistics.Counts.hit;
-           TotalOrder.splice !eager_now m.meta.start_timestamp;
+           TotalOrder.splice ~db:"memo" !eager_now m.meta.start_timestamp;
            eager_now := m.meta.end_timestamp;
            m
 
@@ -356,16 +360,19 @@ let mk_mfn (type a)
 
            if Arg.equal arg (!(binding.Memo.Binding.arg)) then (
              incr Statistics.Counts.hit;
-             TotalOrder.splice !eager_now m.meta.start_timestamp;
+             TotalOrder.splice ~db:"memo_name: Same arg" !eager_now m.meta.start_timestamp;
              refresh_until m.meta.end_timestamp;
              eager_now := m.meta.end_timestamp;
              m
            )
            else (
+             TotalOrder.splice ~db:"memo_name: Diff arg: #1" !eager_now m.meta.start_timestamp;
              eager_now := m.meta.start_timestamp;
+             let old_finger = !eager_finger in
              eager_finger := m.meta.end_timestamp;
              m.meta.evaluate ();
-             TotalOrder.splice !eager_now m.meta.end_timestamp;
+             TotalOrder.splice ~db:"memo_name: Diff arg: #2" !eager_now m.meta.end_timestamp;
+             eager_finger := old_finger;
              m
            )
 
