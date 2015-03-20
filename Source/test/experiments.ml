@@ -1088,7 +1088,7 @@ module Pointcloud = struct
       ListRep.St.List.Art.thunk nm1 ( fun () -> 
         quickhull (ListRep.St.List.Art.force inp)
       )
-    let trusted inp = failwith "unimplemented"
+    let trusted = Quickhull.list_quickhull
     let flush = AL.Eviction.flush
   end
 

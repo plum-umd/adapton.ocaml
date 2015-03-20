@@ -9,8 +9,6 @@
   https://github.com/matthewhammer/ceal/blob/master/src/apps/common/geom2d.c
 *)
 
-(* this is in development and will not compile *)
-
 open Adapton_core
 open Primitives
 
@@ -18,6 +16,7 @@ module Types = AdaptonTypes
 
 type point  = float * float
 type line   = point * point
+type points = point list
 
 (* breaks an int in to a pair of floats *)
 (* takes lower 8 bits and next 8 bits as ints, converts to floats *)
@@ -78,6 +77,69 @@ let line_point_distance : line -> point -> float =
       let cross = cross_product diff1 diff2 in
       if cross <= 0.0 then false else true
 
+let furthest_point_from_line : line -> points -> (point * float) =
+  (* Used in the "pivot step".  the furthest point defines the two
+   lines that we use for the "filter step".
+
+   Note: To make this into an efficient IC algorithm, need to use a
+   balanced reduction.  E.g., using either a rope reduction, or an
+   iterative list reduction.  *)
+  fun line points ->
+  match points with
+  | [] -> failwith "no points"
+  | p::points ->
+     List.fold_left
+       (fun (q,max_dis) p ->
+        let d = line_point_distance line p in
+        if d > max_dis then p, d else q, max_dis
+       )
+       (p,line_point_distance line p)
+       points
+
+let rec quickhull_rec : line -> points -> points -> points =
+  (* Adapton: Use a memo table here.  Our accumulator, hull_accum, is
+   a nominal list.  We need to use names because otherwise, the
+   accumulator will be unlikely to match after a small change. *)
+
+  (* INVARIANT: All the input points are *above* the given line. *)
+  fun line points hull_accum ->
+  match points with
+  | [] -> hull_accum
+  | _ ->
+     let pivot_point, _ = furthest_point_from_line line points in
+     let l_line = (fst line, pivot_point) in
+     let r_line = (pivot_point, snd line) in
+
+     (* Avoid DCG Inconsistency: *)
+     (* Use *two different* memo tables ('namespaces') here, since we process the same list twice! *)
+     let l_points = List.filter (line_side_test l_line) points in
+     let r_points = List.filter (line_side_test r_line) points in
+
+     let hull_accum = quickhull_rec r_line r_points hull_accum in
+     quickhull_rec l_line l_points (pivot_point :: hull_accum)
+
+let quickhull : points -> points =
+  (* A convex hull consists of an upper and lower hull, each computed
+   recursively using quickhull_rec.  We distinguish these two
+   sub-hulls using an initial line that is defined by the points
+   with the max and min X value. *)
+  fun points ->
+  let p_min_x = List.fold_left (fun p q -> if (fst p) < (fst q) then p else q) (max_float, 0.0) points in
+  let p_max_x = List.fold_left (fun p q -> if (fst p) > (fst q) then p else q) (min_float, 0.0) points in
+  let line_above = (p_min_x, p_max_x) in
+  let line_below = (p_max_x, p_min_x) in (* "below" here means swapped coordinates from "above". *)
+  let points_above = List.filter (line_side_test line_above) points in
+  let points_below = List.filter (line_side_test line_below) points in
+  let hull = quickhull_rec line_above points_above [p_max_x] in
+  let hull = quickhull_rec line_below points_below (p_min_x::hull) in
+  hull
+
+let list_quickhull : int list -> int list = fun inp ->
+  let points = List.map point_of_int inp in
+  let hull = quickhull points in
+  List.map int_of_point hull
+
+(* creates an incremental version of quickhull based on a SpreadTree integer list *)
 module StMake (IntsSt : SpreadTree.SpreadTreeType 
   with type Data.t = Types.Int.t
 )
@@ -89,7 +151,7 @@ module StMake (IntsSt : SpreadTree.SpreadTreeType
   (* type points = point list *)
   module PointsSt = SpreadTree.MakeSpreadTree
     (ArtLib)(Name)(Types.Tuple2(Types.Float)(Types.Float))
-  module PList = PointsSt.Rope
+  module PointRope = PointsSt.Rope
   module AccumList = PointsSt.List
   module Seq = SpreadTree.MakeSeq(PointsSt)
   module Point = PointsSt.Data
@@ -134,17 +196,17 @@ module StMake (IntsSt : SpreadTree.SpreadTreeType
     in
     fun list -> mfn.LArt.mfn_data list
 
-  let points_of_int_list : IntsSt.List.Data.t -> PList.Data.t =
+  let points_rope_of_int_list : IntsSt.List.Data.t -> PointRope.Data.t =
   fun inp ->
     let pointslist = points_of_ints inp in
     Seq.rope_of_list pointslist
 
-  let int_list_of_points : PList.Data.t -> IntsSt.List.Data.t =
+  let int_list_of_points_rope : PointRope.Data.t -> IntsSt.List.Data.t =
   fun inp ->
     let pointslist = Seq.list_of_rope inp `Nil in
     ints_of_points pointslist
 
-  let furthest_point_from_line : line -> PList.Data.t -> Point.t * Name.t =
+  let furthest_point_from_line : line -> PointRope.Data.t -> Point.t * Name.t =
     (* Used in the "pivot step".  the furthest point defines the two
        lines that we use for the "filter step".
        Note: To make this into an efficient IC algorithm, need to use a
@@ -163,7 +225,7 @@ module StMake (IntsSt : SpreadTree.SpreadTreeType
       | Some(x), Some(nm) -> x, nm
 
 
-  let quickhull_rec : Name.t -> line -> PList.Data.t -> AccumList.Data.t -> AccumList.Data.t =
+  let quickhull_rec : Name.t -> line -> PointRope.Data.t -> AccumList.Data.t -> AccumList.Data.t =
     (* Adapton: Use a memo table here.  Our accumulator, hull_accum, is
        a nominal list.  We need to use names because otherwise, the
        accumulator will be unlikely to match after a small change. *)
@@ -172,41 +234,34 @@ module StMake (IntsSt : SpreadTree.SpreadTreeType
     let mfn = AA.mk_mfn (Name.pair (Name.gensym "quick_hull") namespace)
       (module Types.Tuple3
         (Types.Tuple2(Point)(Point))
-        (PList.Data)
+        (PointRope.Data)
         (AccumList.Data)
       )
+      (* INVARIANT: All the input points are *above* the given line. *)
       (fun r ((p1,p2) as line, points, hull_accum) ->
-        let quickhull l p h = r.AA.mfn_data (l,p,h) in
-        let filter = Seq.rope_filter (Name.gensym "side_of_line") (line_side_test line)in
-        let points_above_line = filter points in
-(* 
-        Printf.printf "start accum: %s\n%!" (Seq.simple_full_string hull_accum);
-        Printf.printf "points length: %d\n%!" (Seq.rope_length points_above_line);
- *)
-        if Seq.rope_length points_above_line <= 0 then hull_accum else
-        let pivot_point, p_nm = furthest_point_from_line line points_above_line in
+        (* using length because rope_filter is not guarenteed to be minimal, ei, might be `Two(`Zero, One(x)) *)
+        if Seq.rope_length points <= 0 then hull_accum else
+        let pivot_point, p_nm = furthest_point_from_line line points in
+        let l_line = (p1, pivot_point) in
+        let r_line = (pivot_point, p2) in
+        let l_points = Seq.rope_filter (Name.gensym "side_of_l_line") (line_side_test l_line) points in
+        let r_points = Seq.rope_filter (Name.gensym "side_of_r_line") (line_side_test r_line) points in
+        (* two lazy recursive steps *)
         let nm1, nms = Name.fork p_nm in
         let nm2, nms = Name.fork nms in
         let nm3, nm4 = Name.fork nms in
-        let l_line = (p1, pivot_point) in
-        let r_line = (pivot_point, p2) in
-        (* two lazy recursive steps *)
-if false then (* lazy *)
-        let hull_accum = 
-          `Name(nm1, `Art(r.AA.mfn_nart nm2 (r_line, points_above_line, hull_accum)))
-        in
         let hull_accum = `Cons(pivot_point,
-          `Name(nm3, `Art(r.AA.mfn_nart nm4 (l_line, points_above_line, hull_accum)))
+          `Name(nm1, `Art(r.AA.mfn_nart nm2 (r_line, r_points, hull_accum)))
         ) in
+        let hull_accum = 
+          `Name(nm3, `Art(r.AA.mfn_nart nm4 (l_line, l_points, hull_accum)))
+        in
         hull_accum
-else (* eager *)
-        let hull_accum = quickhull r_line points_above_line hull_accum in
-        let hull_accum = quickhull r_line points_above_line (`Cons(pivot_point, hull_accum)) in
-        hull_accum
-      ) in
+      )
+    in
     fun l p h -> mfn.AA.mfn_data (l,p,h)
 
-  let quickhull : PList.Data.t -> AccumList.Data.t =
+  let quickhull : PointRope.Data.t -> AccumList.Data.t =
     (* Allocate these two memoized tables *statically* *)
     let qh_upper = quickhull_rec (Name.gensym "upper") in
     let qh_lower = quickhull_rec (Name.gensym "lower") in
@@ -219,14 +274,18 @@ else (* eager *)
       let max = Seq.rope_reduce (Name.gensym "points_max") x_max in
       let p_min_x = match min points with None -> failwith "no points min_x" | Some(x) -> x in
       let p_max_x = match max points with None -> failwith "no points min_y" | Some(x) -> x in
+      let line_above = (p_min_x, p_max_x) in
+      let line_below = (p_max_x, p_min_x) in (* "below" here means swapped coordinates from "above". *)
+      let points_above = Seq.rope_filter (Name.gensym "upper_side_of_line") (line_side_test line_above) points in
+      let points_below = Seq.rope_filter (Name.gensym "lower_side_of_line") (line_side_test line_below) points in
       let nm1, nm2 = Name.fork (Name.nondet()) in
-      let hull = qh_upper (p_min_x, p_max_x) points (`Name(nm1, `Cons(p_max_x, `Nil))) in
-      let hull = qh_lower (p_max_x, p_min_x) points (`Name(nm2, `Cons(p_min_x, hull))) in
+      let hull = qh_upper line_above points_above (`Name(nm1, `Cons(p_max_x, `Nil))) in
+      let hull = qh_lower line_below points_below (`Name(nm2, `Cons(p_min_x, hull))) in
       hull
 
   let list_quickhull : IntsSt.List.Data.t -> IntsSt.List.Data.t =
   fun list ->
-    let points = points_of_int_list list in
+    let points = points_rope_of_int_list list in
     let hull = quickhull points in
     ints_of_points hull
 
