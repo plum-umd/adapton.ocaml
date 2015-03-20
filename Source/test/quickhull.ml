@@ -25,6 +25,10 @@ let point_of_int i =
   let x = float_of_int (i land 255) in
   let y = float_of_int ((i lsr 8) land 255) in
   (x, y)
+let int_of_point (x,y) =
+  let x_bits = ((int_of_float x) land 255) in
+  let y_bits = ((int_of_float y) land 255) lsl 8 in
+  x_bits lor y_bits
 
 let point_sub : point -> point -> point =
   fun p q -> (fst p -. fst q, snd p -. snd q)
@@ -95,7 +99,7 @@ module StMake (IntsSt : SpreadTree.SpreadTreeType
     : IntsSt.List.Data.t -> PointsSt.List.Data.t =
     let module LArt = IntsSt.List.Art in
     let module PArt = PointsSt.List.Art in
-    let mfn = PArt.mk_mfn (Name.gensym "ints_of_points")
+    let mfn = PArt.mk_mfn (Name.gensym "points_of_ints")
       (module IntsSt.List.Data)
       (fun r list -> 
         let list_map = r.PArt.mfn_data in
@@ -121,7 +125,7 @@ module StMake (IntsSt : SpreadTree.SpreadTreeType
         let list_map = r.LArt.mfn_data in
         match list with
         | `Nil -> `Nil
-        | `Cons((x,y), xs) -> `Cons(int_of_float x, `Cons(int_of_float y, list_map xs))
+        | `Cons(x, xs) -> `Cons(int_of_point x, list_map xs)
         | `Art(a) -> list_map (PArt.force a)
         | `Name(nm, xs) -> 
           let nm1, nm2 = Name.fork nm in
@@ -154,7 +158,7 @@ module StMake (IntsSt : SpreadTree.SpreadTreeType
       in
       let reduce = Seq.rope_reduce_name (Name.gensym "fpfl") max_point in
       match reduce points with
-      | None, _ -> failwith "no points"
+      | None, _ -> failwith "no points far from line"
       | _, None -> failwith "no name"
       | Some(x), Some(nm) -> x, nm
 
@@ -173,26 +177,31 @@ module StMake (IntsSt : SpreadTree.SpreadTreeType
       (fun r ((p1,p2) as line, points, hull_accum) ->
         let quickhull l p h = r.AA.mfn_data (l,p,h) in
         let filter = Seq.rope_filter (Name.gensym "side_of_line") (line_side_test line)in
-        match points with
-        | `Zero -> hull_accum
-        | `Art(a) -> quickhull line (PList.Art.force a) hull_accum
-        | `Name(_, ps) -> quickhull line ps hull_accum
-        | _ ->
-          let points_above_line = filter points in
-          let pivot_point, p_nm = furthest_point_from_line line points in
-          let nm1, nms = Name.fork p_nm in
-          let nm2, nms = Name.fork nms in
-          let nm3, nm4 = Name.fork nms in
-          let l_line = (p1, pivot_point) in
-          let r_line = (pivot_point, p2) in
-          (* two lazy recursive steps *)
-          let hull_accum = `Cons(pivot_point,
-            `Name(nm1, `Art(r.AA.mfn_nart nm2 (r_line, points_above_line, hull_accum)))
-          ) in
-          let hull_accum = `Cons(pivot_point,
-            `Name(nm3, `Art(r.AA.mfn_nart nm4 (l_line, points_above_line, hull_accum)))
-          ) in
-          hull_accum
+        let points_above_line = filter points in
+(* 
+        Printf.printf "start accum: %s\n%!" (Seq.simple_full_string hull_accum);
+        Printf.printf "points length: %d\n%!" (Seq.rope_length points_above_line);
+ *)
+        if Seq.rope_length points_above_line <= 0 then hull_accum else
+        let pivot_point, p_nm = furthest_point_from_line line points_above_line in
+        let nm1, nms = Name.fork p_nm in
+        let nm2, nms = Name.fork nms in
+        let nm3, nm4 = Name.fork nms in
+        let l_line = (p1, pivot_point) in
+        let r_line = (pivot_point, p2) in
+        (* two lazy recursive steps *)
+if false then (* lazy *)
+        let hull_accum = 
+          `Name(nm1, `Art(r.AA.mfn_nart nm2 (r_line, points_above_line, hull_accum)))
+        in
+        let hull_accum = `Cons(pivot_point,
+          `Name(nm3, `Art(r.AA.mfn_nart nm4 (l_line, points_above_line, hull_accum)))
+        ) in
+        hull_accum
+else (* eager *)
+        let hull_accum = quickhull r_line points_above_line hull_accum in
+        let hull_accum = quickhull r_line points_above_line (`Cons(pivot_point, hull_accum)) in
+        hull_accum
       ) in
     fun l p h -> mfn.AA.mfn_data (l,p,h)
 
@@ -204,15 +213,16 @@ module StMake (IntsSt : SpreadTree.SpreadTreeType
     fun points ->
       let min = Seq.rope_reduce (Name.gensym "points_min") x_min in
       let max = Seq.rope_reduce (Name.gensym "points_max") x_max in
-      let p_min_x = match min points with None -> failwith "no points" | Some(x) -> x in
-      let p_max_x = match max points with None -> failwith "no points" | Some(x) -> x in
+      let p_min_x = match min points with None -> failwith "no points min_x" | Some(x) -> x in
+      let p_max_x = match max points with None -> failwith "no points min_y" | Some(x) -> x in
       let nm1, nm2 = Name.fork (Name.nondet()) in
       let hull = quickhull_rec (p_min_x, p_max_x) points (`Name(nm1, `Cons(p_max_x, `Nil))) in
       let hull = quickhull_rec (p_max_x, p_min_x) points (`Name(nm2, `Cons(p_min_x, hull))) in
       hull
 
-  let list_quickhull : IntsSt.List.Data.t -> IntsSt.List.Data.t = fun l ->
-    let points = points_of_int_list l in
+  let list_quickhull : IntsSt.List.Data.t -> IntsSt.List.Data.t =
+  fun list ->
+    let points = points_of_int_list list in
     let hull = quickhull points in
     ints_of_points hull
 

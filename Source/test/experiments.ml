@@ -1071,10 +1071,28 @@ module Median = struct
       [List.nth inp middle]
     let flush = AL.Eviction.flush
   end
-
-
 end
 
+module Pointcloud = struct
+  
+  module Quickhull
+    ( N : sig val name : string end )
+    ( AL : GrifolaType.ArtLibType ) =
+  struct
+    let name = "Quickhull_" ^ N.name
+    module ListRep = SpreadTreeRep(AL)
+    module QH = Quickhull.StMake(ListRep.St)
+    let compute inp =
+      let nm1 = (Key.nondet()) in
+      let quickhull = QH.list_quickhull in
+      ListRep.St.List.Art.thunk nm1 ( fun () -> 
+        quickhull (ListRep.St.List.Art.force inp)
+      )
+    let trusted inp = failwith "unimplemented"
+    let flush = AL.Eviction.flush
+  end
+
+end
 
 module Iteration = struct
   module Rope_iter
@@ -1277,6 +1295,12 @@ module Experiments = struct
     module ListApp_eager_noninc = Median.Rope_center(struct let name = "eagernoninc" end)(EagerNonInc.ArtLib)
   end
 
+  module Quickhull = struct
+    module ListApp_name = Pointcloud.Quickhull(struct let name = "name" end)(Grifola_name.ArtLib)
+    module ListApp_arggen = Pointcloud.Quickhull(struct let name = "arggen" end)(Grifola_arggen.ArtLib)
+    module ListApp_lazy_recalc = Pointcloud.Quickhull(struct let name = "lazyrecalc" end)(LazyRecalc.ArtLib)
+  end
+
   module Rope_iter = struct
     module ListApp_name = Iteration.Rope_iter(struct let name = "name" end)(Grifola_name.ArtLib)
     module ListApp_arg = Iteration.Rope_iter(struct let name = "arg" end)(Grifola_arg.ArtLib)
@@ -1358,6 +1382,11 @@ let raw_experiments =
   (module Experiments.Rope_center.ListApp_arggen       : ListAppType) ;
   (module Experiments.Rope_center.ListApp_lazy_recalc  : ListAppType) ;
   (module Experiments.Rope_center.ListApp_eager_noninc : ListAppType) ;
+
+  (* Quickhull *)
+  (module Experiments.Quickhull.ListApp_name         : ListAppType) ;
+  (module Experiments.Quickhull.ListApp_arggen       : ListAppType) ;
+  (module Experiments.Quickhull.ListApp_lazy_recalc  : ListAppType) ;
 
   (* Benchmarks for overhead comparison: *)
   (module Experiments.AVL_name                         : ListAppType) ;
