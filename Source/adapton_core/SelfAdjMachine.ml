@@ -1,8 +1,11 @@
 (** Self-Adjusting Machine.
 
     * Based on Yit's "SAC Library" implementation, from Adapton / PLDI 2014.
-    * Adapted to perform keyed allocation, a la self-adjusting machines (Hammer 2012).
- *)
+
+    * Adapted to perform destination-passing-style transformation,
+      a la self-adjusting machines (OOPSLA 2011, Hammer's Diss 2012).
+
+ **)
 
 exception Missing_nominal_features
 
@@ -437,10 +440,26 @@ let mk_mfn (type a)
 
         (** Create memoizing constructor for an EagerTotalOrder thunk. *)
         module Binding = struct
-          type t = { key : Arg.t; mutable value : Data.t thunk option }
+
+          type key =
+            | Arg of Arg.t
+            | Name of Name.t
+
+          type t = { key : key ;
+                     mutable value : Data.t thunk option
+                   }
+
           let seed = Random.bits ()
-          let hash a = Arg.hash seed a.key
-          let equal a a' = Arg.equal a.key a'.key
+
+          let hash a =
+            match a.key with
+            | Arg arg -> Arg.hash seed arg
+            | Name name -> Name.hash seed name
+
+          let equal a b = match a.key, b.key with
+            | Arg a, Arg b -> Arg.equal a b
+            | Name n, Name m -> Name.equal n m
+            | _ -> false
         end
         module Table = Weak.Make (Binding)
         let table = Table.create 0
@@ -449,7 +468,7 @@ let mk_mfn (type a)
 
       (* memoizing constructor *)
       let rec memo x =
-        let binding = Memo.Table.merge Memo.table Memo.Binding.({ key=x; value=None }) in
+        let binding = Memo.Table.merge Memo.table Memo.Binding.({ key=Arg x; value=None }) in
         match binding.Memo.Binding.value with
         | Some m when TotalOrder.is_valid m.meta.start_timestamp
                       && TotalOrder.compare m.meta.start_timestamp !eager_now > 0
