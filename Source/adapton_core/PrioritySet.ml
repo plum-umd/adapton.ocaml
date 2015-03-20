@@ -5,6 +5,7 @@ module type S = sig
     type t
     exception Empty
     val create : unit -> t
+    val top : t -> data option
     val add : t -> data -> bool
     val pop : t -> data
     val remove : t -> data -> bool
@@ -19,6 +20,10 @@ module Make (O : Set.OrderedType) = struct
     exception Empty
 
     let create () = ref Null
+
+    let top queue = match !queue with
+      | Node ( value, _, _ ) -> Some value
+      | Null -> None
 
     let rec add queue x = match !queue with
         | Node ( value, left, right ) ->
