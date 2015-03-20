@@ -469,7 +469,7 @@ let mk_mfn (type a)
       {
         mfn_data = (fun arg -> user_function mfn arg) ;
         mfn_art  = (fun arg -> memo arg) ;
-        mfn_nart = (fun nm arg -> failwith "TODO" (* cell (Name.nondet()) (user_function mfn arg) *)) ;
+        mfn_nart = (fun nm arg -> memo arg) ;
       }
     in mfn
 
