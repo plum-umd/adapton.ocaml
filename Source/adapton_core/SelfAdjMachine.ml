@@ -400,7 +400,7 @@ let update_thunk m f =
 let cell nm v = const v (* TODO: Use the name; workaround: use mfn_nart interface instead. *)
 let set = update_const
 
-let node f =
+let make_node f =
   incr Statistics.Counts.create;
   let meta = {
     evaluate=nop;
@@ -415,7 +415,7 @@ let node f =
   meta.evaluate <- make_evaluate m f;
   m
 
-let thunk nm f = node f (* TODO: Use the name; workaround: use mfn_nart interface instead. *)
+let thunk nm f = make_node f (* TODO: Use the name; workaround: use mfn_nart interface instead. *)
 
 type 'arg mfn = { mfn_data : 'arg -> Data.t ;      (* Pure recursion. *)
                   mfn_art  : 'arg -> t ;           (* Create a memoized articulation, classically. *)
@@ -461,7 +461,7 @@ let mk_mfn (type a)
                             this prevents the GC from collecting binding from Memo.table until m itself is collected *)
            incr Statistics.Counts.create;
            incr Statistics.Counts.miss;
-           let m = node (fun () -> user_function mfn x) in
+           let m = make_node (fun () -> user_function mfn x) in
            m.meta.unmemo <- (fun () -> Memo.Table.remove Memo.table binding);
            binding.Memo.Binding.value <- Some m;
            m
@@ -470,7 +470,7 @@ let mk_mfn (type a)
       {
         mfn_data = (fun arg -> user_function mfn arg) ;
         mfn_art  = (fun arg -> memo arg) ;
-        mfn_nart = (fun _ arg -> failwith "TODO" (* cell (Name.nondet()) (user_function mfn arg) *)) ;
+        mfn_nart = (fun nm arg -> failwith "TODO" (* cell (Name.nondet()) (user_function mfn arg) *)) ;
       }
     in mfn
 
