@@ -302,7 +302,7 @@ let mk_mfn (type a)
             | Name of Name.t
 
           type t = { key : key ;
-                     arg : Arg.t ;
+                     arg : Arg.t ref ;
                      mutable value : Data.t thunk option
                    }
 
@@ -325,7 +325,7 @@ let mk_mfn (type a)
 
       (* memoizing constructor *)
       let rec memo arg =
-        let binding = Memo.Table.merge Memo.table Memo.Binding.({ key=Arg arg; arg=arg; value=None }) in
+        let binding = Memo.Table.merge Memo.table Memo.Binding.({ key=Arg arg; arg=ref arg; value=None }) in
         match binding.Memo.Binding.value with
         | Some m when TotalOrder.is_valid m.meta.start_timestamp
                       && TotalOrder.compare m.meta.start_timestamp !eager_now > 0
@@ -340,7 +340,7 @@ let mk_mfn (type a)
                             this prevents the GC from collecting binding from Memo.table until m itself is collected *)
            incr Statistics.Counts.create;
            incr Statistics.Counts.miss;
-           let m = make_node (fun () -> user_function mfn arg) in
+           let m = make_node (fun () -> user_function mfn (!(binding.Memo.Binding.arg)) ) in
            m.meta.unmemo <- (fun () -> Memo.Table.remove Memo.table binding);
            binding.Memo.Binding.value <- Some m;
            m
@@ -348,21 +348,26 @@ let mk_mfn (type a)
 
       (* memoizing constructor *)
       let rec memo_name name arg =
-        let binding = Memo.Table.merge Memo.table Memo.Binding.({ key=Name name; arg=arg; value=None }) in
+        let binding = Memo.Table.merge Memo.table Memo.Binding.({ key=Name name; arg=ref arg; value=None }) in
         match binding.Memo.Binding.value with
         | Some m when TotalOrder.is_valid m.meta.start_timestamp
                       && TotalOrder.compare m.meta.start_timestamp !eager_now > 0
                       && TotalOrder.compare m.meta.end_timestamp !eager_finger < 0 ->
 
-           if Arg.equal arg binding.Memo.Binding.arg then (
+           if Arg.equal arg (!(binding.Memo.Binding.arg)) then (
              incr Statistics.Counts.hit;
              TotalOrder.splice !eager_now m.meta.start_timestamp;
              refresh_until m.meta.end_timestamp;
              eager_now := m.meta.end_timestamp;
              m
            )
-           else
-             failwith "TODO"
+           else (
+             eager_now := m.meta.start_timestamp;
+             eager_finger := m.meta.end_timestamp;
+             m.meta.evaluate ();
+             TotalOrder.splice !eager_now m.meta.end_timestamp;
+             m
+           )
 
         | _ ->
            (* note that m.meta.unmemo indirectly holds a reference to binding (via unmemo's closure);
