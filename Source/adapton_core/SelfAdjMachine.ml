@@ -1,10 +1,7 @@
-(** Sac.
+(** Self-Adjusting Machine.
 
-    Implementation based on:
-        Umut Acar, Guy Blelloch, Matthias Blume, Robert Harper, and Kanat Tangwongsan. "A Library for Self-Adjusting
-        Computation". Electron. Notes Theor. Comput. Sci. 148, 2 (March 2006), 127-154.
-        http://dx.doi.org/10.1016/j.entcs.2005.11.043
-    supporting memoization and change propagation, but not adaptive memoization.
+    * Based on Yit's "SAC Library" implementation, from Adapton / PLDI 2014.
+    * Adapted to perform keyed allocation, a la self-adjusting machines (Hammer 2012).
  *)
 
 exception Missing_nominal_features
@@ -12,7 +9,7 @@ exception Missing_nominal_features
 open Primitives
 module type ResultType = DatType
 module Statistics = AdaptonStatistics
-                      
+
 (** Types and operations common to EagerTotalOrder thunks containing any type. *)
 module T = struct
     (** Abstract type identifying this module. *)
@@ -134,11 +131,11 @@ end
 
 (** Functor to make constructors and updaters for EagerTotalOrder thunks of a specific type. *)
 module Make (Data : DatType) : sig (* None *) end =
-       (* : Signatures.AType.S 
-with type atype = atype 
-and type 'a thunk = 'a thunk 
-and type data = R.t 
-and type t = R.t thunk = 
+       (* : Signatures.AType.S
+with type atype = atype
+and type 'a thunk = 'a thunk
+and type data = R.t
+and type t = R.t thunk =
 *)
 struct
     include T
@@ -251,7 +248,7 @@ struct
         m.meta.evaluate <- evaluate
 
     (* create memoizing constructors *)
-    include MemoN.Make (struct
+    module Memo = struct
         type data = Data.t
         type t = Data.t thunk
 
@@ -289,12 +286,7 @@ struct
             in
 
             memo
-    end)
-
-    (* TODO -- think about what this means, if anything*)
-    let memo_keyed  _ = raise Missing_nominal_features
-    let memo_keyed2 _ = raise Missing_nominal_features
-    let memo_keyed3 _ = raise Missing_nominal_features
+    end
 
     module Eviction = Eviction
 end

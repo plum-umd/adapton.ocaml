@@ -3,6 +3,7 @@ This file contains alternative inputs to Adapton functors
 to produce non-adapton results
 *)
 
+(* module S = SelfAdjMachine *) (* <<<<<<<<<<<<< !!!!!!!!!! *)
 
 open Primitives
 
@@ -314,7 +315,7 @@ module LazyNonInc = struct
     end
   end
 end
-
+                      
 (*
   a minimal alternative to Grifola.Make
   calculates its value on force and 
@@ -325,8 +326,6 @@ end
   benchmarking purposes
 *)
 module SacImpl = struct
-
-  module TO = TotalOrder
 
   (* TODO: consider using the name as the id instead of a count *)
   let counter = ref 0
