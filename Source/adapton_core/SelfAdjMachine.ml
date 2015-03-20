@@ -397,7 +397,7 @@ let update_thunk m f =
   TotalOrder.set_invalidator m.meta.start_timestamp (invalidator m.meta);
   m.meta.evaluate <- evaluate
 
-let cell nm v = const v (* TODO: Use the name; workaround, use mfn_nart interface instead. *)
+let cell nm v = const v (* TODO: Use the name; workaround: use mfn_nart interface instead. *)
 let set = update_const
 
 let node f =
@@ -415,47 +415,7 @@ let node f =
   meta.evaluate <- make_evaluate m f;
   m
 
-let thunk nm f = node f
-
-(* create memoizing constructors *)
-module Memo = struct
-  type data = Data.t
-  type t = Data.t thunk
-
-  (** Create memoizing constructor for an EagerTotalOrder thunk. *)
-  let memo (type a) (module A : ResultType with type t = a) f =
-    let module Binding = struct
-      type t = { key : A.t; mutable value : Data.t thunk option }
-      let seed = Random.bits ()
-      let hash a = A.hash seed a.key
-      let equal a a' = A.equal a.key a'.key
-    end in
-    let module Memotable = Weak.Make (Binding) in
-    let memotable = Memotable.create 0 in
-
-    (* memoizing constructor *)
-    let rec memo x =
-      let binding = Memotable.merge memotable Binding.({ key=x; value=None }) in
-      match binding.Binding.value with
-      | Some m when TotalOrder.is_valid m.meta.start_timestamp
-                    && TotalOrder.compare m.meta.start_timestamp !eager_now > 0
-                    && TotalOrder.compare m.meta.end_timestamp !eager_finger < 0 ->
-         incr Statistics.Counts.hit;
-         TotalOrder.splice !eager_now m.meta.start_timestamp;
-         eager_now := m.meta.end_timestamp;
-         m
-      | _ ->
-         (* note that m.meta.unmemo indirectly holds a reference to binding (via unmemo's closure);
-                            this prevents the GC from collecting binding from memotable until m itself is collected *)
-         incr Statistics.Counts.create;
-         incr Statistics.Counts.miss;
-         let m = node (fun () -> f memo x) in
-         m.meta.unmemo <- (fun () -> Memotable.remove memotable binding);
-         binding.Binding.value <- Some m;
-         m
-    in
-    memo
-end
+let thunk nm f = node f (* TODO: Use the name; workaround: use mfn_nart interface instead. *)
 
 type 'arg mfn = { mfn_data : 'arg -> Data.t ;      (* Pure recursion. *)
                   mfn_art  : 'arg -> t ;           (* Create a memoized articulation, classically. *)
@@ -467,14 +427,52 @@ let mk_mfn (type a)
       (user_function: Arg.t mfn -> Arg.t -> Data.t)
       : Arg.t mfn
     =
-      let rec mfn =
-        (* incr Statistics.Counts.evaluate;  *)
-        {
-          mfn_data = (fun arg -> user_function mfn arg) ;
-          mfn_art  = (fun arg -> failwith "TODO" (*cell (Name.nondet()) (user_function mfn arg) *)) ;
-          mfn_nart = (fun _ arg -> failwith "TODO" (* cell (Name.nondet()) (user_function mfn arg) *)) ;
-        }
-      in mfn
+    let rec mfn =
+      (* create memoizing constructors *)
+      let module Memo = struct
+        type data = Data.t
+        type t = Data.t thunk
+
+        (** Create memoizing constructor for an EagerTotalOrder thunk. *)
+        module Binding = struct
+          type t = { key : Arg.t; mutable value : Data.t thunk option }
+          let seed = Random.bits ()
+          let hash a = Arg.hash seed a.key
+          let equal a a' = Arg.equal a.key a'.key
+        end
+        module Table = Weak.Make (Binding)
+        let table = Table.create 0
+      end
+      in
+
+      (* memoizing constructor *)
+      let rec memo x =
+        let binding = Memo.Table.merge Memo.table Memo.Binding.({ key=x; value=None }) in
+        match binding.Memo.Binding.value with
+        | Some m when TotalOrder.is_valid m.meta.start_timestamp
+                      && TotalOrder.compare m.meta.start_timestamp !eager_now > 0
+                      && TotalOrder.compare m.meta.end_timestamp !eager_finger < 0 ->
+           incr Statistics.Counts.hit;
+           TotalOrder.splice !eager_now m.meta.start_timestamp;
+           eager_now := m.meta.end_timestamp;
+           m
+        | _ ->
+           (* note that m.meta.unmemo indirectly holds a reference to binding (via unmemo's closure);
+                            this prevents the GC from collecting binding from Memo.table until m itself is collected *)
+           incr Statistics.Counts.create;
+           incr Statistics.Counts.miss;
+           let m = node (fun () -> user_function mfn x) in
+           m.meta.unmemo <- (fun () -> Memo.Table.remove Memo.table binding);
+           binding.Memo.Binding.value <- Some m;
+           m
+      in
+      (* incr Statistics.Counts.evaluate;  *)
+      {
+        mfn_data = (fun arg -> user_function mfn arg) ;
+        mfn_art  = (fun arg -> memo arg) ;
+        mfn_nart = (fun _ arg -> failwith "TODO" (* cell (Name.nondet()) (user_function mfn arg) *)) ;
+      }
+    in mfn
 
 
 end
