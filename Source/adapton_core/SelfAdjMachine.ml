@@ -115,7 +115,10 @@ module T = struct
         (* add dependency to caller *)
         begin match !eager_stack with
             | dependent::_ -> WeakDyn.add m.meta.dependents dependent
-            | [] -> ()
+            | [] ->
+               (* Force is occuring at the outer layer. *)
+               (* Make sure that this value is up to date! *)
+               refresh ()
         end;
         m.value
 
