@@ -322,12 +322,12 @@ let invalidator meta ts =
   unqueue meta;
   WeakDyn.clear meta.dependents
 
-let update m x = if not (Data.equal m.value x) then
-                   begin
-                     m.value <- x;
-                     enqueue_dependents m.meta.dependents
-                   end
-(**/**)
+let update m x =
+  if not (Data.equal m.value x) then
+    begin
+      m.value <- x;
+      enqueue_dependents m.meta.dependents
+    end
 
 (** Create an EagerTotalOrder thunk from a constant value. *)
 let const x =
@@ -361,7 +361,6 @@ let update_const m x =
     end;
   update m x
 
-(**/**) (* helper function to evaluate a thunk *)
 let evaluate_meta meta f =
   incr Statistics.Counts.evaluate;
   eager_stack := meta::!eager_stack;
@@ -374,8 +373,8 @@ let evaluate_meta meta f =
   eager_stack := List.tl !eager_stack;
   value
 
-let make_evaluate m f = fun () -> update m (evaluate_meta m.meta f)
-(**/**)
+let make_evaluate m f =
+  fun () -> update m (evaluate_meta m.meta f)
 
 (** Update an EagerTotalOrder thunk with a function that may depend on other EagerTotalOrder thunks. *)
 let update_thunk m f =

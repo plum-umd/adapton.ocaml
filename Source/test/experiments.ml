@@ -1225,6 +1225,7 @@ module Engines = struct
   module EagerNonInc = Alternatives.EagerNonInc
   module LazyNonInc = Alternatives.LazyNonInc
   module LazyRecalc = Alternatives.LazyRecalc
+  module Sac = Alternatives.Sac
 end
 
 module type ExperimentType = sig
@@ -1242,6 +1243,7 @@ module Experiments = struct
     module ListApp_lazy_recalc = Linear.List_filter(struct let name = "lazyrecalc" end)(LazyRecalc.ArtLib)
     module ListApp_eager_noninc = Linear.List_filter(struct let name = "eagernoninc" end)(EagerNonInc.ArtLib)
     module ListApp_lazy_noninc = Linear.List_filter(struct let name = "lazynoninc" end)(LazyNonInc.ArtLib)
+    module ListApp_sac = Linear.List_filter(struct let name = "sac" end)(Sac.ArtLib)
   end
 
   module List_map = struct
@@ -1251,6 +1253,7 @@ module Experiments = struct
     module ListApp_lazy_recalc = Linear.List_map(struct let name = "lazyrecalc" end)(LazyRecalc.ArtLib)
     module ListApp_eager_noninc = Linear.List_map(struct let name = "eagernoninc" end)(EagerNonInc.ArtLib)
     module ListApp_lazy_noninc = Linear.List_map(struct let name = "lazynoninc" end)(LazyNonInc.ArtLib)
+    module ListApp_sac = Linear.List_map(struct let name = "sac" end)(Sac.ArtLib)
   end
 
   module List_map_paired = struct
@@ -1269,6 +1272,7 @@ module Experiments = struct
     module ListApp_lazy_recalc = Mergesorts.Rope_mergesort(struct let name = "lazyrecalc" end)(LazyRecalc.ArtLib)
     module ListApp_eager_noninc = Mergesorts.Rope_mergesort(struct let name = "eagernoninc" end)(EagerNonInc.ArtLib)
     module ListApp_lazy_noninc = Mergesorts.Rope_mergesort(struct let name = "lazynoninc" end)(LazyNonInc.ArtLib)
+    module ListApp_sac = Mergesorts.Rope_mergesort(struct let name = "sac" end)(Sac.ArtLib)
   end
 
   module List_mergesort = struct
@@ -1276,6 +1280,7 @@ module Experiments = struct
     module ListApp_arg = Mergesorts.List_mergesort(struct let name = "arg" end)(Grifola_arg.ArtLib)
     module ListApp_arggen = Mergesorts.List_mergesort(struct let name = "arggen" end)(Grifola_arggen.ArtLib)
     module ListApp_lazy_recalc = Mergesorts.List_mergesort(struct let name = "lazyrecalc" end)(LazyRecalc.ArtLib)
+    module ListApp_sac = Mergesorts.List_mergesort(struct let name = "sac" end)(Sac.ArtLib)
   end
 
   module Rope_median = struct
@@ -1284,6 +1289,7 @@ module Experiments = struct
     module ListApp_arggen = Median.Rope_median(struct let name = "arggen" end)(Grifola_arggen.ArtLib)
     module ListApp_lazy_recalc = Median.Rope_median(struct let name = "lazyrecalc" end)(LazyRecalc.ArtLib)
     module ListApp_eager_noninc = Median.Rope_median(struct let name = "eagernoninc" end)(EagerNonInc.ArtLib)
+    module ListApp_sac = Median.Rope_median(struct let name = "sac" end)(Sac.ArtLib)
   end
 
   (* to test the median, this finds center without sorting first *)
@@ -1293,18 +1299,21 @@ module Experiments = struct
     module ListApp_arggen = Median.Rope_center(struct let name = "arggen" end)(Grifola_arggen.ArtLib)
     module ListApp_lazy_recalc = Median.Rope_center(struct let name = "lazyrecalc" end)(LazyRecalc.ArtLib)
     module ListApp_eager_noninc = Median.Rope_center(struct let name = "eagernoninc" end)(EagerNonInc.ArtLib)
+    module ListApp_sac = Median.Rope_center(struct let name = "sac" end)(Sac.ArtLib)
   end
 
   module Quickhull = struct
     module ListApp_name = Pointcloud.Quickhull(struct let name = "name" end)(Grifola_name.ArtLib)
     module ListApp_arggen = Pointcloud.Quickhull(struct let name = "arggen" end)(Grifola_arggen.ArtLib)
     module ListApp_lazy_recalc = Pointcloud.Quickhull(struct let name = "lazyrecalc" end)(LazyRecalc.ArtLib)
+    module ListApp_sac = Pointcloud.Quickhull(struct let name = "sac" end)(Sac.ArtLib)
   end
 
   module Rope_iter = struct
     module ListApp_name = Iteration.Rope_iter(struct let name = "name" end)(Grifola_name.ArtLib)
     module ListApp_arg = Iteration.Rope_iter(struct let name = "arg" end)(Grifola_arg.ArtLib)
     module ListApp_arggen = Iteration.Rope_iter(struct let name = "arggen" end)(Grifola_name.ArtLib)
+    module ListApp_sac = Iteration.Rope_iter(struct let name = "sac" end)(Sac.ArtLib)
   end
 
   module Rope_min = struct
@@ -1312,6 +1321,7 @@ module Experiments = struct
     module ListApp_arg = Reduction.Rope_min(struct let name = "arg" end)(Grifola_arg.ArtLib)
     module ListApp_arggen = Reduction.Rope_min(struct let name = "arggen" end)(Grifola_arggen.ArtLib)
     module ListApp_lazy_recalc = Reduction.Rope_min(struct let name = "lazyrecalc" end)(LazyRecalc.ArtLib)
+    module ListApp_sac = Reduction.Rope_min(struct let name = "sac" end)(Sac.ArtLib)
   end
 
   module Rope_sum = struct
@@ -1319,6 +1329,7 @@ module Experiments = struct
     module ListApp_arg = Reduction.Rope_sum(struct let name = "arg" end)(Grifola_arg.ArtLib)
     module ListApp_arggen = Reduction.Rope_sum(struct let name = "arggen" end)(Grifola_arggen.ArtLib)
     module ListApp_lazy_recalc = Reduction.Rope_sum(struct let name = "lazyrecalc" end)(LazyRecalc.ArtLib)
+    module ListApp_sac = Reduction.Rope_sum(struct let name = "sac" end)(Sac.ArtLib)
   end
 
   module AVL_name = Reduction.AVL_of_rope(struct let name = "grifola_name" end)(Grifola_name.ArtLib)
@@ -1334,27 +1345,32 @@ let raw_experiments =
   (module Experiments.Rope_min.ListApp_arg            : ListAppType) ;
   (module Experiments.Rope_min.ListApp_arggen         : ListAppType) ;
   (module Experiments.Rope_min.ListApp_lazy_recalc     : ListAppType) ;
+  (module Experiments.Rope_min.ListApp_sac             : ListAppType) ;
 
   (* Rope sum versions *)
   (module Experiments.Rope_sum.ListApp_name           : ListAppType) ;
   (module Experiments.Rope_sum.ListApp_arg            : ListAppType) ;
   (module Experiments.Rope_sum.ListApp_arggen         : ListAppType) ;
   (module Experiments.Rope_sum.ListApp_lazy_recalc     : ListAppType) ;
+  (module Experiments.Rope_sum.ListApp_sac             : ListAppType) ;
 
   (* Rope iter versions *)
   (module Experiments.Rope_iter.ListApp_name           : ListAppType) ;
   (module Experiments.Rope_iter.ListApp_arg            : ListAppType) ;
   (module Experiments.Rope_iter.ListApp_arggen         : ListAppType) ;
+  (module Experiments.Rope_iter.ListApp_sac             : ListAppType) ;
 
   (* List filter *)
   (module Experiments.List_filter.ListApp_name         : ListAppType) ;
   (module Experiments.List_filter.ListApp_arggen       : ListAppType) ;
   (module Experiments.List_filter.ListApp_lazy_recalc  : ListAppType) ;
+  (module Experiments.List_filter.ListApp_sac             : ListAppType) ;
 
   (* List map *)
   (module Experiments.List_map.ListApp_name         : ListAppType) ;
   (module Experiments.List_map.ListApp_arggen       : ListAppType) ;
   (module Experiments.List_map.ListApp_lazy_recalc  : ListAppType) ;
+  (module Experiments.List_map.ListApp_sac          : ListAppType) ;
 
   (* List map paired *)
     (* checking this will fail when list lengths are
@@ -1369,33 +1385,39 @@ let raw_experiments =
   (module Experiments.Rope_mergesort.ListApp_eager_noninc : ListAppType) ;
   (module Experiments.Rope_mergesort.ListApp_lazy_noninc  : ListAppType) ;
   (module Experiments.Rope_mergesort.ListApp_lazy_recalc  : ListAppType) ;
+  (module Experiments.Rope_mergesort.ListApp_sac          : ListAppType) ;
 
   (* List mergesort *)
   (module Experiments.List_mergesort.ListApp_name         : ListAppType) ;
   (module Experiments.List_mergesort.ListApp_arggen       : ListAppType) ;
   (module Experiments.List_mergesort.ListApp_lazy_recalc  : ListAppType) ;
+  (module Experiments.List_mergesort.ListApp_sac          : ListAppType) ;
 
   (* Rope Median *)
   (module Experiments.Rope_median.ListApp_name         : ListAppType) ;
   (module Experiments.Rope_median.ListApp_arggen       : ListAppType) ;
   (module Experiments.Rope_median.ListApp_lazy_recalc  : ListAppType) ;
   (module Experiments.Rope_median.ListApp_eager_noninc : ListAppType) ;
+  (module Experiments.Rope_median.ListApp_sac          : ListAppType) ;
 
   (* Rope Center (median without sorting) *)
   (module Experiments.Rope_center.ListApp_name         : ListAppType) ;
   (module Experiments.Rope_center.ListApp_arggen       : ListAppType) ;
   (module Experiments.Rope_center.ListApp_lazy_recalc  : ListAppType) ;
   (module Experiments.Rope_center.ListApp_eager_noninc : ListAppType) ;
+  (module Experiments.Rope_center.ListApp_sac          : ListAppType) ;
 
   (* Quickhull *)
   (module Experiments.Quickhull.ListApp_name         : ListAppType) ;
   (module Experiments.Quickhull.ListApp_arggen       : ListAppType) ;
   (module Experiments.Quickhull.ListApp_lazy_recalc  : ListAppType) ;
+  (module Experiments.Quickhull.ListApp_sac          : ListAppType) ;
 
   (* Benchmarks for overhead comparison: *)
   (module Experiments.AVL_name                         : ListAppType) ;
   (module Experiments.AVL_arggen                       : ListAppType) ;
   (module Experiments.AVL_lazy_recalc                  : ListAppType) ;
+
 ]
 
 let all_experiments : (module ExperimentType) list =
