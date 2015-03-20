@@ -306,8 +306,8 @@ let mk_mfn (type a)
       in
 
       (* memoizing constructor *)
-      let rec memo x =
-        let binding = Memo.Table.merge Memo.table Memo.Binding.({ key=Arg x; value=None }) in
+      let rec memo arg =
+        let binding = Memo.Table.merge Memo.table Memo.Binding.({ key=Arg arg; value=None }) in
         match binding.Memo.Binding.value with
         | Some m when TotalOrder.is_valid m.meta.start_timestamp
                       && TotalOrder.compare m.meta.start_timestamp !eager_now > 0
@@ -316,21 +316,46 @@ let mk_mfn (type a)
            TotalOrder.splice !eager_now m.meta.start_timestamp;
            eager_now := m.meta.end_timestamp;
            m
+
         | _ ->
            (* note that m.meta.unmemo indirectly holds a reference to binding (via unmemo's closure);
                             this prevents the GC from collecting binding from Memo.table until m itself is collected *)
            incr Statistics.Counts.create;
            incr Statistics.Counts.miss;
-           let m = make_node (fun () -> user_function mfn x) in
+           let m = make_node (fun () -> user_function mfn arg) in
            m.meta.unmemo <- (fun () -> Memo.Table.remove Memo.table binding);
            binding.Memo.Binding.value <- Some m;
            m
       in
+
+      (* memoizing constructor *)
+      let rec memo_name name arg =
+        let binding = Memo.Table.merge Memo.table Memo.Binding.({ key=Arg arg; value=None }) in
+        match binding.Memo.Binding.value with
+        | Some m when TotalOrder.is_valid m.meta.start_timestamp
+                      && TotalOrder.compare m.meta.start_timestamp !eager_now > 0
+                      && TotalOrder.compare m.meta.end_timestamp !eager_finger < 0 ->
+           incr Statistics.Counts.hit;
+           TotalOrder.splice !eager_now m.meta.start_timestamp;
+           eager_now := m.meta.end_timestamp;
+           m
+
+        | _ ->
+           (* note that m.meta.unmemo indirectly holds a reference to binding (via unmemo's closure);
+                            this prevents the GC from collecting binding from Memo.table until m itself is collected *)
+           incr Statistics.Counts.create;
+           incr Statistics.Counts.miss;
+           let m = make_node (fun () -> user_function mfn arg) in
+           m.meta.unmemo <- (fun () -> Memo.Table.remove Memo.table binding);
+           binding.Memo.Binding.value <- Some m;
+           m
+      in
+
       (* incr Statistics.Counts.evaluate;  *)
       {
         mfn_data = (fun arg -> user_function mfn arg) ;
         mfn_art  = (fun arg -> memo arg) ;
-        mfn_nart = (fun nm arg -> memo arg) ;
+        mfn_nart = (fun name arg -> memo_name name arg) ;
       }
     in mfn
 
