@@ -1311,12 +1311,14 @@ module Experiments = struct
     module ListApp_name = Reduction.Rope_min(struct let name = "name" end)(Grifola_name.ArtLib)
     module ListApp_arg = Reduction.Rope_min(struct let name = "arg" end)(Grifola_arg.ArtLib)
     module ListApp_arggen = Reduction.Rope_min(struct let name = "arggen" end)(Grifola_arggen.ArtLib)
+    module ListApp_lazy_recalc = Reduction.Rope_min(struct let name = "lazyrecalc" end)(LazyRecalc.ArtLib)
   end
 
   module Rope_sum = struct
     module ListApp_name = Reduction.Rope_sum(struct let name = "name" end)(Grifola_name.ArtLib)
     module ListApp_arg = Reduction.Rope_sum(struct let name = "arg" end)(Grifola_arg.ArtLib)
     module ListApp_arggen = Reduction.Rope_sum(struct let name = "arggen" end)(Grifola_arggen.ArtLib)
+    module ListApp_lazy_recalc = Reduction.Rope_sum(struct let name = "lazyrecalc" end)(LazyRecalc.ArtLib)
   end
 
   module AVL_name = Reduction.AVL_of_rope(struct let name = "grifola_name" end)(Grifola_name.ArtLib)
@@ -1331,11 +1333,13 @@ let raw_experiments =
   (module Experiments.Rope_min.ListApp_name           : ListAppType) ;
   (module Experiments.Rope_min.ListApp_arg            : ListAppType) ;
   (module Experiments.Rope_min.ListApp_arggen         : ListAppType) ;
+  (module Experiments.Rope_min.ListApp_lazy_recalc     : ListAppType) ;
 
   (* Rope sum versions *)
   (module Experiments.Rope_sum.ListApp_name           : ListAppType) ;
   (module Experiments.Rope_sum.ListApp_arg            : ListAppType) ;
   (module Experiments.Rope_sum.ListApp_arggen         : ListAppType) ;
+  (module Experiments.Rope_sum.ListApp_lazy_recalc     : ListAppType) ;
 
   (* Rope iter versions *)
   (module Experiments.Rope_iter.ListApp_name           : ListAppType) ;
