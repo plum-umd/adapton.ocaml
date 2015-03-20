@@ -102,6 +102,7 @@ module T = struct
           | Some next -> (
             if (TotalOrder.compare next.end_timestamp end_time) < 0 then (
               let meta = dequeue () in
+              assert ( TotalOrder.compare meta.end_timestamp end_time < 0 ) ;
               eager_now := meta.start_timestamp;
               eager_finger := meta.end_timestamp;
               meta.evaluate ();
@@ -371,6 +372,7 @@ let mk_mfn (type a)
              let old_finger = !eager_finger in
              eager_finger := m.meta.end_timestamp;
              m.meta.evaluate ();
+             Printf.eprintf "offensive splice\n" ;
              TotalOrder.splice ~db:"memo_name: Diff arg: #2" !eager_now m.meta.end_timestamp;
              eager_finger := old_finger;
              m
