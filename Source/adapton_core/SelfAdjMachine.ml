@@ -361,9 +361,6 @@ let update_const m x =
     end;
   update m x
 
-let cell = failwith "TODO"
-let set = update_const
-
 (**/**) (* helper function to evaluate a thunk *)
 let evaluate_meta meta f =
   incr Statistics.Counts.evaluate;
@@ -379,24 +376,6 @@ let evaluate_meta meta f =
 
 let make_evaluate m f = fun () -> update m (evaluate_meta m.meta f)
 (**/**)
-
-(** Create an EagerTotalOrder thunk from a function that may depend on other EagerTotalOrder thunks. *)
-let thunk f = failwith "TODO"
-(*
-  incr Statistics.Counts.create;
-  let meta = {
-    evaluate=nop;
-    unmemo=nop;
-    start_timestamp=add_timestamp ();
-    end_timestamp=TotalOrder.null;
-    dependents=WeakDyn.create 0;
-  } in
-  let m = { id=AdaptonTypes.Counter.next eager_id_counter; value=evaluate_meta meta f; meta } in
-  meta.end_timestamp <- add_timestamp ();
-  TotalOrder.set_invalidator meta.start_timestamp (invalidator meta);
-  meta.evaluate <- make_evaluate m f;
-  m
- *)
 
 (** Update an EagerTotalOrder thunk with a function that may depend on other EagerTotalOrder thunks. *)
 let update_thunk m f =
@@ -417,6 +396,26 @@ let update_thunk m f =
   m.meta.end_timestamp <- add_timestamp ();
   TotalOrder.set_invalidator m.meta.start_timestamp (invalidator m.meta);
   m.meta.evaluate <- evaluate
+
+let cell nm v = const v (* TODO: Use the name; workaround, use mfn_nart interface instead. *)
+let set = update_const
+
+let node f =
+  incr Statistics.Counts.create;
+  let meta = {
+    evaluate=nop;
+    unmemo=nop;
+    start_timestamp=add_timestamp ();
+    end_timestamp=TotalOrder.null;
+    dependents=WeakDyn.create 0;
+  } in
+  let m = { id=AdaptonTypes.Counter.next eager_id_counter; value=evaluate_meta meta f; meta } in
+  meta.end_timestamp <- add_timestamp ();
+  TotalOrder.set_invalidator meta.start_timestamp (invalidator meta);
+  meta.evaluate <- make_evaluate m f;
+  m
+
+let thunk nm f = node f
 
 (* create memoizing constructors *)
 module Memo = struct
@@ -450,7 +449,7 @@ module Memo = struct
                             this prevents the GC from collecting binding from memotable until m itself is collected *)
          incr Statistics.Counts.create;
          incr Statistics.Counts.miss;
-         let m = thunk (fun () -> f memo x) in
+         let m = node (fun () -> f memo x) in
          m.meta.unmemo <- (fun () -> Memotable.remove memotable binding);
          binding.Binding.value <- Some m;
          m
