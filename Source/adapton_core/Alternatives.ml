@@ -3,8 +3,6 @@ This file contains alternative inputs to Adapton functors
 to produce non-adapton results
 *)
 
-(* module S = SelfAdjMachine *) 
-
 open Primitives
 
 (*
@@ -316,70 +314,11 @@ module LazyNonInc = struct
   end
 end
                       
-(*
-  a minimal alternative to Grifola.Make
-  calculates its value on force and 
-  caches it for use later
 
-  This will return INCORRECT data after
-  an incremental change, only used for
-  benchmarking purposes
-*)
-module SacImpl = struct
+module Sac = struct
 
-  (* TODO: consider using the name as the id instead of a count *)
-  let counter = ref 0
-  let next_count ()= 
-    let ret = !counter in
-    counter := ret+1;
-    ret
-
-  module MakeArt
-    (Name:GrifolaType.NameType) (Data:DatType)
-    : GrifolaType.ArtType
-    with type Name.t = Name.t
-    and  type Data.t = Data.t
-    (* and  type t = Data.t node  *)
-  = struct
-    module Name = Name
-    module Data = Data
-
-    type 'a node = {
-      id : int;
-    }
-
-    type t = Data.t node
-
-    type 'arg mfn = { mfn_data : 'arg -> Data.t ;      (* Pure recursion. *)
-                      mfn_art  : 'arg -> t ;           (* Create a memoized articulation, classically. *)
-                      mfn_nart : Name.t -> 'arg -> t ; (* Create a memoized articulation, nominally. *) }
-
-    let string n = "&"^(string_of_int n.id)
-    let hash seed n = Hashtbl.seeded_hash seed n.id
-    let equal {id=id1 } {id=id2 } = id1 = id2
-    let force n = (* incr Statistics.Counts.evaluate;  *) failwith "TODO"                                                                      
-    let sanitize n = n
-
-    let cell _ x = { id = next_count() }
-    let set n x = failwith "TODO"
-    let thunk _ f = ((* incr Statistics.Counts.evaluate; *) f ()) ; { id = next_count() }
-
-
-    let mk_mfn (type a)
-      _
-      (module Arg : DatType with type t = a)
-      (user_function: Arg.t mfn -> Arg.t -> Data.t) 
-      : Arg.t mfn
-    =
-      let rec mfn =
-      (* incr Statistics.Counts.evaluate;  *)
-        { 
-          mfn_data = (fun arg -> user_function mfn arg) ;
-          mfn_art  = (fun arg -> cell (Name.nondet()) (user_function mfn arg)) ;
-          mfn_nart = (fun _ arg -> cell (Name.nondet()) (user_function mfn arg)) ;
-        }
-      in mfn
-  end
+  module S = SelfAdjMachine
+  module MakeArt = S.MakeArt
 
   module ArtLib : GrifolaType.ArtLibType = struct
     type lib_id

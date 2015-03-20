@@ -287,15 +287,207 @@ struct
 
             memo
     end
-
-    module Eviction = Eviction
 end
 
+
+(** Functor to make constructors and updaters for EagerTotalOrder thunks of a specific type. *)
+module MakeArt (Name:GrifolaType.NameType) (Data : DatType) :
+GrifolaType.ArtType
+       with type Name.t = Name.t
+        and type Data.t = Data.t = struct
+
+include T
+
+module Name = Name
+module Data = Data
+
+(** Value contained by EagerTotalOrder thunks for a specific type. *)
+type data = Data.t
+
+(** EagerTotalOrder thunks for a specific type. *)
+type t = Data.t thunk
+
+(**/**) (* helper functions *)
+
+let nop () = ()
+
+let invalidator meta ts =
+  (* help GC mark phase by cutting the object graph *)
+  (* no need to call unmemo since the memo entry will be replaced when
+     it sees start_timestamp is invalid; also, no need to replace
+     {start,end}_timestamp with null since they are already cut by
+     TotalOrder during invalidation *)
+  meta.unmemo <- nop;
+  meta.evaluate <- nop;
+  unqueue meta;
+  WeakDyn.clear meta.dependents
+
+let update m x = if not (Data.equal m.value x) then
+                   begin
+                     m.value <- x;
+                     enqueue_dependents m.meta.dependents
+                   end
+(**/**)
+
+(** Create an EagerTotalOrder thunk from a constant value. *)
+let const x =
+  incr Statistics.Counts.create;
+  let m = {
+    id=AdaptonTypes.Counter.next eager_id_counter;
+    value=x;
+    meta={
+      evaluate=nop;
+      unmemo=nop;
+      start_timestamp=TotalOrder.null;
+      end_timestamp=TotalOrder.null;
+      dependents=WeakDyn.create 0;
+    };
+  } in
+  m
+
+(** Update an EagerTotalOrder thunk with a constant value. *)
+let update_const m x =
+  incr Statistics.Counts.update;
+  if m.meta.start_timestamp != TotalOrder.null then
+    begin
+      (* no need to call unmemo since the memo entry will be replaced when it sees start_timestamp is invalid *)
+      m.meta.unmemo <- nop;
+      m.meta.evaluate <- nop;
+      unqueue m.meta;
+      TotalOrder.reset_invalidator m.meta.start_timestamp;
+      TotalOrder.splice ~inclusive:true m.meta.start_timestamp m.meta.end_timestamp;
+      m.meta.start_timestamp <- TotalOrder.null;
+      m.meta.end_timestamp <- TotalOrder.null
+    end;
+  update m x
+
+let cell = failwith "TODO"
+let set = update_const
+
+(**/**) (* helper function to evaluate a thunk *)
+let evaluate_meta meta f =
+  incr Statistics.Counts.evaluate;
+  eager_stack := meta::!eager_stack;
+  let value = try
+      f ()
+    with exn ->
+      eager_stack := List.tl !eager_stack;
+      raise exn
+  in
+  eager_stack := List.tl !eager_stack;
+  value
+
+let make_evaluate m f = fun () -> update m (evaluate_meta m.meta f)
+(**/**)
+
+(** Create an EagerTotalOrder thunk from a function that may depend on other EagerTotalOrder thunks. *)
+let thunk f = failwith "TODO"
+(*
+  incr Statistics.Counts.create;
+  let meta = {
+    evaluate=nop;
+    unmemo=nop;
+    start_timestamp=add_timestamp ();
+    end_timestamp=TotalOrder.null;
+    dependents=WeakDyn.create 0;
+  } in
+  let m = { id=AdaptonTypes.Counter.next eager_id_counter; value=evaluate_meta meta f; meta } in
+  meta.end_timestamp <- add_timestamp ();
+  TotalOrder.set_invalidator meta.start_timestamp (invalidator meta);
+  meta.evaluate <- make_evaluate m f;
+  m
+ *)
+
+(** Update an EagerTotalOrder thunk with a function that may depend on other EagerTotalOrder thunks. *)
+let update_thunk m f =
+  incr Statistics.Counts.update;
+  if m.meta.start_timestamp != TotalOrder.null then
+    begin
+      m.meta.unmemo ();
+      m.meta.unmemo <- nop;
+      m.meta.evaluate <- nop;
+      unqueue m.meta;
+      TotalOrder.reset_invalidator m.meta.start_timestamp;
+      TotalOrder.splice ~inclusive:true m.meta.start_timestamp m.meta.end_timestamp;
+      m.meta.end_timestamp <- TotalOrder.null
+    end;
+  m.meta.start_timestamp <- add_timestamp ();
+  let evaluate = make_evaluate m f in
+  evaluate ();
+  m.meta.end_timestamp <- add_timestamp ();
+  TotalOrder.set_invalidator m.meta.start_timestamp (invalidator m.meta);
+  m.meta.evaluate <- evaluate
+
+(* create memoizing constructors *)
+module Memo = struct
+  type data = Data.t
+  type t = Data.t thunk
+
+  (** Create memoizing constructor for an EagerTotalOrder thunk. *)
+  let memo (type a) (module A : ResultType with type t = a) f =
+    let module Binding = struct
+      type t = { key : A.t; mutable value : Data.t thunk option }
+      let seed = Random.bits ()
+      let hash a = A.hash seed a.key
+      let equal a a' = A.equal a.key a'.key
+    end in
+    let module Memotable = Weak.Make (Binding) in
+    let memotable = Memotable.create 0 in
+
+    (* memoizing constructor *)
+    let rec memo x =
+      let binding = Memotable.merge memotable Binding.({ key=x; value=None }) in
+      match binding.Binding.value with
+      | Some m when TotalOrder.is_valid m.meta.start_timestamp
+                    && TotalOrder.compare m.meta.start_timestamp !eager_now > 0
+                    && TotalOrder.compare m.meta.end_timestamp !eager_finger < 0 ->
+         incr Statistics.Counts.hit;
+         TotalOrder.splice !eager_now m.meta.start_timestamp;
+         eager_now := m.meta.end_timestamp;
+         m
+      | _ ->
+         (* note that m.meta.unmemo indirectly holds a reference to binding (via unmemo's closure);
+                            this prevents the GC from collecting binding from memotable until m itself is collected *)
+         incr Statistics.Counts.create;
+         incr Statistics.Counts.miss;
+         let m = thunk (fun () -> f memo x) in
+         m.meta.unmemo <- (fun () -> Memotable.remove memotable binding);
+         binding.Binding.value <- Some m;
+         m
+    in
+    memo
+end
+
+type 'arg mfn = { mfn_data : 'arg -> Data.t ;      (* Pure recursion. *)
+                  mfn_art  : 'arg -> t ;           (* Create a memoized articulation, classically. *)
+                  mfn_nart : Name.t -> 'arg -> t ; (* Create a memoized articulation, nominally. *) }
+
+let mk_mfn (type a)
+      _
+      (module Arg : DatType with type t = a)
+      (user_function: Arg.t mfn -> Arg.t -> Data.t)
+      : Arg.t mfn
+    =
+      let rec mfn =
+        (* incr Statistics.Counts.evaluate;  *)
+        {
+          mfn_data = (fun arg -> user_function mfn arg) ;
+          mfn_art  = (fun arg -> failwith "TODO" (*cell (Name.nondet()) (user_function mfn arg) *)) ;
+          mfn_nart = (fun _ arg -> failwith "TODO" (* cell (Name.nondet()) (user_function mfn arg) *)) ;
+        }
+      in mfn
+
+
+end
+
+(*
 (** Tweak GC for this module. *)
 let tweak_gc () =
-    let open Gc in
-    let control = get () in
-    set { control with
+  let open Gc in
+  let control = get () in
+  set { control with
         minor_heap_size = max control.minor_heap_size (2 * 1024 * 1024);
         major_heap_increment = max control.minor_heap_size (4 * 1024 * 1024);
-    }
+      }
+
+ *)
