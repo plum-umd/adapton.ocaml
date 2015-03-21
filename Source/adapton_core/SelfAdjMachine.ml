@@ -72,12 +72,14 @@ module T = struct
     let dequeue () = PriorityQueue.pop eager_queue
 
     let enqueue_dependents dependents =
-        ignore begin WeakDyn.fold begin fun d () ->
-            if TotalOrder.is_valid d.start_timestamp then
-                if PriorityQueue.add eager_queue d then
-                    incr Statistics.Counts.dirty
-        end dependents () end;
-        WeakDyn.clear dependents
+      WeakDyn.fold (
+          fun d () ->
+          if TotalOrder.is_valid d.start_timestamp then (
+            Printf.printf "enqueuing dependent %d\n" (TotalOrder.id d.start_timestamp) ;
+            if PriorityQueue.add eager_queue d then
+              incr Statistics.Counts.dirty
+          )) dependents ()
+    (* WeakDyn.clear dependents *) (* XXX *)
     (**/**)
 
 
@@ -101,7 +103,8 @@ module T = struct
           match PriorityQueue.top eager_queue with
           | None -> ()
           | Some next -> (
-            if (TotalOrder.compare next.end_timestamp end_time) < 0 then (
+            if TotalOrder.compare next.end_timestamp end_time < 0
+            (* && TotalOrder.compare !eager_now next.start_timestamp < 0 *) then (
               let meta = dequeue () in
               assert ( TotalOrder.compare meta.end_timestamp end_time < 0 ) ;
               eager_now := meta.start_timestamp;
@@ -197,6 +200,7 @@ let invalidator meta ts =
 let update m x =
   if not (Data.equal m.value x) then
     begin
+      Printf.printf "update: ** CHANGED: #%d (%d,%d) **\n" m.id (TotalOrder.id m.meta.start_timestamp) (TotalOrder.id m.meta.end_timestamp) ;
       m.value <- x;
       enqueue_dependents m.meta.dependents
     end
@@ -391,6 +395,7 @@ let mk_mfn (type a)
              let old_finger = !eager_finger in
              assert( TotalOrder.compare m.meta.end_timestamp old_finger < 0 );
              eager_finger := m.meta.end_timestamp;
+             binding.Memo.Binding.arg := arg ;
              m.meta.evaluate ();
              assert( TotalOrder.compare m.meta.start_timestamp !eager_now <= 0 );
              assert( TotalOrder.compare !eager_now   m.meta.end_timestamp <  0 );
@@ -410,7 +415,7 @@ let mk_mfn (type a)
                             this prevents the GC from collecting binding from Memo.table until m itself is collected *)
            incr Statistics.Counts.create;
            incr Statistics.Counts.miss;
-           let m = make_node (fun () -> user_function mfn arg) in
+           let m = make_node (fun () -> user_function mfn ( ! ( binding.Memo.Binding.arg ) ) ) in
            m.meta.unmemo <- (fun () -> Memo.Table.remove Memo.table binding);
            binding.Memo.Binding.value <- Some m;
            m
