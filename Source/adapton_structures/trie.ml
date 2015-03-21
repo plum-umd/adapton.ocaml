@@ -1,5 +1,5 @@
 (* Adapted from Pugh POPL '89 *)
-open Adapton_core_logging
+open Adapton_core
 open Primitives
 open GrifolaType
 
