@@ -37,7 +37,8 @@ module type AParamsType = sig
   val sanitize_pointers   : bool
   val disable_names       : bool
   val generative_ids      : bool
-  val disable_mfns : bool
+  val disable_mfns        : bool
+  val debug_assert        : bool
 end
 
 module Make (Params:AParamsType) = struct
@@ -1239,7 +1240,23 @@ module Make (Params:AParamsType) = struct
               let mut_edge = Mutators.merge meta_node.mutators mut_edge' in
               stkf.stkf_mut_edges <- mut_edge :: stkf.stkf_mut_edges ;
             )
-          
+
+          let debug_assert_check () =
+            if Params.debug_assert then (
+              List.iter (
+                  fun stkf ->
+                  List.iter (
+                      fun dep ->
+                      assert( dep.flag = Clean );
+                    ) stkf.stkf_obs_edges ;
+                  List.iter (
+                      fun dep ->
+                      assert( dep.mut_flag = Clean );
+                    ) stkf.stkf_mut_edges ;
+                )
+                (!force_stack)
+            )
+
           let create_susp_ptr_nm (nm:Name.t) (arg:Arg.t) : Data.t susp_ptr =
             let create_shared_susp_node_nm sp : unit = 
               let meta_node = make_meta () in
@@ -1296,12 +1313,15 @@ module Make (Params:AParamsType) = struct
                   Mutators.fold ( fun edge () ->
                     if ( not (edge.mut_source == force_src_meta)
                          && not (meta_is_root force_src_meta)
-                         && edge.mut_flag <> Obsolete_edge ) then
-                      mark_filthy edge.mut_source
+                         && edge.mut_flag <> Obsolete_edge ) then (
+                      mark_filthy edge.mut_source ;
+                      debug_assert_check () ;
+                    )
                     else ()
                   ) sp0_meta_node.mutators () ;
                   S.Susp.set_arg S.susp (Obj.magic arg) ;
                   mark_filthy sp0_meta_node ;
+                  debug_assert_check () ;
                 ) ;
                 create_create_edge ~is_fresh:false sp0 ;
                 (* {{ Eviction, Viz *)
@@ -1636,6 +1656,7 @@ module Default_params = struct
   let disable_names     = false
   let generative_ids    = false
   let disable_mfns      = false
+  let debug_assert      = false
 end
 
 let params = [
