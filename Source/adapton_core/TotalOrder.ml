@@ -18,7 +18,7 @@ module T : sig
     val is_valid : t -> bool
     val compare : t -> t -> int
     val add_next : t -> t
-    val splice : ?inclusive:bool -> t -> t -> unit
+    val splice : ?db:string -> ?inclusive:bool -> t -> t -> unit
     val set_invalidator : t -> (t -> unit) -> unit
     val reset_invalidator : t -> unit
 end = struct
@@ -229,8 +229,8 @@ end = struct
 
     (** Splice two elements [ts] and [ts'] in a total-order such that, [ts] is immediately followed by [ts'], removing all elements between them;
         optionally, if [inclusive] is [true], [ts] and [ts'] will also be removed. *)
-    let splice ?(inclusive=false) ts ts' =
-        if compare ts ts' > 0 then invalid_arg "TotalOrder.splice";
+    let splice ?(db="") ?(inclusive=false) ts ts' =
+        if compare ts ts' > 0 then failwith ("misordered timestamps: TotalOrder.splice:"^db);
 
         if ts.parent != ts'.parent then begin
             (* invalidate all parents between ts and ts' *)
@@ -242,7 +242,7 @@ end = struct
                     invalidate_parent parent;
                     invalidate_next next
                 end else
-                    failwith "splice"
+                    failwith ("splice: invalidate_next: "^db)
             in
             invalidate_next ts.parent.parent_next;
             ts'.parent.parent_prev <- ts.parent;
@@ -277,7 +277,7 @@ end = struct
                     invalidate ts;
                     invalidate_next next
                 end else
-                    failwith "splice"
+                    failwith ("splice: invalidate_next #2: "^db)
             in
             invalidate_next ts.next;
             ts'.prev <- ts;
