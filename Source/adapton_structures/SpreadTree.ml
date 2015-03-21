@@ -777,17 +777,23 @@ module MakeSeq
            | `Cons(x, xs) ->
               let hd_lev = Primitives.ffs (St.Data.hash 0 x) in
               if lo <= hd_lev && hd_lev <= hi then
-                let rev = match no with
-                  | None    -> rev
-                  | Some nm ->
-                     let nm1,nm2 = Name.fork nm in
-                     `Name(nm1, `Art(accum.LArt.mfn_nart nm2 (`Cons(x, rev))))
-                in
-                let rest, rev = list_reverse None (-1) hd_lev xs rev in
-                list_reverse None hd_lev hi rest rev
-              else
-                (list, rev)
-                  
+                match no with
+                | None ->
+                   let rev = `Cons(x,rev) in
+                   let rest, rev = list_reverse None (-1) hd_lev xs rev in
+                   list_reverse None hd_lev hi rest rev
+                                
+                | Some nm ->
+                   let nm1,nm  = Name.fork nm in
+                   let nm2,nm3 = Name.fork nm in
+                   let rev = `Name(nm1, `Art(accum.LArt.mfn_nart nm2 (`Cons(x, rev)))) in
+                   let rest, rev = A.force (r.A.mfn_nart nm3 (None, -1, hd_lev, xs, rev)) in
+                   list_reverse None hd_lev hi rest rev
+              else (
+                match no with
+                | Some nm -> (`Name(nm,list), rev)
+                | None -> (list, rev)                                
+              )
            | `Art art -> list_reverse no lo hi (LArt.force art) rev
            | `Name (nm, xs) -> list_reverse (Some nm) lo hi xs rev
          ))
