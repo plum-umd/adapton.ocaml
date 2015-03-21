@@ -958,6 +958,14 @@ module Linear = struct
 
 end
 
+module Foo = struct
+  module T = Trie.S\et.Make(
+                 struct
+                   include Types.Int
+                   let compare = Pervasives.compare
+                 end  )
+end
+
 module Reverse = struct
 
   module Rope_reverse
