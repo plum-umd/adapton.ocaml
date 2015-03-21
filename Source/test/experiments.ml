@@ -958,6 +958,47 @@ module Linear = struct
 
 end
 
+module Reverse = struct
+
+  module Rope_reverse
+    (N : sig val name : string end)
+    (AL : GrifolaType.ArtLibType) =
+  struct
+    let name = "Rope_reverse_" ^ N.name
+    let int_compare : int -> int -> int = Pervasives.compare
+    module ListRep = SpreadTreeRep ( AL )
+    let compute inp =
+      let nm = (Key.nondet ()) in
+      let rev = ListRep.Seq.rope_reverse in
+      let to_rope = ListRep.Seq.rope_of_list in
+      let to_list = ListRep.Seq.list_of_rope in
+      let force = ListRep.St.List.Art.force in
+      ListRep.St.List.Art.thunk nm ( fun () ->
+        to_list (rev (to_rope (force inp))) `Nil
+      )
+    let trusted = List.rev
+    let flush = AL.Eviction.flush
+  end
+
+  module List_reverse
+    (N : sig val name : string end)
+    (AL : GrifolaType.ArtLibType) =
+  struct
+    let name = "List_reverse_" ^ N.name
+    let int_compare : int -> int -> int = Pervasives.compare
+    module ListRep = SpreadTreeRep ( AL )
+    let compute inp =
+      let nm = (Key.nondet ()) in
+      let rev = ListRep.Seq.list_reverse in
+      let force = ListRep.St.List.Art.force in
+      ListRep.St.List.Art.thunk nm ( fun () ->
+        rev(force inp) `Nil
+      )
+    let trusted = List.rev
+    let flush = AL.Eviction.flush
+  end
+end
+
 module Mergesorts = struct
 
 (*
@@ -1265,6 +1306,20 @@ module Experiments = struct
     module ListApp_lazy_noninc = Linear.List_map_paired(struct let name = "lazynoninc" end)(LazyNonInc.ArtLib)
   end
 
+  module List_reverse = struct
+    module ListApp_name = Reverse.List_reverse(struct let name = "name" end)(Grifola_name.ArtLib)
+    module ListApp_arggen = Reverse.List_reverse(struct let name = "arggen" end)(Grifola_arggen.ArtLib)
+    module ListApp_lazy_recalc = Reverse.List_reverse(struct let name = "lazyrecalc" end)(LazyRecalc.ArtLib)
+    module ListApp_sac = Reverse.List_reverse(struct let name = "sac" end)(Sac.ArtLib)
+  end
+
+  module Rope_reverse = struct
+    module ListApp_name = Reverse.Rope_reverse(struct let name = "name" end)(Grifola_name.ArtLib)
+    module ListApp_arggen = Reverse.Rope_reverse(struct let name = "arggen" end)(Grifola_arggen.ArtLib)
+    module ListApp_lazy_recalc = Reverse.Rope_reverse(struct let name = "lazyrecalc" end)(LazyRecalc.ArtLib)
+    module ListApp_sac = Reverse.Rope_reverse(struct let name = "sac" end)(Sac.ArtLib)
+  end
+
   module Rope_mergesort = struct
     module ListApp_name = Mergesorts.Rope_mergesort(struct let name = "name" end)(Grifola_name.ArtLib)
     module ListApp_arg = Mergesorts.Rope_mergesort(struct let name = "arg" end)(Grifola_arg.ArtLib)
@@ -1378,6 +1433,18 @@ let raw_experiments =
   (module Experiments.List_map_paired.ListApp_name         : ListAppType) ;
   (module Experiments.List_map_paired.ListApp_arggen       : ListAppType) ;
   (module Experiments.List_map_paired.ListApp_lazy_recalc  : ListAppType) ;
+
+  (* List_reverse *)
+  (module Experiments.List_reverse.ListApp_name         : ListAppType) ;
+  (module Experiments.List_reverse.ListApp_arggen       : ListAppType) ;
+  (module Experiments.List_reverse.ListApp_lazy_recalc  : ListAppType) ;
+  (module Experiments.List_reverse.ListApp_sac          : ListAppType) ;
+
+  (* Rope_reverse *)
+  (module Experiments.Rope_reverse.ListApp_name         : ListAppType) ;
+  (module Experiments.Rope_reverse.ListApp_arggen       : ListAppType) ;
+  (module Experiments.Rope_reverse.ListApp_lazy_recalc  : ListAppType) ;
+  (module Experiments.Rope_reverse.ListApp_sac          : ListAppType) ;
 
   (* Rope mergesort *)
   (module Experiments.Rope_mergesort.ListApp_name         : ListAppType) ;

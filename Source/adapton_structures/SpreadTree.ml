@@ -776,7 +776,7 @@ module MakeSeq
     in
     fun tree -> mfn.TArt.mfn_data tree
 
-  let rec rope_reverse ( rope : St.Rope.Data.t ) =
+  let rec rope_reverse =
     let mfn = RArt.mk_mfn (St.Name.gensym "rope_reverse")
       (module St.Rope.Data)
       (fun r rope -> let rope_reverse = r.RArt.mfn_data in

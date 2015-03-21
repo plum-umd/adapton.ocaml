@@ -22,12 +22,12 @@ for len in 100000; do
         #ver - adapton version that is being tested, as well as the test set.
         for ver in name arggen lazyrecalc; do 
           #change - particular change that is done to the list, default is all
-          for change in "--0 --id --rr --bs"; do
+          for change in "--id --rr --bs"; do
             fullver=List_filter_$ver
             echo "Running: $fullver @ $len @ $samp"
             args1="--sample-num $samp --n $len --demand $dem"
             args2="--experiment $fullver --gran $gran"
-            args3="--num-changes 10" # --0 $change" #one change type at a time, on new copy of list
+            args3="--num-changes 10 --0 $change" #one change type at a time, on new copy of list
             args4= #"--test-flags" #check for correctness
             $TESTER $args1 $args2 $args3 $args4 --outfile $FILE
           done
@@ -49,12 +49,12 @@ for len in 100000; do
         #ver - adapton version that is being tested, as well as the test set.
         for ver in name arggen lazyrecalc; do 
           #change - particular change that is done to the list, default is all
-          for change in "--0 --id --rr --bs"; do
+          for change in "--id --rr --bs"; do
             fullver=List_map_$ver
             echo "Running: $fullver @ $len @ $samp"
             args1="--sample-num $samp --n $len --demand $dem"
             args2="--experiment $fullver --gran $gran"
-            args3="--num-changes 10" # --0 $change" #one change type at a time, on new copy of list
+            args3="--num-changes 10 --0 $change" #one change type at a time, on new copy of list
             args4= #"--test-flags" #check for correctness
             $TESTER $args1 $args2 $args3 $args4 --outfile $FILE
           done
@@ -76,12 +76,12 @@ for len in 100000; do
         #ver - adapton version that is being tested, as well as the test set.
         for ver in name arggen lazyrecalc; do 
           #change - particular change that is done to the list, default is all
-          for change in "--0 --id --rr --bs"; do
+          for change in "--id --rr --bs"; do
             fullver=Rope_min_$ver
             echo "Running: $fullver @ $len @ $samp"
             args1="--sample-num $samp --n $len --demand $dem"
             args2="--experiment $fullver --gran $gran"
-            args3="--num-changes 10" # --0 $change" #one change type at a time, on new copy of list
+            args3="--num-changes 10 --0 $change" #one change type at a time, on new copy of list
             args4= #"--test-flags" #check for correctness
             $TESTER $args1 $args2 $args3 $args4 --outfile $FILE
           done
@@ -103,12 +103,12 @@ for len in 100000; do
         #ver - adapton version that is being tested, as well as the test set.
         for ver in name arggen lazyrecalc; do 
           #change - particular change that is done to the list, default is all
-          for change in "--0 --id --rr --bs"; do
+          for change in " --id --rr --bs"; do
             fullver=Rope_sum_$ver
             echo "Running: $fullver @ $len @ $samp"
             args1="--sample-num $samp --n $len --demand $dem"
             args2="--experiment $fullver --gran $gran"
-            args3="--num-changes 10" # --0 $change" #one change type at a time, on new copy of list
+            args3="--num-changes 10 --0 $change" #one change type at a time, on new copy of list
             args4= #"--test-flags" #check for correctness
             $TESTER $args1 $args2 $args3 $args4 --outfile $FILE
           done
@@ -130,12 +130,12 @@ for len in 10000; do
         #ver - adapton version that is being tested, as well as the test set.
         for ver in name arggen lazyrecalc; do 
           #change - particular change that is done to the list, default is all
-          for change in "--0 --id --rr --bs"; do
+          for change in "--id --rr --bs"; do
             fullver=Rope_mergesort_$ver
             echo "Running: $fullver @ $len @ $samp"
             args1="--sample-num $samp --n $len --demand $dem"
             args2="--experiment $fullver --gran $gran"
-            args3="--num-changes 10" # --0 $change" #one change type at a time, on new copy of list
+            args3="--num-changes 10 --0 $change" #one change type at a time, on new copy of list
             args4= #"--test-flags" #check for correctness
             $TESTER $args1 $args2 $args3 $args4 --outfile $FILE
           done
@@ -157,12 +157,12 @@ for len in 10000; do
         #ver - adapton version that is being tested, as well as the test set.
         for ver in name arggen lazyrecalc; do 
           #change - particular change that is done to the list, default is all
-          for change in "--0 --id --rr --bs"; do
+          for change in "--id --rr --bs"; do
             fullver=Rope_median_$ver
             echo "Running: $fullver @ $len @ $samp"
             args1="--sample-num $samp --n $len --demand $dem"
             args2="--experiment $fullver --gran $gran"
-            args3="--num-changes 10" # --0 $change" #one change type at a time, on new copy of list
+            args3="--num-changes 10 --0 $change" #one change type at a time, on new copy of list
             args4= #"--test-flags" #check for correctness
             $TESTER $args1 $args2 $args3 $args4 --outfile $FILE
           done
