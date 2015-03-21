@@ -61,6 +61,7 @@ module T = struct
 
     let add_timestamp () =
         let timestamp = TotalOrder.add_next !eager_now in
+        Printf.printf "add_timestamp: %d\n" (TotalOrder.id timestamp);
         eager_now := timestamp;
         timestamp
 
@@ -71,12 +72,14 @@ module T = struct
     let dequeue () = PriorityQueue.pop eager_queue
 
     let enqueue_dependents dependents =
-        ignore begin WeakDyn.fold begin fun d () ->
-            if TotalOrder.is_valid d.start_timestamp then
-                if PriorityQueue.add eager_queue d then
-                    incr Statistics.Counts.dirty
-        end dependents () end;
-        WeakDyn.clear dependents
+      WeakDyn.fold (
+          fun d () ->
+          if TotalOrder.is_valid d.start_timestamp then (
+            Printf.printf "enqueuing dependent %d\n" (TotalOrder.id d.start_timestamp) ;
+            if PriorityQueue.add eager_queue d then
+              incr Statistics.Counts.dirty
+          )) dependents ()
+    (* WeakDyn.clear dependents *) (* XXX *)
     (**/**)
 
 
@@ -100,7 +103,8 @@ module T = struct
           match PriorityQueue.top eager_queue with
           | None -> ()
           | Some next -> (
-            if (TotalOrder.compare next.end_timestamp end_time) < 0 then (
+            if TotalOrder.compare next.end_timestamp end_time < 0
+            (* && TotalOrder.compare !eager_now next.start_timestamp < 0 *) then (
               let meta = dequeue () in
               assert ( TotalOrder.compare meta.end_timestamp end_time < 0 ) ;
               eager_now := meta.start_timestamp;
@@ -116,7 +120,10 @@ module T = struct
 
     (** Recompute EagerTotalOrder thunks if necessary. *)
     let refresh () =
+        if false then Printf.printf "BEGIN: global refresh:\n" ;
+        if false then (TotalOrder.iter eager_start (fun ts -> Printf.printf "iter-dump: %d\n" (TotalOrder.id ts))) ;
         let last_now = !eager_now in
+        (
         try
             let rec refresh () =
                 let meta = dequeue () in
@@ -130,6 +137,8 @@ module T = struct
         with PriorityQueue.Empty ->
             eager_now := last_now;
             eager_finger := eager_start
+        );
+        if false then Printf.printf "BEGIN: global refresh:\n"
 
     let flush () = () (* Flushing is a no-op here: Flushing happens internally during change propagation. *)
 
@@ -182,6 +191,7 @@ let invalidator meta ts =
      it sees start_timestamp is invalid; also, no need to replace
      {start,end}_timestamp with null since they are already cut by
      TotalOrder during invalidation *)
+  Printf.printf "marked invalid: %d\n" (TotalOrder.id ts);
   meta.unmemo <- nop;
   meta.evaluate <- nop;
   unqueue meta;
@@ -190,6 +200,7 @@ let invalidator meta ts =
 let update m x =
   if not (Data.equal m.value x) then
     begin
+      Printf.printf "update: ** CHANGED: #%d (%d,%d) **\n" m.id (TotalOrder.id m.meta.start_timestamp) (TotalOrder.id m.meta.end_timestamp) ;
       m.value <- x;
       enqueue_dependents m.meta.dependents
     end
@@ -230,7 +241,10 @@ let evaluate_meta meta f =
   incr Statistics.Counts.evaluate;
   eager_stack := meta::!eager_stack;
   let value = try
-      f ()
+      Printf.printf "BEGIN -- evaluate_meta: (%d,%d):\n" (TotalOrder.id meta.start_timestamp) (TotalOrder.id meta.end_timestamp) ;
+      let res = f () in
+      Printf.printf "END -- evaluate_meta: (%d,%d).\n" (TotalOrder.id meta.start_timestamp) (TotalOrder.id meta.end_timestamp) ;
+      res
     with exn ->
       eager_stack := List.tl !eager_stack;
       raise exn
@@ -360,21 +374,39 @@ let mk_mfn (type a)
                       && TotalOrder.compare m.meta.end_timestamp !eager_finger < 0 ->
 
            if Arg.equal arg (!(binding.Memo.Binding.arg)) then (
+             Printf.printf "  memo_name: match (Same arg): (%d, %d)\n"
+                            (TotalOrder.id m.meta.start_timestamp) (TotalOrder.id m.meta.end_timestamp);
+
              incr Statistics.Counts.hit;
              TotalOrder.splice ~db:"memo_name: Same arg" !eager_now m.meta.start_timestamp;
+             Printf.printf "--  BEGIN -- refresh_until: match (Same arg)\n" ;
              refresh_until m.meta.end_timestamp;
              eager_now := m.meta.end_timestamp;
+             Printf.printf "--  END   -- refresh_until: match (Same arg)\n" ;
              m
            )
            else (
+             Printf.printf "  memo_name: match (Diff arg): (%d, %d)\n"
+                            (TotalOrder.id m.meta.start_timestamp) (TotalOrder.id m.meta.end_timestamp);
+
+             Printf.printf "** BEGIN -- memo_name: match (Diff arg)\n" ;
              TotalOrder.splice ~db:"memo_name: Diff arg: #1" !eager_now m.meta.start_timestamp;
              eager_now := m.meta.start_timestamp;
              let old_finger = !eager_finger in
+             assert( TotalOrder.compare m.meta.end_timestamp old_finger < 0 );
              eager_finger := m.meta.end_timestamp;
+             binding.Memo.Binding.arg := arg ;
              m.meta.evaluate ();
-             Printf.eprintf "offensive splice\n" ;
+             assert( TotalOrder.compare m.meta.start_timestamp !eager_now <= 0 );
+             assert( TotalOrder.compare !eager_now   m.meta.end_timestamp <  0 );
+             Printf.printf "Start: splice (%d, %d)\n" (TotalOrder.id !eager_now) (TotalOrder.id m.meta.end_timestamp);
              TotalOrder.splice ~db:"memo_name: Diff arg: #2" !eager_now m.meta.end_timestamp;
+             Printf.printf "End: splice (%d, %d)\n" (TotalOrder.id !eager_now) (TotalOrder.id m.meta.end_timestamp);
              eager_finger := old_finger;
+             Printf.printf "** END   -- memo_name: match (Diff arg)\n" ;
+             assert ( TotalOrder.is_valid m.meta.start_timestamp ) ;
+             assert ( TotalOrder.is_valid m.meta.end_timestamp ) ;
+             eager_now := m.meta.end_timestamp;
              m
            )
 
@@ -383,7 +415,7 @@ let mk_mfn (type a)
                             this prevents the GC from collecting binding from Memo.table until m itself is collected *)
            incr Statistics.Counts.create;
            incr Statistics.Counts.miss;
-           let m = make_node (fun () -> user_function mfn arg) in
+           let m = make_node (fun () -> user_function mfn ( ! ( binding.Memo.Binding.arg ) ) ) in
            m.meta.unmemo <- (fun () -> Memo.Table.remove Memo.table binding);
            binding.Memo.Binding.value <- Some m;
            m

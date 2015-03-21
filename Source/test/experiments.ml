@@ -958,6 +958,14 @@ module Linear = struct
 
 end
 
+module Foo = struct
+  module T = Trie.Set.Make(
+                 struct
+                   include Types.Int
+                   let compare = Pervasives.compare
+                 end  )
+end
+
 module Reverse = struct
 
   module Rope_reverse
@@ -989,7 +997,7 @@ module Reverse = struct
     module ListRep = SpreadTreeRep ( AL )
     let compute inp =
       let nm = (Key.nondet ()) in
-      let rev = ListRep.Seq.list_reverse in
+      let rev = ListRep.Seq.list_reverse_balanced in
       let force = ListRep.St.List.Art.force in
       ListRep.St.List.Art.thunk nm ( fun () ->
         rev(force inp) `Nil

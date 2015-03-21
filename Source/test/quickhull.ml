@@ -131,6 +131,15 @@ let quickhull : points -> points =
   let points_above = List.filter (line_side_test line_above) points in
   let points_below = List.filter (line_side_test line_below) points in
   let hull = quickhull_rec line_above points_above [p_max_x] in
+  (* TODO: Use the accumulator pattern that shows up in list_reverse *)
+  (* Here's the important case: when there's an externally-provided name, nm:
+                | Some nm ->
+                   let nm1,nm  = Name.fork nm in
+                   let nm2,nm3 = Name.fork nm in
+                   let rev = `Name(nm1, `Art(accum.LArt.mfn_nart nm2 (`Cons(x, rev)))) in
+                   let rest, rev = A.force (r.A.mfn_nart nm3 (None, -1, hd_lev, xs, rev)) in
+                   list_reverse None hd_lev hi rest rev
+   *)
   let hull = quickhull_rec line_below points_below (p_min_x::hull) in
   hull
 
