@@ -13,6 +13,7 @@
 module T : sig
     type parent
     type t
+    val id : t -> int
     val null : t
     val create : unit -> t
     val is_valid : t -> bool
@@ -21,6 +22,7 @@ module T : sig
     val splice : ?db:string -> ?inclusive:bool -> t -> t -> unit
     val set_invalidator : t -> (t -> unit) -> unit
     val reset_invalidator : t -> unit
+    val iter : t -> (t -> unit) -> unit
 end = struct
     let threshold = 1.4 (* rebalancing region threshold (inverse density) *)
     let label_bits = Sys.word_size - 2 (* use only the positive range *)
@@ -43,10 +45,11 @@ end = struct
         mutable next : t;
         mutable prev : t;
         mutable invalidator : t -> unit;
+        id : int;
     }
 
     (**/**) (* helper functions *)
-    let nop _ = ()
+    let nop ts = (Printf.printf "nop invalidator: %d\n" ts.id)
     (**/**)
 
     (**/**) (* sentinel values *)
@@ -62,11 +65,26 @@ end = struct
         prev=null;
         next=null;
         invalidator=nop;
+        id=0;
     }
     (**/**)
 
+    let next_id = ref 0
+
+    let id x = x.id
+
+    let iter ts f =
+      let rec loop ts =
+        if ts == null then () else (
+          f ts ;
+          loop  (if ts.next == null then ts.parent.parent_next.front
+                 else ts.next)
+        )
+      in loop ts
+
     (** Create a new total order and return its initial element. *)
     let create () =
+        let id = !next_id in incr next_id ;
         let rec ts = {
             label=0;
             parent={
@@ -79,6 +97,7 @@ end = struct
             prev=null;
             next=null;
             invalidator=nop;
+            id=id;
         } in
         ts
 
@@ -124,14 +143,15 @@ end = struct
         if not (is_valid ts || is_initial ts) then invalid_arg "TotalOrder.add_next";
 
         let parent = ts.parent in
+        let id = (let id = !next_id in incr next_id ; id ) in
         let ts' = if ts.next != null then begin
             let next = ts.next in
-            let ts' = { label=(ts.label + next.label) lsr 1; parent; prev=ts; next; invalidator=nop } in
+            let ts' = { label=(ts.label + next.label) lsr 1; parent; prev=ts; next; invalidator=nop; id=id } in
             next.prev <- ts';
             ts.next <- ts';
             ts'
         end else begin
-            let ts' = { label=(ts.label + max_label) lsr 1; parent; prev=ts; next=null; invalidator=nop } in
+            let ts' = { label=(ts.label + max_label) lsr 1; parent; prev=ts; next=null; invalidator=nop; id=id } in
             ts.next <- ts';
             ts'
         end in
@@ -285,6 +305,7 @@ end = struct
         end;
 
         if inclusive then begin
+            Printf.eprintf "inclusive remove\n" ;
             let remove ts =
                 if ts.prev == null then begin
                     if ts.next == null then begin
