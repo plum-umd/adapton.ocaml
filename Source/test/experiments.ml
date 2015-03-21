@@ -959,7 +959,7 @@ module Linear = struct
 end
 
 module Foo = struct
-  module T = Trie.S\et.Make(
+  module T = Trie.Set.Make(
                  struct
                    include Types.Int
                    let compare = Pervasives.compare

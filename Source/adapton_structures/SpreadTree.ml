@@ -636,7 +636,7 @@ module MakeSeq
               rope_of_list_rec parent_lev hd_lev rope rest
             )
             else (
-              rope, list
+             rope, list
             )
           | `Art art -> rope_of_list_rec parent_lev rope_lev rope (St.List.Art.force art)
           | `Name(nm, list) ->
@@ -761,6 +761,42 @@ module MakeSeq
     in
     fun list rev -> mfn.LArt.mfn_data (list, rev)
 
+  let list_reverse_balanced : St.List.Data.t -> St.List.Data.t -> St.List.Data.t =
+    let accum = LArt.mk_mfn (St.Name.gensym "list_reverse_accum")
+                            (module St.List.Data) (fun _ list -> list)
+    in
+    let module A = St.ArtLib.MakeArt(Name)(Types.Tuple2(St.List.Data)(St.List.Data)) in
+    let mfn =
+      A.mk_mfn
+        (St.Name.gensym "list_reverse")
+        (module Types.Tuple5(Types.Option(Name))(Types.Int)(Types.Int)(St.List.Data)(St.List.Data))
+        (fun r (no, lo, hi, list, rev) ->
+         let list_reverse no lo hi list rev = r.A.mfn_data (no,lo,hi,list,rev) in
+         ( match list with
+           | `Nil -> (`Nil, rev)
+           | `Cons(x, xs) ->
+              let hd_lev = Primitives.ffs (St.Data.hash 0 x) in
+              if lo <= hd_lev && hd_lev <= hi then
+                let rev = match no with
+                  | None    -> rev
+                  | Some nm ->
+                     let nm1,nm2 = Name.fork nm in
+                     `Name(nm1, `Art(accum.LArt.mfn_nart nm2 (`Cons(x, rev))))
+                in
+                let rest, rev = list_reverse None (-1) hd_lev xs rev in
+                list_reverse None hd_lev hi rest rev
+              else
+                (list, rev)
+                  
+           | `Art art -> list_reverse no lo hi (LArt.force art) rev
+           | `Name (nm, xs) -> list_reverse (Some nm) lo hi xs rev
+         ))
+    in
+    fun list rev ->
+    match mfn.A.mfn_data (None, -1, max_int, list, rev) with
+    | `Nil, rev -> rev
+    | _, _ -> failwith "impossible"
+
   let rec tree_reverse ( tree : St.Tree.Data.t ) =
     let mfn = TArt.mk_mfn (St.Name.gensym "tree_reverse")
       (module St.Tree.Data)
@@ -786,8 +822,10 @@ module MakeSeq
         | `Two(x,y) -> `Two(rope_reverse y, rope_reverse x)
         | `Art art -> rope_reverse (RArt.force art)
         | `Name (nm,rope) ->
-          let nm1,nm2 = Name.fork nm in
-          `Name(nm1, `Art(r.RArt.mfn_nart nm2 rope))
+           let nm1,nm2 = Name.fork nm in
+           let art = r.RArt.mfn_nart nm2 rope in
+           ignore (RArt.force art) ;
+          `Name(nm1, `Art(art))
         ))
     in
     fun rope -> mfn.RArt.mfn_data rope
