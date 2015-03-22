@@ -1126,7 +1126,7 @@ end
 
 module Pointcloud = struct
   
-  module Quickhull
+  module List_Quickhull
     ( N : sig val name : string end )
     ( AL : GrifolaType.ArtLibType ) =
   struct
@@ -1137,6 +1137,23 @@ module Pointcloud = struct
       let nm1 = (Key.nondet()) in
       let quickhull = QH.list_quickhull in
       ListRep.St.List.Art.thunk nm1 ( fun () -> 
+        quickhull (ListRep.St.List.Art.force inp)
+      )
+    let trusted = Quickhull.list_quickhull
+    let flush = AL.Eviction.flush
+  end
+
+  module Rope_quickhull
+    ( N : sig val name : string end )
+    ( AL : GrifolaType.ArtLibType ) =
+  struct
+    let name = "Rope_quickhull_" ^ N.name
+    module ListRep = SpreadTreeRep(AL)
+    module QH = Quickhull.StMake(ListRep.St)
+    let compute inp =
+      let nm1 = (Key.nondet()) in
+      let quickhull = QH.rope_quickhull in
+      ListRep.St.List.Art.thunk nm1 ( fun () ->
         quickhull (ListRep.St.List.Art.force inp)
       )
     let trusted = Quickhull.list_quickhull
@@ -1368,10 +1385,17 @@ module Experiments = struct
   end
 
   module Quickhull = struct
-    module ListApp_name = Pointcloud.Quickhull(struct let name = "name" end)(Grifola_name.ArtLib)
-    module ListApp_arggen = Pointcloud.Quickhull(struct let name = "arggen" end)(Grifola_arggen.ArtLib)
-    module ListApp_lazy_recalc = Pointcloud.Quickhull(struct let name = "lazyrecalc" end)(LazyRecalc.ArtLib)
-    module ListApp_sac = Pointcloud.Quickhull(struct let name = "sac" end)(Sac.ArtLib)
+    module ListApp_name = Pointcloud.List_Quickhull(struct let name = "name" end)(Grifola_name.ArtLib)
+    module ListApp_arggen = Pointcloud.List_Quickhull(struct let name = "arggen" end)(Grifola_arggen.ArtLib)
+    module ListApp_lazy_recalc = Pointcloud.List_Quickhull(struct let name = "lazyrecalc" end)(LazyRecalc.ArtLib)
+    module ListApp_sac = Pointcloud.List_Quickhull(struct let name = "sac" end)(Sac.ArtLib)
+  end
+
+  module Rope_quickhull = struct
+    module ListApp_name = Pointcloud.Rope_quickhull(struct let name = "name" end)(Grifola_name.ArtLib)
+    module ListApp_arggen = Pointcloud.Rope_quickhull(struct let name = "arggen" end)(Grifola_arggen.ArtLib)
+    module ListApp_lazy_recalc = Pointcloud.Rope_quickhull(struct let name = "lazyrecalc" end)(LazyRecalc.ArtLib)
+    module ListApp_sac = Pointcloud.Rope_quickhull(struct let name = "sac" end)(Sac.ArtLib)
   end
 
   module Rope_iter = struct
@@ -1489,6 +1513,12 @@ let raw_experiments =
   (module Experiments.Quickhull.ListApp_arggen       : ListAppType) ;
   (module Experiments.Quickhull.ListApp_lazy_recalc  : ListAppType) ;
   (module Experiments.Quickhull.ListApp_sac          : ListAppType) ;
+
+  (* Rope_quickhull *)
+  (module Experiments.Rope_quickhull.ListApp_name         : ListAppType) ;
+  (module Experiments.Rope_quickhull.ListApp_arggen       : ListAppType) ;
+  (module Experiments.Rope_quickhull.ListApp_lazy_recalc  : ListAppType) ;
+  (module Experiments.Rope_quickhull.ListApp_sac          : ListAppType) ;
 
   (* Benchmarks for overhead comparison: *)
   (module Experiments.AVL_name                         : ListAppType) ;

@@ -437,26 +437,26 @@ module MakePlace(E :
              if h mod 2 = 0
              then
                let art = loop.Art.mfn_nart nm'
-                   (nm'', e, (BS.prepend 0 bs), (h lsr 1), t0) in
-               ignore (Art.force art) ;
-               Node (bs, Art art, t1)
-               (*
-               let t0' = loop.Art.mfn_data
                    (nm', e, (BS.prepend 0 bs), (h lsr 1), t0) in
-               let t0', t1' = thunk nm' t0', thunk nm'' t1 in
-               Node (bs, Art t0', Art t1')*)
+               ignore (Art.force art) ;
+                 Node (bs, Art art, t1)
+               
+               (*let t0 = loop.Art.mfn_data
+                   (nm', e, (BS.prepend 0 bs), (h lsr 1), t0) in
+               let t0, t1 = thunk nm' t0, thunk nm'' t1 in
+                 Node (bs, Art t0, Art t1)*)
              else
                let art = loop.Art.mfn_nart nm''
                    (nm'', e, (BS.prepend 1 bs), (h lsr 1), t1) in
                ignore (Art.force art) ;
-               Node (bs, t0, Art art)
-               (*
-               let t1' = loop.Art.mfn_data
+                 Node (bs, t0, Art art)
+               
+               (*let t1 = loop.Art.mfn_data
                    (nm'', e, (BS.prepend 1 bs), (h lsr 1), t1) in
-               let t0', t1' = thunk nm' t0, thunk nm'' t1' in
-               Node (bs, Art t0', Art t1')*)
+               let t0, t1 = thunk nm' t0, thunk nm'' t1 in
+                 Node (bs, Art t0, Art t1)*)
            | Atom (bs, es) when E.place (S.choose es) = E.place e -> (* <-- assumes no collisions *)
-             Atom (bs, S.add e (S.remove e es))
+             Atom (bs, S.add e (S.filter (fun e' -> E.place e' <> E.place e) es))
            | Art a
            | Name (_, Art a) -> loop.Art.mfn_data (nm, e, bs, h, (Art.force a))
            | Root _ -> assert false (* <-- Don't pass Roots to loop *)
@@ -484,46 +484,46 @@ module MakePlace(E :
              then
                (*let zerobs = BS.prepend 0 bs in
                let art = loop.Art.mfn_nart nm'
-                   (nm'', min, e, zerobs, (h lsr 1), (m+1), (Empty zerobs)) in
+                   (nm', min, e, zerobs, (h lsr 1), (m+1), (Empty zerobs)) in
                ignore (Art.force art) ;
-               Node (bs, Art art, Empty (BS.prepend 1 bs)) *)
+                 Node (bs, Art art, Empty (BS.prepend 1 bs))*)
                let zerobs = BS.prepend 0 bs in
                let t0 = loop.Art.mfn_data
-                   (nm'', min, e, zerobs, (h lsr 1), (m+1), (Empty zerobs)) in
-               let t0', t1' = thunk nm' t0, thunk nm'' (Empty (BS.prepend 1 bs)) in
-               Node (bs, Art t0', Art t1')
+                 (nm', min, e, zerobs, (h lsr 1), (m+1), (Empty zerobs)) in
+               let t0, t1 = thunk nm' t0, thunk nm'' (Empty (BS.prepend 1 bs)) in
+               Node (bs, Art t0, Art t1)
              else
                (*let onebs = BS.prepend 1 bs in
                let art = loop.Art.mfn_nart nm''
                    (nm'', min, e, onebs, (h lsr 1), (m+1), (Empty onebs)) in
                ignore (Art.force art) ;
-               Node (bs, Empty (BS.prepend 0 bs), Art art) *)
+                 Node (bs, Empty (BS.prepend 0 bs), Art art)*)
                let onebs = BS.prepend 1 bs in
                let t1 = loop.Art.mfn_data
-                   (nm'', min, e, onebs, (h lsr 1), (m+1), (Empty onebs)) in
-               let t0', t1' = thunk nm' (Empty (BS.prepend 0 bs)), thunk nm'' t1 in
-               Node (bs, Art t0', Art t1')
+                 (nm'', min, e, onebs, (h lsr 1), (m+1), (Empty onebs)) in
+               let t0, t1 = thunk nm' (Empty (BS.prepend 0 bs)), thunk nm'' t1 in
+               Node (bs, Art t0, Art t1)
            | Node (bs, t0, t1) ->
              let nm', nm'' = Key.fork nm in
              if h mod 2 = 0
              then
                (*let art = loop.Art.mfn_nart nm'
-                   (nm'', min, e, (BS.prepend 0 bs), (h lsr 1), (m+1), t0) in
+                   (nm', min, e, (BS.prepend 0 bs), (h lsr 1), (m+1), t0) in
                ignore (Art.force art) ;
-               Node (bs, Art art, t1) *)
-               let t0' = loop.Art.mfn_data
-                   (nm'', min, e, (BS.prepend 0 bs), (h lsr 1), (m+1), t0) in
-               let t0', t1' = thunk nm' t0', thunk nm'' t1 in
-               Node (bs, Art t0', Art t1')
+                 Node (bs, Art art, t1)*)
+               let t0 = loop.Art.mfn_data
+                 (nm', min, e, (BS.prepend 0 bs), (h lsr 1), (m+1), t0) in
+               let t0, t1 = thunk nm' t0, thunk nm'' t1 in
+               Node (bs, Art t0, Art t1)
              else
                (*let art = loop.Art.mfn_nart nm''
                    (nm'', min, e, (BS.prepend 1 bs), (h lsr 1), (m+1), t1) in
                ignore (Art.force art) ;
                  Node (bs, t0, Art art)*)
-               let t1' = loop.Art.mfn_data
-                   (nm'', min, e, (BS.prepend 1 bs), (h lsr 1), (m+1), t1) in
-               let t0', t1' = thunk nm' t0, thunk nm'' t1' in
-               Node (bs, Art t0', Art t1')
+               let t1 = loop.Art.mfn_data
+                 (nm'', min, e, (BS.prepend 1 bs), (h lsr 1), (m+1), t1) in
+               let t0, t1 = thunk nm' t0, thunk nm'' t1 in
+               Node (bs, Art t0, Art t1)
            | Art a -> loop.Art.mfn_data (nm, min, e, bs, h, m, (Art.force a))
            | Name (_, Art a) -> (* <-- handling in a single case maintains the invariant
              let nm', nm'' = Key.fork nm in (* that Names always surround Arts  *)
@@ -651,7 +651,7 @@ module Map = struct
       let equal (k, v) (k', v') = K.equal k k' && V.equal v v'
       let hash seed (k, v) = K.hash (V.hash seed v) k
       let place = place
-      let compare (k, _) (k', _) = K.compare k k'
+      let compare (k, v) (k', v') = Pervasives.compare (K.compare k k') (V.compare v v')
     end)
         
     type k = K.t
@@ -677,7 +677,7 @@ module Map = struct
 end
 
 (*
-module Test (M : sig end)  = struct
+module Test  = struct
 
   open OUnit2
 
@@ -851,36 +851,6 @@ module Test (M : sig end)  = struct
 
   module M = Map.Make(Useful(AdaptonTypes.String))(Useful(AdaptonTypes.Int))
 
-  let map_suite =
-    let k0, k1, k2, k3, k4     = "a", "c", "d", "j", "gah"   in
-    let v0, v1, v2, v3, v4, v5 =  1,   3,   4,   5,    6,  7 in
-    let t0 = M.empty ~min_depth:1 in
-    let t1, t1' = M.add t0 k0 v0, M.add t0  k1 v1 in
-    let t2, t2' = M.add t1 k1 v1, M.add t1' k0 v0 in
-    let t3, t3' = M.add t2 k2 v2, M.add t2' k2 v2 in
-    let t4, t4' = M.add t3 k3 v3, M.add t3' k3 v3 in
-    let t5, t5' = M.add t4 k0 v5, M.add t4' k0 v5 in
-    let mcardinal_tests = unary_tests "cardinal" M.cardinal
-      [t0, 0; t1, 1; t1', 1; t2, 2; t2', 2; t3, 3; t3', 3; t4, 4; t4', 4; t5, 4] in
-    let mmem_tests = binary_tests "mem" M.mem
-      [t0, k0, false; t0, k1, false;
-       M.add t1 k0 v1, k0, true;
-       t1, k0, true; t1', k0, false; t1', k1, true;
-       t2, k1, true; t2', k1, true; t2', k0, true;
-       t3, k0, true; t3', k0, true; t3, k2, true;
-       t3', k2, true; t3, k3, false; t3', k3, false] in
-    let mfind_tests = binary_tests "find" M.find
-      [t1, k0, Some v0; t1', k1, Some v1;
-       t2, k0, Some v0; t2', k1, Some v1;
-       t2, k1, Some v1; t2', k0, Some v0;
-       t3, k0, Some v0; t3', k1, Some v1;
-       t3, k1, Some v1; t3', k0, Some v0;
-       t3, k2, Some v2; t3', k2, Some v2;
-       t5, k0, Some v5; t5', k1, Some v1;
-       t5, k1, Some v1; t5', k0, Some v5;
-       t5, k2, Some v2; t5', k2, Some v2;] in
-    "Map" >::: (mcardinal_tests@mmem_tests@mfind_tests)
-
   let nmap_suite = 
     let k0, k1, k2, k3, k4     = "a", "c", "d", "j", "gah"   in
     let v0, v1, v2, v3, v4, v5 =  1,   3,   4,   5,    6,  7 in
@@ -891,7 +861,7 @@ module Test (M : sig end)  = struct
     let nt4, nt4' = M.nadd (nm()) nt3 k3 v3, M.nadd (nm()) nt3' k3 v3 in
     let nt5, nt5' = M.nadd (nm()) nt4 k0 v5, M.nadd (nm()) nt4' k0 v5 in
     let ncardinal_tests = unary_tests "cardinal" M.cardinal
-      [nt0, 0; nt1, 1; nt1', 1; nt2, 2; nt2', 2; nt3, 3; nt3', 3; nt4, 4; nt4', 4; nt5, 4] in
+      [(*nt0, 0; nt1, 1; nt1', 1; nt2, 2; nt2', 2; nt3, 3; nt3', 3; nt4, 4; nt4', 4; nt5, 4*)] in
     let nmem_tests = binary_tests "mem" M.mem
       [nt0, k0, false; nt0, k1, false;
        M.nadd (Key.nondet ()) nt1 k0 v1, k0, true;
@@ -922,4 +892,5 @@ module Test (M : sig end)  = struct
 end
 
 let _ = Test.run ()
+
 *)
