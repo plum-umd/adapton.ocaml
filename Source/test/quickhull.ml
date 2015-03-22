@@ -242,11 +242,12 @@ module StMake (IntsSt : SpreadTree.SpreadTreeType
 
   (* modified from SpreadTree rope_filter to internalize above_line *)
   (* TODO: optimize, compact zeros *)
-  let above_line : line -> PointRope.Data.t -> PointRope.Data.t = 
-    let fnn = (Name.gensym "above_line") in
+  let above_line : Name.t -> line -> PointRope.Data.t -> PointRope.Data.t =
+    fun nm ->
+    let fnn = Name.pair (Name.gensym "above_line") nm in
     let mfn = PointRope.Art.mk_mfn fnn
-      (module Types.Tuple2(Types.Tuple2(Point)(Point))(PointRope.Data))
-      (fun r (line, pts) ->
+        (module Types.Tuple2(Types.Tuple2(Point)(Point))(PointRope.Data))
+        (fun r (line, pts) ->
         let above_line l = r.PointRope.Art.mfn_data (line, l) in
         match pts with
         | `Zero -> `Zero
@@ -284,29 +285,42 @@ module StMake (IntsSt : SpreadTree.SpreadTreeType
       | `Zero  -> None, nm_opt
       | `One x -> Some x, nm_opt
       | `Two(left,right) ->
-        let p1,no1 = furthest left in
-        let p2,no2 = furthest right in
-        (* find a useful name of the three available *)
-        (* dividing into cases here because ropes are probabalistic, and we don't have a 
-        good enough sence of where the 'right' names are *)
-        let nm_opt = opt_seq nm_opt (opt_seq no1 no2) in
-        let left_opt = opt_seq no1 (opt_seq nm_opt no2) in
-        let right_opt = opt_seq no2 (opt_seq nm_opt no1) in
-        ( match p1, p2 with
-        | Some l, Some r -> 
-          let lfurther, max = max_point line l r in
-          if lfurther then Some(max), left_opt else Some(max), right_opt
-        | Some l, None   -> Some l, nm_opt
-        | None,   Some r -> Some r, nm_opt
-        | None,   None   -> None, nm_opt
-        )
+         let no1,p1,no2,p2 = (
+           match nm_opt with
+           | Some nm -> (
+             let nm1a,nm   = Name.fork nm in
+             let nm1b,nm   = Name.fork nm in
+             let nm2a,nm2b = Name.fork nm in
+             let p1,no1 = M.force (r.M.mfn_nart nm1a (line, left,  Some(nm1b))) in
+             let p2,no2 = M.force (r.M.mfn_nart nm2a (line, right, Some(nm2b))) in
+             (no1,p1,no2,p2)
+           )
+             
+           | None -> (
+             let p1,no1 = furthest left in
+             let p2,no2 = furthest right in
+             (no1,p1,no2,p2)
+           ))
+         in
+         (* find a useful name of the three available *)
+         (* dividing into cases here because ropes are probabalistic, and we don't have a 
+             good enough sence of where the 'right' names are *)
+         ( match p1, p2 with
+           | Some l, Some r -> 
+              let lfurther, max = max_point line l r in
+              let nm = if lfurther then
+                         opt_seq no1 (opt_seq no2 nm_opt)
+                       else
+                         opt_seq no2 (opt_seq no1 nm_opt) in
+              (Some max, nm)
+           | None, Some r -> Some r, (opt_seq no2 nm_opt)
+           | Some l, None -> Some l, (opt_seq no1 nm_opt)
+           | None, None -> None, nm_opt
+         )
+           
       | `Art art -> furthest (PointRope.Art.force art)
-      | `Name (nm1, `Name(nm2, pts)) ->
-        let nm = if Name.height nm1 > Name.height nm2 then nm1 else nm2 in
-        furthest (`Name(nm, pts))
-      | `Name (nm, pts) ->
-        let nm1, nm2 = Name.fork nm in
-        M.force (r.M.mfn_nart nm1 (line, pts, Some(nm2)))
+                             
+      | `Name (nm, pts) -> r.M.mfn_data (line, pts, Some nm)
     )
     in
     fun ln pts -> mfn.M.mfn_data (ln, pts, None)
@@ -327,11 +341,14 @@ module StMake (IntsSt : SpreadTree.SpreadTreeType
   (* // List Version // *)
   (* ////////////////// *)
 
+  let above_line_l = above_line (Name.gensym "l")
+  let above_line_r = above_line (Name.gensym "r")
+                                  
   let quickhull_rec : Name.t -> line -> PointRope.Data.t -> AccumList.Data.t -> AccumList.Data.t =
     (* Adapton: Use a memo table here.  Our accumulator, hull_accum, is
        a nominal list.  We need to use names because otherwise, the
        accumulator will be unlikely to match after a small change. *)
-    fun (namespace : Name.t) ->
+    fun (namespace : Name.t) ->    
     let module AA = AccumList.Art in
     let mfn = AA.mk_mfn (Name.pair (Name.gensym "quick_hull") namespace)
       (module Types.Tuple3
@@ -346,8 +363,8 @@ module StMake (IntsSt : SpreadTree.SpreadTreeType
         let pivot_point, p_nm = furthest_point_from_line line points in
         let l_line = (p1, pivot_point) in
         let r_line = (pivot_point, p2) in
-        let l_points = above_line l_line points in
-        let r_points = above_line r_line points in
+        let l_points = above_line_l l_line points in
+        let r_points = above_line_r r_line points in
         let nms = p_nm in
           let nm1, nms = Name.fork nms in
           let nm2, nms = Name.fork nms in
@@ -379,8 +396,8 @@ module StMake (IntsSt : SpreadTree.SpreadTreeType
       let p_max_x = match max points with None -> failwith "no points min_y" | Some(x) -> x in
       let line_above = (p_min_x, p_max_x) in
       let line_below = (p_max_x, p_min_x) in (* "below" here means swapped coordinates from "above". *)
-      let points_above = above_line line_above points in
-      let points_below = above_line line_below points in
+      let points_above = above_line_l line_above points in
+      let points_below = above_line_r line_below points in
       let nms = nm in
       let nm1, nms = Name.fork nms in
       let nm2, nms = Name.fork nms in
@@ -423,8 +440,8 @@ module StMake (IntsSt : SpreadTree.SpreadTreeType
         let pivot_point, p_nm = furthest_point_from_line line points in
         let l_line = (p1, pivot_point) in
         let r_line = (pivot_point, p2) in
-        let l_points = above_line l_line points in
-        let r_points = above_line r_line points in
+        let l_points = above_line_l l_line points in
+        let r_points = above_line_r r_line points in
         let nms = p_nm in
           let nm1, nms = Name.fork nms in
           let nm2, nms = Name.fork nms in
@@ -453,8 +470,8 @@ module StMake (IntsSt : SpreadTree.SpreadTreeType
       let p_max_x = match max points with None -> failwith "no points min_y" | Some(x) -> x in
       let line_above = (p_min_x, p_max_x) in
       let line_below = (p_max_x, p_min_x) in (* "below" here means swapped coordinates from "above". *)
-      let points_above = above_line line_above points in
-      let points_below = above_line line_below points in
+      let points_above = above_line_l line_above points in
+      let points_below = above_line_r line_below points in
       let nms = nm in
         let nm1, nms = Name.fork nms in
         let nm2, nms = Name.fork nms in
