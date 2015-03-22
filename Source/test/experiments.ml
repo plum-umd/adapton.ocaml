@@ -1132,10 +1132,10 @@ module Pointcloud = struct
     module ListRep = SpreadTreeRep(AL)
     module QH = Quickhull.StMake(ListRep.St)
     let compute inp =
-      let nm1 = (Key.nondet()) in
+      let nm1, nm2 = Key.fork (Key.nondet()) in
       let quickhull = QH.list_quickhull in
       ListRep.St.List.Art.thunk nm1 ( fun () -> 
-        quickhull (ListRep.St.List.Art.force inp)
+        quickhull nm2 (ListRep.St.List.Art.force inp)
       )
     let trusted = Quickhull.list_quickhull
     let flush = AL.Eviction.flush
@@ -1149,10 +1149,10 @@ module Pointcloud = struct
     module ListRep = SpreadTreeRep(AL)
     module QH = Quickhull.StMake(ListRep.St)
     let compute inp =
-      let nm1 = (Key.nondet()) in
+      let nm1, nm2 = Key.fork (Key.nondet()) in
       let quickhull = QH.rope_quickhull in
       ListRep.St.List.Art.thunk nm1 ( fun () ->
-        quickhull (ListRep.St.List.Art.force inp)
+        quickhull nm2 (ListRep.St.List.Art.force inp)
       )
     let trusted = Quickhull.list_quickhull
     let flush = AL.Eviction.flush
