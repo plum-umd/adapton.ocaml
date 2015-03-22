@@ -21,8 +21,11 @@ module Make (O : Set.OrderedType) = struct
 
     let create () = ref Null
 
-    let top queue = match !queue with
-      | Node ( value, _, _ ) -> Some value
+    let rec top queue = match !queue with
+      | Node ( value, ({ contents=Node _ } as left), _ ) ->
+         top left
+      | Node ( value, { contents=Null }, right ) ->
+         (Some value)
       | Null -> None
 
     let rec add queue x = match !queue with

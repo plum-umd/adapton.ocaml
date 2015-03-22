@@ -85,8 +85,8 @@ module T = struct
               d.enqueued <- true ;
               if PriorityQueue.add eager_queue d then
                 incr Statistics.Counts.dirty
-            ))) dependents () ;
-      WeakDyn.clear dependents (* XXX *) (* ??? *)
+            ))) dependents ()
+      (* WeakDyn.clear dependents (* XXX *) (* ??? *) *)
 
     (**/**)
 
