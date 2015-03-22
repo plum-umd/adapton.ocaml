@@ -116,18 +116,22 @@ module T = struct
             if TotalOrder.is_valid next.start_timestamp then (
               if (match end_time with
                     None -> true |
-                    Some end_time -> TotalOrder.compare next.end_timestamp end_time < 0 )
+                    Some end_time -> TotalOrder.compare next.end_timestamp end_time <= 0 )
               then (
                 let meta = dequeue () in
-                assert ( match end_time with | None -> true | Some end_time -> TotalOrder.compare meta.end_timestamp end_time < 0 ) ;
+                assert ( match end_time with | None -> true | Some end_time -> TotalOrder.compare meta.end_timestamp end_time <= 0 ) ;
                 eager_now := meta.start_timestamp;
                 eager_finger := meta.end_timestamp;
                 meta.evaluate ();
                 TotalOrder.splice ~db:"refresh_until" !eager_now meta.end_timestamp;
                 refresh ()
+              )
+              else (
+                Printf.printf "... WARNING: refresh is skipping: (%d, %d)\n"
+                              (TotalOrder.id next.start_timestamp) (TotalOrder.id next.end_timestamp)
               ))
             else (
-              Printf.printf "... XXX\n" ;
+              Printf.printf "... WARNING: XXX refresh is skipping invalid timestamp.\n" ;
               let meta = dequeue () in
               assert( not (TotalOrder.is_valid meta.start_timestamp) );
             ))
@@ -379,7 +383,7 @@ let mk_mfn (type a)
            incr Statistics.Counts.miss;
            (* let m = make_node (fun () -> user_function mfn (!(binding.Memo.Binding.arg)) ) in *)
            let m = make_node (fun () -> let res = user_function mfn ( ! ( binding.Memo.Binding.arg ) ) in
-                                        Printf.printf "Computed Result=`%s'.\n" (Data.string res) ;
+                                        Printf.printf "... Computed Result=`%s'.\n" (Data.string res) ;
                                         res
                              ) in
            m.meta.unmemo <- (fun () -> Memo.Table.remove Memo.table binding);
@@ -441,7 +445,7 @@ let mk_mfn (type a)
            incr Statistics.Counts.create;
            incr Statistics.Counts.miss;
            let m = make_node (fun () -> let res = user_function mfn ( ! ( binding.Memo.Binding.arg ) ) in
-                                        Printf.printf "Computed Result=`%s'.\n" (Data.string res) ;
+                                        Printf.printf "... Computed Result=`%s'.\n" (Data.string res) ;
                                         res
                              ) in
            m.meta.unmemo <- (fun () -> Memo.Table.remove Memo.table binding);

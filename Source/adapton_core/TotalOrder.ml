@@ -65,7 +65,7 @@ end = struct
         prev=null;
         next=null;
         invalidator=nop;
-        id=0;
+        id=(-1);
     }
     (**/**)
 
