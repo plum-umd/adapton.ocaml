@@ -310,7 +310,9 @@ let make_node f =
   meta.evaluate <- make_evaluate m f;
   m
 
-let thunk nm f = make_node f (* TODO: Use the name; workaround: use mfn_nart interface instead. *)
+let thunk nm f =
+  (* TODO: Use the name; workaround: use mfn_nart interface instead. *)  
+  make_node f 
 
 type 'arg mfn = { mfn_data : 'arg -> Data.t ;      (* Pure recursion. *)
                   mfn_art  : 'arg -> t ;           (* Create a memoized articulation, classically. *)
@@ -375,7 +377,11 @@ let mk_mfn (type a)
                             this prevents the GC from collecting binding from Memo.table until m itself is collected *)
            incr Statistics.Counts.create;
            incr Statistics.Counts.miss;
-           let m = make_node (fun () -> user_function mfn (!(binding.Memo.Binding.arg)) ) in
+           (* let m = make_node (fun () -> user_function mfn (!(binding.Memo.Binding.arg)) ) in *)
+           let m = make_node (fun () -> let res = user_function mfn ( ! ( binding.Memo.Binding.arg ) ) in
+                                        Printf.printf "Computed Result=`%s'.\n" (Data.string res) ;
+                                        res
+                             ) in
            m.meta.unmemo <- (fun () -> Memo.Table.remove Memo.table binding);
            binding.Memo.Binding.value <- Some m;
            make_dependency_edge m;
@@ -434,7 +440,10 @@ let mk_mfn (type a)
                             this prevents the GC from collecting binding from Memo.table until m itself is collected *)
            incr Statistics.Counts.create;
            incr Statistics.Counts.miss;
-           let m = make_node (fun () -> user_function mfn ( ! ( binding.Memo.Binding.arg ) ) ) in
+           let m = make_node (fun () -> let res = user_function mfn ( ! ( binding.Memo.Binding.arg ) ) in
+                                        Printf.printf "Computed Result=`%s'.\n" (Data.string res) ;
+                                        res
+                             ) in
            m.meta.unmemo <- (fun () -> Memo.Table.remove Memo.table binding);
            binding.Memo.Binding.value <- Some m;
            make_dependency_edge m;

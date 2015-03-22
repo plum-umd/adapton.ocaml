@@ -1000,8 +1000,10 @@ module Reverse = struct
       let rev = ListRep.Seq.list_reverse_balanced in
       let force = ListRep.St.List.Art.force in
       ListRep.St.List.Art.thunk nm ( fun () ->
-        rev(force inp) `Nil
-      )
+                                     let res = rev(force inp) `Nil in
+                                     Printf.printf "Computed: %s" (ListRep.St.List.Data.string res) ;
+                                     res
+                                   )
     let trusted = List.rev
     let flush = AL.Eviction.flush
   end
