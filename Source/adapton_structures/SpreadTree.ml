@@ -801,7 +801,7 @@ module MakeSeq
     fun list rev ->
     match mfn.A.mfn_data (None, -1, max_int, list, rev) with
     | `Nil, rev -> rev
-    | _, _ -> failwith "impossible"
+    | _, _ -> failwith "list_reverse: impossible"
 
   let rec tree_reverse ( tree : St.Tree.Data.t ) =
     let mfn = TArt.mk_mfn (St.Name.gensym "tree_reverse")

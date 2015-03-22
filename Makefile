@@ -21,6 +21,9 @@ imp:
 test:
 	ocamlbuild Source/test/experiments.native
 
+test-db:
+	ocamlbuild -cflag '-g' -lflag '-g' Source/test/experiments.byte
+
 # this doesn't work yet
 test-log:
 	ocamlbuild -cflags -ppopt,"-DADAPTON_LOG" Source/test/experiments.native -verbose 1
