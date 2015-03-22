@@ -177,6 +177,18 @@ module StMake (IntsSt : SpreadTree.SpreadTreeType
   module Seq = SpreadTree.MakeSeq(PointsSt)
   module Point = PointsSt.Data
 
+  (* Hack to fix AccumList.Art.cell, etc *)
+  let accum_cell =
+    let fakecell = AccumList.Art.mk_mfn (Name.gensym "Accumulator_cells")
+      (module AccumList.Data) (fun r data -> data)
+    in
+    fun nm data -> (fakecell.AccumList.Art.mfn_nart nm data)
+  let points_cell =
+    let fakecell = PointRope.Art.mk_mfn (Name.gensym "PointRope_cells")
+      (module PointRope.Data) (fun r data -> data)
+    in
+    fun nm data -> (fakecell.PointRope.Art.mfn_nart nm data)
+
   (* modified from SpreadTree list_map to convert between data types *)
   let points_of_ints
     : IntsSt.List.Data.t -> PointsSt.List.Data.t =
@@ -227,7 +239,7 @@ module StMake (IntsSt : SpreadTree.SpreadTreeType
     let pointslist = Seq.list_of_rope inp `Nil in
     ints_of_points pointslist
 
-  (* copied from SpreadTree rope_filter to internalize above_line *)
+  (* modified from SpreadTree rope_filter to internalize above_line *)
   (* TODO: optimize, compact zeros *)
   let above_line : line -> PointRope.Data.t -> PointRope.Data.t = 
     let fnn = (Name.gensym "above_line") in
@@ -247,7 +259,7 @@ module StMake (IntsSt : SpreadTree.SpreadTreeType
     in
     fun line pts -> mfn.PointRope.Art.mfn_data (line, pts)
 
-  (* copied from SpreadTree rope_reduce_name to internalize furthest_from_line *)
+  (* modified from SpreadTree rope_reduce_name to internalize furthest_from_line *)
   let rec find_furthest
     : line -> PointRope.Data.t -> Point.t option * Name.t option =
     let opt_seq nm1 nm2 =
@@ -304,12 +316,9 @@ module StMake (IntsSt : SpreadTree.SpreadTreeType
       | _, None -> failwith "no name"
       | Some(x), Some(nm) -> x, nm
 
-  (* Hack to fix AccumList.Art.cell *)
-  let accum_cell = 
-    let fakecell = AccumList.Art.mk_mfn (Name.gensym "Accumulator_cells") 
-      (module AccumList.Data) (fun r data -> data)
-    in 
-    fun nm data -> (fakecell.AccumList.Art.mfn_nart nm data)
+  (* ////////////////// *)
+  (* // List Version // *)
+  (* ////////////////// *)
 
   let quickhull_rec : Name.t -> line -> PointRope.Data.t -> AccumList.Data.t -> AccumList.Data.t =
     (* Adapton: Use a memo table here.  Our accumulator, hull_accum, is
@@ -384,5 +393,77 @@ module StMake (IntsSt : SpreadTree.SpreadTreeType
     let points = points_rope_of_int_list list in
     let hull = quickhull points in
     ints_of_points hull
+
+  (* ////////////////// *)
+  (* // Rope Version // *)
+  (* ////////////////// *)
+
+  let rope_quickhull_rec : Name.t -> line -> PointRope.Data.t -> PointRope.Data.t =
+    (* Adapton: Use a memo table here.  Our accumulator, hull_accum, is
+       a nominal list.  We need to use names because otherwise, the
+       accumulator will be unlikely to match after a small change. *)
+    fun (namespace : Name.t) ->
+    let module AA = PointRope.Art in
+    let mfn = AA.mk_mfn (Name.pair (Name.gensym "rope_quick_hull") namespace)
+      (module Types.Tuple2
+        (Types.Tuple2(Point)(Point))
+        (PointRope.Data)
+      )
+      (* INVARIANT: All the input points are *above* the given line. *)
+      (fun r ((p1,p2) as line, points) ->
+        (* using length because rope_filter is not currently guarenteed to be minimal, ei, might be `Two(`Zero, One(x)) *)
+        if Seq.rope_length points <= 0 then `Zero else
+        let pivot_point, p_nm = furthest_point_from_line line points in
+        let l_line = (p1, pivot_point) in
+        let r_line = (pivot_point, p2) in
+        let l_points = above_line l_line points in
+        let r_points = above_line r_line points in
+        let nms = p_nm in
+          let nm1, nms = Name.fork nms in
+          let nm2, nms = Name.fork nms in
+          let nm3, nms = Name.fork nms in
+          let nm0 = nms in
+        `Two(`One(pivot_point),`Two(
+          `Name(nm0, `Art(r.AA.mfn_nart nm1 (r_line, r_points))),
+          `Name(nm2, `Art(r.AA.mfn_nart nm3 (l_line, l_points)))
+        ))
+      )
+    in
+    fun l p -> mfn.AA.mfn_data (l,p)
+
+  let rope_quickhull_main : PointRope.Data.t -> PointRope.Data.t =
+    (* Allocate these two memoized tables *statically* *)
+    let qh_upper = rope_quickhull_rec (Name.gensym "upper") in
+    let qh_lower = rope_quickhull_rec (Name.gensym "lower") in
+    (* A convex hull consists of an upper and lower hull, each computed
+       recursively using quickhull_rec.  We distinguish these two
+       sub-hulls using an initial line that is defined by the points
+       with the max and min X value. *)
+    fun points ->
+      let min = Seq.rope_reduce (Name.gensym "points_min") x_min in
+      let max = Seq.rope_reduce (Name.gensym "points_max") x_max in
+      let p_min_x = match min points with None -> failwith "no points min_x" | Some(x) -> x in
+      let p_max_x = match max points with None -> failwith "no points min_y" | Some(x) -> x in
+      let line_above = (p_min_x, p_max_x) in
+      let line_below = (p_max_x, p_min_x) in (* "below" here means swapped coordinates from "above". *)
+      let points_above = above_line line_above points in
+      let points_below = above_line line_below points in
+      let nms = Name.nondet() in
+        let nm1, nms = Name.fork nms in
+        let nm2, nms = Name.fork nms in
+        let nm3, nms = Name.fork nms in
+        let nm0 = nms in
+      `Two(`One(p_max_x),`Two(
+        `Name(nm0, `Art(points_cell nm1 (qh_upper line_above points_above))),
+        `Two(`One(p_min_x),
+        `Name(nm2, `Art(points_cell nm3 (qh_lower line_below points_below)))
+      )))
+
+  let rope_quickhull : IntsSt.List.Data.t -> IntsSt.List.Data.t =
+  fun list ->
+    let points = points_rope_of_int_list list in
+    let hull_rope = rope_quickhull_main points in
+    int_list_of_points_rope hull_rope
+
 
 end
