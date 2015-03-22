@@ -82,10 +82,11 @@ let line_side_test : line -> point -> bool =
     let cross = cross_product diff1 diff2 in
     if cross <= 0.0 then false else true
 
+(* for convenience, this returns a tuple of (leftfurther:bool, furthest:point) *)
 let max_point_from_line line pt1 pt2 = 
   let d1 = line_point_distance line pt1 in
   let d2 = line_point_distance line pt2 in
-  if d1 > d2 then pt1 else pt2
+  if d1 > d2 then (true, pt1) else (false, pt2)
 
 let furthest_point_from_line : line -> points -> (point * float) =
   (* Used in the "pivot step".  the furthest point defines the two
@@ -286,9 +287,15 @@ module StMake (IntsSt : SpreadTree.SpreadTreeType
         let p1,no1 = furthest left in
         let p2,no2 = furthest right in
         (* find a useful name of the three available *)
+        (* dividing into cases here because ropes are probabalistic, and we don't have a 
+        good enough sence of where the 'right' names are *)
         let nm_opt = opt_seq nm_opt (opt_seq no1 no2) in
+        let left_opt = opt_seq no1 (opt_seq nm_opt no2) in
+        let right_opt = opt_seq no2 (opt_seq nm_opt no1) in
         ( match p1, p2 with
-        | Some l, Some r -> Some (max_point line l r), nm_opt
+        | Some l, Some r -> 
+          let lfurther, max = max_point line l r in
+          if lfurther then Some(max), left_opt else Some(max), right_opt
         | Some l, None   -> Some l, nm_opt
         | None,   Some r -> Some r, nm_opt
         | None,   None   -> None, nm_opt
@@ -357,24 +364,24 @@ module StMake (IntsSt : SpreadTree.SpreadTreeType
     in
     fun l p h -> mfn.AA.mfn_data (l,p,h)
 
-  let quickhull : PointRope.Data.t -> AccumList.Data.t =
-    (* Allocate these two memoized tables *statically* *)
+  let quickhull : Name.t -> PointRope.Data.t -> AccumList.Data.t =
+    (* Allocate these memoized tables *statically* *)
     let qh_upper = quickhull_rec (Name.gensym "upper") in
     let qh_lower = quickhull_rec (Name.gensym "lower") in
+    let min = Seq.rope_reduce (Name.gensym "points_min") x_min in
+    let max = Seq.rope_reduce (Name.gensym "points_max") x_max in
     (* A convex hull consists of an upper and lower hull, each computed
        recursively using quickhull_rec.  We distinguish these two
        sub-hulls using an initial line that is defined by the points
        with the max and min X value. *)
-    fun points ->
-      let min = Seq.rope_reduce (Name.gensym "points_min") x_min in
-      let max = Seq.rope_reduce (Name.gensym "points_max") x_max in
+    fun nm points ->
       let p_min_x = match min points with None -> failwith "no points min_x" | Some(x) -> x in
       let p_max_x = match max points with None -> failwith "no points min_y" | Some(x) -> x in
       let line_above = (p_min_x, p_max_x) in
       let line_below = (p_max_x, p_min_x) in (* "below" here means swapped coordinates from "above". *)
       let points_above = above_line line_above points in
       let points_below = above_line line_below points in
-      let nms = Name.nondet() in
+      let nms = nm in
       let nm1, nms = Name.fork nms in
       let nm2, nms = Name.fork nms in
       let nm3, nm4 = Name.fork nms in
@@ -388,10 +395,10 @@ module StMake (IntsSt : SpreadTree.SpreadTreeType
       )) in
       hull
 
-  let list_quickhull : IntsSt.List.Data.t -> IntsSt.List.Data.t =
-  fun list ->
+  let list_quickhull : Name.t -> IntsSt.List.Data.t -> IntsSt.List.Data.t =
+  fun nm list ->
     let points = points_rope_of_int_list list in
-    let hull = quickhull points in
+    let hull = quickhull nm points in
     ints_of_points hull
 
   (* ////////////////// *)
@@ -431,24 +438,24 @@ module StMake (IntsSt : SpreadTree.SpreadTreeType
     in
     fun l p -> mfn.AA.mfn_data (l,p)
 
-  let rope_quickhull_main : PointRope.Data.t -> PointRope.Data.t =
-    (* Allocate these two memoized tables *statically* *)
+  let rope_quickhull_main : Name.t -> PointRope.Data.t -> PointRope.Data.t =
+    (* Allocate these memoized tables *statically* *)
     let qh_upper = rope_quickhull_rec (Name.gensym "upper") in
     let qh_lower = rope_quickhull_rec (Name.gensym "lower") in
+    let min = Seq.rope_reduce (Name.gensym "points_min") x_min in
+    let max = Seq.rope_reduce (Name.gensym "points_max") x_max in
     (* A convex hull consists of an upper and lower hull, each computed
        recursively using quickhull_rec.  We distinguish these two
        sub-hulls using an initial line that is defined by the points
        with the max and min X value. *)
-    fun points ->
-      let min = Seq.rope_reduce (Name.gensym "points_min") x_min in
-      let max = Seq.rope_reduce (Name.gensym "points_max") x_max in
+    fun nm points ->
       let p_min_x = match min points with None -> failwith "no points min_x" | Some(x) -> x in
       let p_max_x = match max points with None -> failwith "no points min_y" | Some(x) -> x in
       let line_above = (p_min_x, p_max_x) in
       let line_below = (p_max_x, p_min_x) in (* "below" here means swapped coordinates from "above". *)
       let points_above = above_line line_above points in
       let points_below = above_line line_below points in
-      let nms = Name.nondet() in
+      let nms = nm in
         let nm1, nms = Name.fork nms in
         let nm2, nms = Name.fork nms in
         let nm3, nms = Name.fork nms in
@@ -459,10 +466,10 @@ module StMake (IntsSt : SpreadTree.SpreadTreeType
         `Name(nm2, `Art(points_cell nm3 (qh_lower line_below points_below)))
       )))
 
-  let rope_quickhull : IntsSt.List.Data.t -> IntsSt.List.Data.t =
-  fun list ->
+  let rope_quickhull : Name.t -> IntsSt.List.Data.t -> IntsSt.List.Data.t =
+  fun nm list ->
     let points = points_rope_of_int_list list in
-    let hull_rope = rope_quickhull_main points in
+    let hull_rope = rope_quickhull_main nm points in
     int_list_of_points_rope hull_rope
 
 
