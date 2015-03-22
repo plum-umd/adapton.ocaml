@@ -62,7 +62,7 @@ module T = struct
 
     let add_timestamp () =
         let timestamp = TotalOrder.add_next !eager_now in
-        Printf.printf "add_timestamp: %d\n" (TotalOrder.id timestamp);
+        Printf.printf "... add_timestamp: %d\n" (TotalOrder.id timestamp);
         eager_now := timestamp;
         timestamp
 
@@ -80,8 +80,10 @@ module T = struct
       WeakDyn.fold (
           fun d () ->
           if TotalOrder.is_valid d.start_timestamp then (
-            if not d.enqueued then (
-              Printf.printf "enqueuing dependent %d\n" (TotalOrder.id d.start_timestamp) ;
+            if d.enqueued then
+              Printf.printf "... already enqueued: dependent %d\n" (TotalOrder.id d.start_timestamp)
+            else (
+              Printf.printf "... enqueuing dependent %d\n" (TotalOrder.id d.start_timestamp) ;
               d.enqueued <- true ;
               if PriorityQueue.add eager_queue d then
                 incr Statistics.Counts.dirty
@@ -110,16 +112,22 @@ module T = struct
         let rec refresh () =
           match PriorityQueue.top eager_queue with
           | None -> ()
-          | Some next -> (
-            if TotalOrder.compare next.end_timestamp end_time < 0
-            (* && TotalOrder.compare !eager_now next.start_timestamp < 0 *) then (
+          | Some next -> (            
+            if TotalOrder.is_valid next.start_timestamp then (
+              if TotalOrder.compare next.end_timestamp end_time < 0
+              (* && TotalOrder.compare !eager_now next.start_timestamp < 0 *) then (
+                let meta = dequeue () in
+                assert ( TotalOrder.compare meta.end_timestamp end_time < 0 ) ;
+                eager_now := meta.start_timestamp;
+                eager_finger := meta.end_timestamp;
+                meta.evaluate ();
+                TotalOrder.splice ~db:"refresh_until" !eager_now meta.end_timestamp;
+                refresh ()
+              ))
+            else (
+              Printf.printf "... XXX\n" ;
               let meta = dequeue () in
-              assert ( TotalOrder.compare meta.end_timestamp end_time < 0 ) ;
-              eager_now := meta.start_timestamp;
-              eager_finger := meta.end_timestamp;
-              meta.evaluate ();
-              TotalOrder.splice ~db:"refresh_until" !eager_now meta.end_timestamp;
-              refresh ()
+              assert( not (TotalOrder.is_valid meta.start_timestamp) );
             ))
         in
         let old_finger = !eager_finger in
@@ -128,8 +136,9 @@ module T = struct
 
     (** Recompute EagerTotalOrder thunks if necessary. *)
     let refresh () =
-        if false then Printf.printf "BEGIN: global refresh:\n" ;
-        if false then (TotalOrder.iter eager_start (fun ts -> Printf.printf "iter-dump: %d\n" (TotalOrder.id ts))) ;
+        let condition = (not (PriorityQueue.top eager_queue = None)) in
+        if condition then Printf.printf ">>> BEGIN: global refresh:\n" ;
+        if condition then (TotalOrder.iter eager_start (fun ts -> Printf.printf "... iter-dump: %d\n" (TotalOrder.id ts))) ;
         let last_now = !eager_now in
         (
         try
@@ -146,7 +155,7 @@ module T = struct
             eager_now := last_now;
             eager_finger := eager_start
         );
-        if false then Printf.printf "BEGIN: global refresh:\n"
+        if condition then Printf.printf "<<< END: global refresh.\n"
 
     let flush () = () (* Flushing is a no-op here: Flushing happens internally during change propagation. *)
 
@@ -201,7 +210,7 @@ let invalidator meta ts =
      it sees start_timestamp is invalid; also, no need to replace
      {start,end}_timestamp with null since they are already cut by
      TotalOrder during invalidation *)
-  Printf.printf "marked invalid: %d\n" (TotalOrder.id ts);
+  Printf.printf "... marked invalid: %d\n" (TotalOrder.id ts);
   meta.unmemo <- nop;
   meta.evaluate <- nop;
   unqueue meta;
@@ -210,7 +219,7 @@ let invalidator meta ts =
 let update m x =
   if not (Data.equal m.value x) then
     begin
-      Printf.printf "update: ** CHANGED: #%d (%d,%d) **\n" m.id (TotalOrder.id m.meta.start_timestamp) (TotalOrder.id m.meta.end_timestamp);
+      Printf.printf "... update: ** CHANGED: #%d (%d,%d) **\n" m.id (TotalOrder.id m.meta.start_timestamp) (TotalOrder.id m.meta.end_timestamp);
       m.value <- x;
       enqueue_dependents m.meta.dependents
     end
@@ -252,9 +261,9 @@ let evaluate_meta meta f =
   incr Statistics.Counts.evaluate;
   eager_stack := meta::!eager_stack;
   let value = try
-      Printf.printf "BEGIN -- evaluate_meta: (%d,%d):\n" (TotalOrder.id meta.start_timestamp) (TotalOrder.id meta.end_timestamp) ;
+      Printf.printf "... BEGIN -- evaluate_meta: (%d,%d):\n" (TotalOrder.id meta.start_timestamp) (TotalOrder.id meta.end_timestamp) ;
       let res = f () in
-      Printf.printf "END -- evaluate_meta: (%d,%d).\n" (TotalOrder.id meta.start_timestamp) (TotalOrder.id meta.end_timestamp) ;
+      Printf.printf "... END -- evaluate_meta: (%d,%d).\n" (TotalOrder.id meta.start_timestamp) (TotalOrder.id meta.end_timestamp) ;
       res
     with exn ->
       eager_stack := List.tl !eager_stack;
@@ -388,23 +397,23 @@ let mk_mfn (type a)
                       && TotalOrder.compare m.meta.end_timestamp !eager_finger < 0 ->
 
            if Arg.equal arg (!(binding.Memo.Binding.arg)) then (
-             Printf.printf "  memo_name: match (Same arg): (%d, %d)\n"
-                            (TotalOrder.id m.meta.start_timestamp) (TotalOrder.id m.meta.end_timestamp);
-
+             Printf.printf "...   memo_name: match (Same arg): (%d, %d) -- `%s`\n"
+                           (TotalOrder.id m.meta.start_timestamp) (TotalOrder.id m.meta.end_timestamp)
+                           (Arg.string arg);
              incr Statistics.Counts.hit;
              TotalOrder.splice ~db:"memo_name: Same arg" !eager_now m.meta.start_timestamp;
-             Printf.printf "--  BEGIN -- refresh_until: match (Same arg)\n" ;
+             Printf.printf "... --  BEGIN -- refresh_until: match (Same arg)\n" ;
              refresh_until m.meta.end_timestamp;
              eager_now := m.meta.end_timestamp;
-             Printf.printf "--  END   -- refresh_until: match (Same arg)\n" ;
+             Printf.printf "... --  END   -- refresh_until: match (Same arg)\n" ;
              make_dependency_edge m;
              m
            )
            else (
-             Printf.printf "  memo_name: match (Diff arg): (%d, %d)\n"
-                            (TotalOrder.id m.meta.start_timestamp) (TotalOrder.id m.meta.end_timestamp);
-             Printf.printf "`%s' (old) != `%s' (new)\n" (Arg.string !(binding.Memo.Binding.arg)) (Arg.string arg) ;
-             Printf.printf "** BEGIN -- memo_name: match (Diff arg)\n" ;
+             Printf.printf "...   memo_name: match (Diff arg): (%d, %d) -- `%s' (old) != `%s' (new)\n"
+                           (TotalOrder.id m.meta.start_timestamp) (TotalOrder.id m.meta.end_timestamp)
+                           (Arg.string !(binding.Memo.Binding.arg)) (Arg.string arg) ;
+             Printf.printf "... ** BEGIN -- memo_name: match (Diff arg)\n" ;
              TotalOrder.splice ~db:"memo_name: Diff arg: #1" !eager_now m.meta.start_timestamp;
              eager_now := m.meta.start_timestamp;
              let old_finger = !eager_finger in
@@ -414,11 +423,11 @@ let mk_mfn (type a)
              m.meta.evaluate ();
              assert( TotalOrder.compare m.meta.start_timestamp !eager_now <= 0 );
              assert( TotalOrder.compare !eager_now   m.meta.end_timestamp <  0 );
-             Printf.printf "Start: splice (%d, %d)\n" (TotalOrder.id !eager_now) (TotalOrder.id m.meta.end_timestamp);
+             Printf.printf "... Start: splice (%d, %d)\n" (TotalOrder.id !eager_now) (TotalOrder.id m.meta.end_timestamp);
              TotalOrder.splice ~db:"memo_name: Diff arg: #2" !eager_now m.meta.end_timestamp;
-             Printf.printf "End: splice (%d, %d)\n" (TotalOrder.id !eager_now) (TotalOrder.id m.meta.end_timestamp);
+             Printf.printf "... End: splice (%d, %d)\n" (TotalOrder.id !eager_now) (TotalOrder.id m.meta.end_timestamp);
              eager_finger := old_finger;
-             Printf.printf "** END   -- memo_name: match (Diff arg)\n" ;
+             Printf.printf "... ** END   -- memo_name: match (Diff arg)\n" ;
              assert ( TotalOrder.is_valid m.meta.start_timestamp ) ;
              assert ( TotalOrder.is_valid m.meta.end_timestamp ) ;
              eager_now := m.meta.end_timestamp;
