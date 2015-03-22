@@ -112,12 +112,14 @@ module T = struct
         let rec refresh () =
           match PriorityQueue.top eager_queue with
           | None -> ()
-          | Some next -> (            
+          | Some next -> (
             if TotalOrder.is_valid next.start_timestamp then (
-              if TotalOrder.compare next.end_timestamp end_time < 0
-              (* && TotalOrder.compare !eager_now next.start_timestamp < 0 *) then (
+              if (match end_time with
+                    None -> true |
+                    Some end_time -> TotalOrder.compare next.end_timestamp end_time < 0 )
+              then (
                 let meta = dequeue () in
-                assert ( TotalOrder.compare meta.end_timestamp end_time < 0 ) ;
+                assert ( match end_time with | None -> true | Some end_time -> TotalOrder.compare meta.end_timestamp end_time < 0 ) ;
                 eager_now := meta.start_timestamp;
                 eager_finger := meta.end_timestamp;
                 meta.evaluate ();
@@ -141,17 +143,9 @@ module T = struct
         if condition then (TotalOrder.iter eager_start (fun ts -> Printf.printf "... iter-dump: %d\n" (TotalOrder.id ts))) ;
         let last_now = !eager_now in
         (
-        try
-            let rec refresh () =
-                let meta = dequeue () in
-                eager_now := meta.start_timestamp;
-                eager_finger := meta.end_timestamp;
-                meta.evaluate ();
-                TotalOrder.splice ~db:"refresh" !eager_now meta.end_timestamp;
-                refresh ()
-            in
-            refresh ()
-        with PriorityQueue.Empty ->
+          try
+            (refresh_until None)
+          with PriorityQueue.Empty ->
             eager_now := last_now;
             eager_finger := eager_start
         );
@@ -403,7 +397,7 @@ let mk_mfn (type a)
              incr Statistics.Counts.hit;
              TotalOrder.splice ~db:"memo_name: Same arg" !eager_now m.meta.start_timestamp;
              Printf.printf "... --  BEGIN -- refresh_until: match (Same arg)\n" ;
-             refresh_until m.meta.end_timestamp;
+             refresh_until (Some m.meta.end_timestamp);
              eager_now := m.meta.end_timestamp;
              Printf.printf "... --  END   -- refresh_until: match (Same arg)\n" ;
              make_dependency_edge m;
