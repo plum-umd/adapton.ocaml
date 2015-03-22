@@ -5,6 +5,8 @@ to produce non-adapton results
 
 open Primitives
 
+module Statistics = AdaptonStatistics
+
 (*
   a minimal alternative to Grifola.Make
   stores a lazy fn but realculates it at
