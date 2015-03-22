@@ -26,6 +26,7 @@ module T = struct
     }
     (**/**) (* auxiliary types *)
     and meta = { (* 5 + 5 + 5 = 15 words (not including closures of evaluate and unmemo as well as WeakDyn.t) *)
+        mutable enqueued : bool;
         mutable evaluate : unit -> unit;
         mutable unmemo : unit -> unit;
         mutable start_timestamp : TotalOrder.t; (* for const thunks, {start,end}_timestamp == TotalOrder.null and evaluate == nop *)
@@ -69,17 +70,23 @@ module T = struct
         if PriorityQueue.remove eager_queue meta then
             incr Statistics.Counts.clean
 
-    let dequeue () = PriorityQueue.pop eager_queue
+    let dequeue () =
+      let m = PriorityQueue.pop eager_queue in
+      assert( m.enqueued );
+      m.enqueued <- false;
+      m
 
     let enqueue_dependents dependents =
       WeakDyn.fold (
           fun d () ->
           if TotalOrder.is_valid d.start_timestamp then (
-            Printf.printf "enqueuing dependent %d\n" (TotalOrder.id d.start_timestamp) ;
-            if PriorityQueue.add eager_queue d then
-              incr Statistics.Counts.dirty
-          )) dependents ()
-    (* WeakDyn.clear dependents *) (* XXX *)
+            if not d.enqueued then (
+              Printf.printf "enqueuing dependent %d\n" (TotalOrder.id d.start_timestamp) ;
+              d.enqueued <- true ;
+              if PriorityQueue.add eager_queue d then
+                incr Statistics.Counts.dirty
+            ))) dependents ()
+    (* WeakDyn.clear dependents *) (* XXX *) (* ??? *)
     (**/**)
 
 
@@ -142,17 +149,19 @@ module T = struct
 
     let flush () = () (* Flushing is a no-op here: Flushing happens internally during change propagation. *)
 
+    let make_dependency_edge m =
+      (* add dependency to caller *)
+      match !eager_stack with
+      | dependent::_ -> WeakDyn.add m.meta.dependents dependent
+      | [] ->
+         (* Force is occuring at the outer layer. *)
+         (* Make sure that this value is up to date! *)
+         refresh ()
+
     (** Return the value contained by an EagerTotalOrder thunk, computing it if necessary. *)
     let force m =
-        (* add dependency to caller *)
-        begin match !eager_stack with
-            | dependent::_ -> WeakDyn.add m.meta.dependents dependent
-            | [] ->
-               (* Force is occuring at the outer layer. *)
-               (* Make sure that this value is up to date! *)
-               refresh ()
-        end;
-        m.value
+      make_dependency_edge m ;
+      m.value
 
     let viznode _ = failwith "viznode: not implemented"
 end
@@ -200,7 +209,7 @@ let invalidator meta ts =
 let update m x =
   if not (Data.equal m.value x) then
     begin
-      Printf.printf "update: ** CHANGED: #%d (%d,%d) **\n" m.id (TotalOrder.id m.meta.start_timestamp) (TotalOrder.id m.meta.end_timestamp) ;
+      Printf.printf "update: ** CHANGED: #%d (%d,%d) **\n" m.id (TotalOrder.id m.meta.start_timestamp) (TotalOrder.id m.meta.end_timestamp);
       m.value <- x;
       enqueue_dependents m.meta.dependents
     end
@@ -212,6 +221,7 @@ let const x =
     id=AdaptonTypes.Counter.next eager_id_counter;
     value=x;
     meta={
+      enqueued=false;
       evaluate=nop;
       unmemo=nop;
       start_timestamp=TotalOrder.null;
@@ -283,6 +293,7 @@ let set = update_const
 let make_node f =
   incr Statistics.Counts.create;
   let meta = {
+    enqueued=false;
     evaluate=nop;
     unmemo=nop;
     start_timestamp=add_timestamp ();
@@ -352,6 +363,7 @@ let mk_mfn (type a)
            incr Statistics.Counts.hit;
            TotalOrder.splice ~db:"memo" !eager_now m.meta.start_timestamp;
            eager_now := m.meta.end_timestamp;
+           make_dependency_edge m;
            m
 
         | _ ->
@@ -362,6 +374,7 @@ let mk_mfn (type a)
            let m = make_node (fun () -> user_function mfn (!(binding.Memo.Binding.arg)) ) in
            m.meta.unmemo <- (fun () -> Memo.Table.remove Memo.table binding);
            binding.Memo.Binding.value <- Some m;
+           make_dependency_edge m;
            m
       in
 
@@ -383,12 +396,13 @@ let mk_mfn (type a)
              refresh_until m.meta.end_timestamp;
              eager_now := m.meta.end_timestamp;
              Printf.printf "--  END   -- refresh_until: match (Same arg)\n" ;
+             make_dependency_edge m;
              m
            )
            else (
              Printf.printf "  memo_name: match (Diff arg): (%d, %d)\n"
                             (TotalOrder.id m.meta.start_timestamp) (TotalOrder.id m.meta.end_timestamp);
-
+             Printf.printf "`%s' (old) != `%s' (new)\n" (Arg.string !(binding.Memo.Binding.arg)) (Arg.string arg) ;
              Printf.printf "** BEGIN -- memo_name: match (Diff arg)\n" ;
              TotalOrder.splice ~db:"memo_name: Diff arg: #1" !eager_now m.meta.start_timestamp;
              eager_now := m.meta.start_timestamp;
@@ -407,6 +421,7 @@ let mk_mfn (type a)
              assert ( TotalOrder.is_valid m.meta.start_timestamp ) ;
              assert ( TotalOrder.is_valid m.meta.end_timestamp ) ;
              eager_now := m.meta.end_timestamp;
+             make_dependency_edge m;
              m
            )
 
@@ -418,6 +433,7 @@ let mk_mfn (type a)
            let m = make_node (fun () -> user_function mfn ( ! ( binding.Memo.Binding.arg ) ) ) in
            m.meta.unmemo <- (fun () -> Memo.Table.remove Memo.table binding);
            binding.Memo.Binding.value <- Some m;
+           make_dependency_edge m;
            m
       in
 
