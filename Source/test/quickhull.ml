@@ -33,6 +33,19 @@ let int_of_point (x,y) =
   let x_bits = ((int_of_float x) land 255) in
   let y_bits = ((int_of_float y) land 255) lsl 8 in
   x_bits lor y_bits
+(* these two provide (and reverse) a linear offset to the coords, for global distance tests *)
+let point_of_int_offset i x_offset y_offset =
+  let x = float_of_int (i land 255) in
+  let y = float_of_int ((i lsr 8) land 255) in
+  let x = x +. x_offset in
+  let y = y +. y_offset in
+  (x, y)
+let int_of_point_offset (x,y) x_offset y_offset =
+  let x = x -. x_offset in
+  let y = y -. y_offset in
+  let x_bits = ((int_of_float x) land 255) in
+  let y_bits = ((int_of_float y) land 255) lsl 8 in
+  x_bits lor y_bits
 
 let point_sub : point -> point -> point =
   fun p q -> (fst p -. fst q, snd p -. snd q)
@@ -199,8 +212,9 @@ module StMake (IntsSt : SpreadTree.SpreadTreeType
     fun nm data -> (fakecell.PointRope.Art.mfn_nart nm data)
 
   (* modified from SpreadTree list_map to convert between data types *)
-  let points_of_ints
-    : IntsSt.List.Data.t -> PointsSt.List.Data.t =
+  let points_of_ints_offset
+    : float -> float -> IntsSt.List.Data.t -> PointsSt.List.Data.t =
+    fun xo yo ->
     let module LArt = IntsSt.List.Art in
     let module PArt = PointsSt.List.Art in
     let mfn = PArt.mk_mfn (Name.gensym "points_of_ints")
@@ -209,7 +223,7 @@ module StMake (IntsSt : SpreadTree.SpreadTreeType
         let list_map = r.PArt.mfn_data in
         match list with
         | `Nil -> `Nil
-        | `Cons(x, xs) -> `Cons(point_of_int x, list_map xs)
+        | `Cons(x, xs) -> `Cons(point_of_int_offset x xo yo, list_map xs)
         | `Art(a) -> list_map (LArt.force a)
         | `Name(nm, xs) -> 
           let nm1, nm2 = Name.fork nm in
@@ -217,10 +231,12 @@ module StMake (IntsSt : SpreadTree.SpreadTreeType
       )
     in
     fun list -> mfn.PArt.mfn_data list
+  let points_of_ints = points_of_ints_offset 0. 0.
 
   (* modified from SpreadTree list_map to convert between data types *)
-  let ints_of_points
-    : PointsSt.List.Data.t -> IntsSt.List.Data.t = 
+  let ints_of_points_offset
+    : float -> float -> PointsSt.List.Data.t -> IntsSt.List.Data.t =
+    fun xo yo ->
     let module LArt = IntsSt.List.Art in
     let module PArt = PointsSt.List.Art in
     let mfn = LArt.mk_mfn (Name.gensym "ints_of_points")
@@ -229,7 +245,7 @@ module StMake (IntsSt : SpreadTree.SpreadTreeType
         let list_map = r.LArt.mfn_data in
         match list with
         | `Nil -> `Nil
-        | `Cons(x, xs) -> `Cons(int_of_point x, list_map xs)
+        | `Cons(x, xs) -> `Cons(int_of_point_offset x xo yo, list_map xs)
         | `Art(a) -> list_map (PArt.force a)
         | `Name(nm, xs) -> 
           let nm1, nm2 = Name.fork nm in
@@ -237,17 +253,19 @@ module StMake (IntsSt : SpreadTree.SpreadTreeType
       )
     in
     fun list -> mfn.LArt.mfn_data list
+  let ints_of_points = ints_of_points_offset 0. 0.
 
-  let points_rope_of_int_list : IntsSt.List.Data.t -> PointRope.Data.t =
-  fun inp ->
-    let pointslist = points_of_ints inp in
+  let points_rope_of_int_list_offset : float -> float -> IntsSt.List.Data.t -> PointRope.Data.t =
+  fun xo yo inp ->
+    let pointslist = points_of_ints_offset xo yo inp in
     Seq.rope_of_list pointslist
+  let points_rope_of_int_list = points_rope_of_int_list_offset 0. 0.
 
-  let int_list_of_points_rope : PointRope.Data.t -> IntsSt.List.Data.t =
-  fun inp ->
+  let int_list_of_points_rope_offset : float -> float -> PointRope.Data.t -> IntsSt.List.Data.t =
+  fun xo yo inp ->
     let pointslist = Seq.list_of_rope inp `Nil in
-    ints_of_points pointslist
-
+    ints_of_points_offset xo yo pointslist
+  let int_list_of_points_rope = int_list_of_points_rope_offset 0. 0.
 
   let divide_line : Name.t -> line -> Point.t -> PointRope.Data.t -> Name.t * PointRope.Data.t * PointRope.Data.t =
     fun (namespace : Name.t) ->
@@ -470,78 +488,6 @@ module StMake (IntsSt : SpreadTree.SpreadTreeType
     let points = points_rope_of_int_list list in
     let hull = quickhull nm points in
     ints_of_points hull
-
-  (* ////////////////// *)
-  (* // Rope Version // *)
-  (* ////////////////// *)
-
-  let rope_quickhull_rec : Name.t -> line -> PointRope.Data.t -> PointRope.Data.t =
-    (* Adapton: Use a memo table here.  Our accumulator, hull_accum, is
-       a nominal list.  We need to use names because otherwise, the
-       accumulator will be unlikely to match after a small change. *)
-    fun (namespace : Name.t) ->
-    let furthest_point = furthest_point_from_line namespace in
-    let module AA = PointRope.Art in
-    let mfn = AA.mk_mfn (Name.pair (Name.gensym "rope_quick_hull") namespace)
-      (module Types.Tuple2
-        (Types.Tuple2(Point)(Point))
-        (PointRope.Data)
-      )
-      (* INVARIANT: All the input points are *above* the given line. *)
-      (fun r ((p1,p2) as line, points) ->
-        (* using length because rope_filter is not currently guarenteed to be minimal, ei, might be `Two(`Zero, One(x)) *)
-        if Seq.rope_length points <= 0 then `Zero else
-        let pivot_point, p_nm = furthest_point line points in
-        let l_line = (p1, pivot_point) in
-        let r_line = (pivot_point, p2) in
-        let l_points = above_line_l l_line points in
-        let r_points = above_line_r r_line points in
-        let nms = p_nm in
-          let nm1, nms = Name.fork nms in
-          let nm2, nms = Name.fork nms in
-          let nm3, nms = Name.fork nms in
-          let nm0 = nms in
-        `Two(`One(pivot_point),`Two(
-          `Name(nm0, `Art(r.AA.mfn_nart nm1 (r_line, r_points))),
-          `Name(nm2, `Art(r.AA.mfn_nart nm3 (l_line, l_points)))
-        ))
-      )
-    in
-    fun l p -> mfn.AA.mfn_data (l,p)
-
-  let rope_quickhull_main : Name.t -> PointRope.Data.t -> PointRope.Data.t =
-    (* Allocate these memoized tables *statically* *)
-    let qh_upper = rope_quickhull_rec (Name.gensym "upper") in
-    let qh_lower = rope_quickhull_rec (Name.gensym "lower") in
-    let min = Seq.rope_reduce (Name.gensym "points_min") x_min in
-    let max = Seq.rope_reduce (Name.gensym "points_max") x_max in
-    (* A convex hull consists of an upper and lower hull, each computed
-       recursively using quickhull_rec.  We distinguish these two
-       sub-hulls using an initial line that is defined by the points
-       with the max and min X value. *)
-    fun nm points ->
-      let p_min_x = match min points with None -> failwith "no points min_x" | Some(x) -> x in
-      let p_max_x = match max points with None -> failwith "no points min_y" | Some(x) -> x in
-      let line_above = (p_min_x, p_max_x) in
-      let line_below = (p_max_x, p_min_x) in (* "below" here means swapped coordinates from "above". *)
-      let points_above = above_line_l line_above points in
-      let points_below = above_line_r line_below points in
-      let nms = nm in
-        let nm1, nms = Name.fork nms in
-        let nm2, nms = Name.fork nms in
-        let nm3, nms = Name.fork nms in
-        let nm0 = nms in
-      `Two(`One(p_max_x),`Two(
-        `Name(nm0, `Art(points_cell nm1 (qh_upper line_above points_above))),
-        `Two(`One(p_min_x),
-        `Name(nm2, `Art(points_cell nm3 (qh_lower line_below points_below)))
-      )))
-
-  let rope_quickhull : Name.t -> IntsSt.List.Data.t -> IntsSt.List.Data.t =
-  fun nm list ->
-    let points = points_rope_of_int_list list in
-    let hull_rope = rope_quickhull_main nm points in
-    int_list_of_points_rope hull_rope
 
 
 end
