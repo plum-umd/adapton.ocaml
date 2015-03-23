@@ -790,7 +790,7 @@ module MakeSeq
       Res.mk_mfn
         (St.Name.gensym "list_reverse")(module Arg)
         (fun r ((no, lo, hi, list, rev) as arg) ->
-         Printf.printf "args=(%s)\n%!" (Arg.string arg) ;
+         (* Printf.printf "args=(%s)\n%!" (Arg.string arg) ; *)
          let list_reverse no lo hi list rev = r.Res.mfn_data (no,lo,hi,list,rev) in
          ( match list with
            | `Nil -> (`Nil, rev)
@@ -808,9 +808,9 @@ module MakeSeq
                    let nm2,nm3 = Name.fork nm in
                    let rev = `Name(nm1, `Art(accum.LArt.mfn_nart nm2 (`Cons(x, rev)))) in
                    let rest, rev = Res.force (r.Res.mfn_nart nm3 (None, -1, hd_lev, xs, rev)) in
-                   Printf.printf "... rest1,rev1 = %s,%s\n%!" (St.List.Data.string rest) (St.List.Data.string rev) ;
+                   (* Printf.printf "... rest1,rev1 = %s,%s\n%!" (St.List.Data.string rest) (St.List.Data.string rev) ; *)
                    let rest, rev = list_reverse None hd_lev hi rest rev in
-                   Printf.printf "... rest2,rev2 = %s,%s\n%!" (St.List.Data.string rest) (St.List.Data.string rev) ;
+                   (* Printf.printf "... rest2,rev2 = %s,%s\n%!" (St.List.Data.string rest) (St.List.Data.string rev) ; *)
                    rest, rev
               else (
                 match no with
