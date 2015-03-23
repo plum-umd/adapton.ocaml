@@ -1628,7 +1628,7 @@ module Commandline_params : ParamsType = struct
 
     ("--0",   Arg.Unit  (fun () -> interactions_ := []),                     " clear interaction list");
     ("--di",  Arg.Unit  (fun () -> interactions_ := "di" :: !interactions_), " add interaction: delete, insert");
-    ("--id",  Arg.Unit  (fun () -> interactions_ := "di" :: !interactions_), " add interaction: insert, delete");
+    ("--id",  Arg.Unit  (fun () -> interactions_ := "id" :: !interactions_), " add interaction: insert, delete");
     ("--r",   Arg.Unit  (fun () -> interactions_ := "r"  :: !interactions_), " add interaction: replace");
     ("--rr",  Arg.Unit  (fun () -> interactions_ := "rr" :: !interactions_), " add interaction: replace, replace");
     ("--ss",  Arg.Unit  (fun () -> interactions_ := "ss" :: !interactions_), " add interaction: swap, swap");
