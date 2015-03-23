@@ -789,9 +789,8 @@ module MakeSeq
     let mfn =
       Res.mk_mfn
         (St.Name.gensym "list_reverse")(module Arg)
-        (fun r (no, lo, hi, list, rev) ->
-         Printf.printf "args=%s\n%!" (St.List.Data.string rest) (St.List.Data.string rev) ;
-
+        (fun r ((no, lo, hi, list, rev) as arg) ->
+         Printf.printf "args=(%s)\n%!" (Arg.string arg) ;
          let list_reverse no lo hi list rev = r.Res.mfn_data (no,lo,hi,list,rev) in
          ( match list with
            | `Nil -> (`Nil, rev)

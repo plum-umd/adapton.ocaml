@@ -279,7 +279,7 @@ module StMake (IntsSt : SpreadTree.SpreadTreeType
             let nm0 = nms in
           let no1, al1, ar1 = M.force (nart nm0 (nm1,l)) in
           let no2, al2, ar2 = M.force (nart nm2 (nm3,r)) in
-          (opt_seq no1 no2), `Name(nm4,`Two(al1, al2)), `Name(nm5, `Two(ar1, ar2))
+          (opt_seq no1 no2), `Name(nm4,`Two(al1, al2)), `Name(nm5, `Two(ar1, ar2))                                                         
         | `Art(a) -> divide carried_name (PointRope.Art.force a)
         | `Name(new_name, xs) -> divide new_name xs
       )
@@ -415,7 +415,7 @@ module StMake (IntsSt : SpreadTree.SpreadTreeType
         let l_points = above_line_l l_line points in
         let r_points = above_line_r r_line points in
         new version: *) 
-        let p_nm, r_points, l_points =
+        let p_nm, l_points, r_points =
           divide_line line pivot_point points in
 
         let nms = p_nm in
