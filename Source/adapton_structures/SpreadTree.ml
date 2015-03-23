@@ -782,13 +782,15 @@ module MakeSeq
     let accum = LArt.mk_mfn (St.Name.gensym "list_reverse_accum")
                             (module St.List.Data) (fun _ list -> list)
     in
-    let module A = St.ArtLib.MakeArt(Name)(Types.Tuple2(St.List.Data)(St.List.Data)) in
+    let module Res = St.ArtLib.MakeArt(Name)(Types.Tuple2(St.List.Data)(St.List.Data)) in
+    let module Arg = Types.Tuple5(Types.Option(Name))(Types.Int)(Types.Int)(St.List.Data)(St.List.Data) in
     let mfn =
-      A.mk_mfn
-        (St.Name.gensym "list_reverse")
-        (module Types.Tuple5(Types.Option(Name))(Types.Int)(Types.Int)(St.List.Data)(St.List.Data))
+      Res.mk_mfn
+        (St.Name.gensym "list_reverse")(module Arg)
         (fun r (no, lo, hi, list, rev) ->
-         let list_reverse no lo hi list rev = r.A.mfn_data (no,lo,hi,list,rev) in
+         Printf.printf "args=%s\n%!" (St.List.Data.string rest) (St.List.Data.string rev) ;
+
+         let list_reverse no lo hi list rev = r.Res.mfn_data (no,lo,hi,list,rev) in
          ( match list with
            | `Nil -> (`Nil, rev)
            | `Cons(x, xs) ->
@@ -804,8 +806,11 @@ module MakeSeq
                    let nm1,nm  = Name.fork nm in
                    let nm2,nm3 = Name.fork nm in
                    let rev = `Name(nm1, `Art(accum.LArt.mfn_nart nm2 (`Cons(x, rev)))) in
-                   let rest, rev = A.force (r.A.mfn_nart nm3 (None, -1, hd_lev, xs, rev)) in
-                   list_reverse None hd_lev hi rest rev
+                   let rest, rev = Res.force (r.Res.mfn_nart nm3 (None, -1, hd_lev, xs, rev)) in
+                   Printf.printf "... rest1,rev1 = %s,%s\n%!" (St.List.Data.string rest) (St.List.Data.string rev) ;
+                   let rest, rev = list_reverse None hd_lev hi rest rev in
+                   Printf.printf "... rest2,rev2 = %s,%s\n%!" (St.List.Data.string rest) (St.List.Data.string rev) ;
+                   rest, rev
               else (
                 match no with
                 | Some nm -> (`Name(nm,list), rev)
@@ -816,7 +821,7 @@ module MakeSeq
          ))
     in
     fun list rev ->
-    match mfn.A.mfn_data (None, -1, max_int, list, rev) with
+    match mfn.Res.mfn_data (None, -1, max_int, list, rev) with
     | `Nil, rev -> rev
     | _, _ -> failwith "list_reverse: impossible"
 

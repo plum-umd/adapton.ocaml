@@ -268,7 +268,7 @@ module Make_experiment ( ListApp : ListAppType ) = struct
         let xs = ListApp.trusted (demand_list l None) in
         let ys = demand_list computation None in
         if ( xs = ys ) then
-          Printf.fprintf stdout "Checked.%!\n"
+          Printf.fprintf stdout "Checked.\n%!"
         else begin
           Printf.fprintf handle "%% %s: %d: Error: output after last %s is not correct.\n%!" name roundi changedesc;
           Printf.fprintf stdout "%s: %d: Error: not equal:\n   input:\t%s\n%s @ %d:\t%s\nexpected:\t%s\n    got:\t%s\n%!"
@@ -309,8 +309,8 @@ module Make_experiment ( ListApp : ListAppType ) = struct
 
       let print_inout msg =
         if Params.Flags.print_inout then (
-          Printf.printf "%s: input:\t%s\n" msg (string_of_list (demand_list input_art None));
-          Printf.printf "%s: output:\t%s\n" msg (string_of_list (demand_list output_art None));
+          Printf.printf "%s: input:\t%s\n%!" msg (string_of_list (demand_list input_art None));
+          Printf.printf "%s: output:\t%s\n%!" msg (string_of_list (demand_list output_art None));
         ) else ()
       in
 
@@ -629,7 +629,7 @@ module Make_experiment ( ListApp : ListAppType ) = struct
       let input = ListApp.ListRep.of_list raw_input Params.granularity in
       let final_art = ListApp.ListRep.last input in
       if Params.Flags.print_inout then begin
-        Printf.printf "%d: Initial input:\t%s\n\n" i (ListApp.ListRep.string_of_list input);
+        Printf.printf "%d: Initial input:\t%s\n\n%!" i (ListApp.ListRep.string_of_list input);
       end;
       let demand_count =
         if Params.fullinit then
@@ -649,10 +649,10 @@ module Make_experiment ( ListApp : ListAppType ) = struct
       let line_prefix = Printf.sprintf "%d:%s" Params.sample_num name in
       stats_print handle Params.sample_num name "initial" Params.n s.Stats.create 0 demand_count demand_percent Params.granularity s ;
       if Params.Flags.print_inout then begin
-        Printf.printf "%d: Initial output:\t%s\n" i (ListApp.ListRep.string_of_list output);
+        Printf.printf "%d: Initial output:\t%s\n%!" i (ListApp.ListRep.string_of_list output);
       end;
       Printf.printf "\n----------------------------------------------------------------------------------\n%!" ;
-      Printf.printf "%s: Initial run:\ttime:%.4fs (unit cost %d)\n" line_prefix s.Stats.time s.Stats.unit_cost ;
+      Printf.printf "%s: Initial run:\ttime:%.4fs (unit cost %d)\n%!" line_prefix s.Stats.time s.Stats.unit_cost ;
       Printf.printf "%s: Initial run:\t{dirty:%d; clean:%d; eval:%d; create:%d; tables:%d}\n%!"
         line_prefix s.Stats.dirty s.Stats.clean s.Stats.evaluate s.Stats.create s.Stats.tables ;
       Memotables.print_stats stdout ;
@@ -683,7 +683,7 @@ module Make_experiment ( ListApp : ListAppType ) = struct
              raise exn
            )) ;
         let interact_end_time = Unix.gettimeofday () in
-        Printf.printf "%s: Iteraction time: %f (sec)\n" line_prefix (interact_end_time -. interact_begin_time) ;
+        Printf.printf "%s: Iteraction time: %f (sec)\n%!" line_prefix (interact_end_time -. interact_begin_time) ;
       );
       Memotables.print_stats stdout ;
       ListApp.flush () ;
@@ -1001,7 +1001,7 @@ module Reverse = struct
       let force = ListRep.St.List.Art.force in
       ListRep.St.List.Art.thunk nm ( fun () ->
                                      let res = rev(force inp) `Nil in
-                                     Printf.printf "... Computed: %s\n" (ListRep.St.List.Data.string res) ;
+                                     Printf.printf "... Computed: %s\n%!" (ListRep.St.List.Data.string res) ;
                                      res
                                    )
     let trusted = List.rev
@@ -1644,12 +1644,12 @@ module Commandline_params : ParamsType = struct
         in
         match matches with
         | [] | (_ :: _ :: _) ->
-          Printf.eprintf "Warning: Couldn't find a unique experiment with the requested name `%s'\n" name_req ;
+          Printf.eprintf "Warning: Couldn't find a unique experiment with the requested name `%s'\n%!" name_req ;
           if List.length matches > 0 then (
-            Printf.eprintf "The experiment name `%s' is not unique: Found %d matches total, but expected exactly one.\n" name_req (List.length matches);
+            Printf.eprintf "The experiment name `%s' is not unique: Found %d matches total, but expected exactly one.\n%!" name_req (List.length matches);
           ) ;
-          Printf.eprintf "  Try one of these:\n" ;
-          List.iter (fun name -> Printf.eprintf "   %s\n" name) names
+          Printf.eprintf "  Try one of these:\n%!" ;
+          List.iter (fun name -> Printf.eprintf "   %s\n%!" name) names
 
         | [req_name] -> experiment_ := req_name
 
