@@ -1656,7 +1656,7 @@ module Default_params = struct
   let disable_names     = false
   let generative_ids    = false
   let disable_mfns      = false
-  let debug_assert      = false
+  let debug_assert      = false (* XXX *)
 end
 
 let params = [
