@@ -26,7 +26,7 @@ let _PLACEMENT_SEED = 42
 
 (* this module structure needs work, Grifola is already
    two modules deep. *)
-module MakeArt = Grifola.Default.ArtLib.MakeArt(Key)
+(*module MakeArt = Grifola.Default.ArtLib.MakeArt(Key)*)
 
 (* Bit strings. Type is length * value so bit strings with leading
  * zeros aren't conflated.
@@ -114,11 +114,9 @@ module type S = sig
 
 end
 
-module MakePlace(E :
-                 sig
-                   include GoodDatType
-                   val place : t -> int
-                 end)
+module MakePlace
+  (E : sig include GoodDatType val place : t -> int end)
+  (A : ArtLibType)
   : S with type elt = E.t = struct
 
   type elt = E.t
@@ -200,7 +198,9 @@ module MakePlace(E :
       | Node (bs, t, u), Node (bs', t', u') ->
         BS.equal bs bs' && equal t t' && equal u u'
       | Atom (bs, es), Atom (bs', es') ->
-        BS.equal bs bs' && (S.for_all (fun e -> S.exists (E.equal e) es') es)
+        (BS.equal bs bs') &&
+          (S.for_all (fun e -> S.exists (E.equal e) es') es) &&
+          (S.for_all (fun e -> S.exists (E.equal e) es) es')
       | Empty bs, Empty bs' -> BS.equal bs bs'
       | Root (md, t), Root (md', t') ->
         md = md' && equal t t'
@@ -251,7 +251,7 @@ module MakePlace(E :
                      and type Name.t = Key.t
     val compare : t -> t -> int
   end = struct
-    include MakeArt(Data)
+    include A.MakeArt(Key)(Data)
     let show = string
     let pp fmt s = Format.fprintf fmt "%s" (show s)
     let compare a a' = compare (hash 42 a) (hash 42 a')
@@ -309,7 +309,7 @@ module MakePlace(E :
       ?(node  = ((fun bs a b -> a) : BS.t -> o -> o -> o))
       (namespace : string)
     : t -> o -> o =
-    let module IO = MakeArt(Out) in
+    let module IO = A.MakeArt(Key)(Out) in
     let loop = IO.mk_mfn
         (Key.gensym ("Trie.MakeInc#structural_fold#"^namespace))
         (module AdaptonTypes.Tuple2(Out)(Data))
@@ -436,25 +436,25 @@ module MakePlace(E :
              let nm', nm'' = Key.fork nm in
              if h mod 2 = 0
              then
-               let art = loop.Art.mfn_nart nm'
+               (*let art = loop.Art.mfn_nart nm'
                    (nm', e, (BS.prepend 0 bs), (h lsr 1), t0) in
                ignore (Art.force art) ;
-                 Node (bs, Art art, t1)
+                 Node (bs, Art art, t1)*)
                
-               (*let t0 = loop.Art.mfn_data
+               let t0 = loop.Art.mfn_data
                    (nm', e, (BS.prepend 0 bs), (h lsr 1), t0) in
                let t0, t1 = thunk nm' t0, thunk nm'' t1 in
-                 Node (bs, Art t0, Art t1)*)
+                 Node (bs, Art t0, Art t1)
              else
-               let art = loop.Art.mfn_nart nm''
+               (*let art = loop.Art.mfn_nart nm''
                    (nm'', e, (BS.prepend 1 bs), (h lsr 1), t1) in
                ignore (Art.force art) ;
-                 Node (bs, t0, Art art)
+                 Node (bs, t0, Art art)*)
                
-               (*let t1 = loop.Art.mfn_data
-                   (nm'', e, (BS.prepend 1 bs), (h lsr 1), t1) in
+               let t1 = loop.Art.mfn_data
+                 (nm'', e, (BS.prepend 1 bs), (h lsr 1), t1) in
                let t0, t1 = thunk nm' t0, thunk nm'' t1 in
-                 Node (bs, Art t0, Art t1)*)
+                 Node (bs, Art t0, Art t1)
            | Atom (bs, es) when E.place (S.choose es) = E.place e -> (* <-- assumes no collisions *)
              Atom (bs, S.add e (S.filter (fun e' -> E.place e' <> E.place e) es))
            | Art a
@@ -595,9 +595,9 @@ module Set = struct
       string -> t -> 'a -> 'a    
   end
 
-  module Make(E : GoodDatType) : S with type elt = E.t = struct
+  module Make(E : GoodDatType)(A : ArtLibType) : S with type elt = E.t = struct
 
-    include Make(E)
+    include Make(E)(A)
 
     let mem (t : t) : elt -> bool =
       (fun e -> match find (E.equal e) t (E.hash _PLACEMENT_SEED e) with
@@ -641,18 +641,21 @@ module Map = struct
   module Make
     (K : GoodDatType)
     (V : GoodDatType)
+    (A : ArtLibType)
     : S with type k = K.t and type v = V.t = struct
 
     let place (k, _) = K.hash _PLACEMENT_SEED k
 
-    include MakePlace(struct
+    include MakePlace
+    (struct
       include AdaptonTypes.Tuple2(K)(V)
       let string (k, v) = "["^(K.string k)^" -> "^(V.string v)^"]"
       let equal (k, v) (k', v') = K.equal k k' && V.equal v v'
       let hash seed (k, v) = K.hash (V.hash seed v) k
       let place = place
       let compare (k, v) (k', v') = Pervasives.compare (K.compare k k') (V.compare v v')
-    end)
+     end)
+    (A)
         
     type k = K.t
     type v = V.t
@@ -879,13 +882,16 @@ module Test  = struct
        nt5, k0, Some v5; nt5', k1, Some v1;
        nt5, k1, Some v1; nt5', k0, Some v5;
        nt5, k2, Some v2; nt5', k2, Some v2;] in
-    "Nominal Map" >::: (ncardinal_tests@nmem_tests@nfind_tests)
+    let nequal_tests = binary_tests "equal" M.equal
+      [(M.force nt5), (M.force nt4), false] in
+    print_endline (M.string (M.force nt5)) ;
+    print_endline (M.string (M.force nt4)) ;
+    "Nominal Map" >::: (ncardinal_tests@nmem_tests@nfind_tests@nequal_tests)
 
   let run () =
     run_test_tt_main bs_suite;
     run_test_tt_main set_suite;
     run_test_tt_main nset_suite;
-    run_test_tt_main map_suite;
     run_test_tt_main nmap_suite;
     ()
 
