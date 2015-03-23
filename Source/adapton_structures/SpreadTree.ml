@@ -693,9 +693,11 @@ module MakeSeq
     in
     fun rope -> mfn.Len.mfn_data rope
 
-  let rope_not_empty : St.Rope.Data.t -> bool =
+  let rope_not_empty : St.Name.t -> St.Rope.Data.t -> bool =
+    fun (namespace : Name.t) ->
     let module M = St.ArtLib.MakeArt(Name)(Types.Bool) in
-    let mfn = M.mk_mfn (St.Name.gensym "rope_empty")
+    let fnn = Name.pair (St.Name.gensym "rope_empty") namespace in
+    let mfn = M.mk_mfn fnn
       (module St.Rope.Data)
       (fun r rope ->
         let empty rope = r.M.mfn_data rope in

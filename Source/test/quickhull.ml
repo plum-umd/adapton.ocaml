@@ -249,8 +249,9 @@ module StMake (IntsSt : SpreadTree.SpreadTreeType
     ints_of_points pointslist
 
 
-  let divide_line : line -> Point.t -> PointRope.Data.t -> Name.t * PointRope.Data.t * PointRope.Data.t =
-    let fnn = (Name.gensym "divide_line") in
+  let divide_line : Name.t -> line -> Point.t -> PointRope.Data.t -> Name.t * PointRope.Data.t * PointRope.Data.t =
+    fun (namespace : Name.t) ->
+    let fnn = Name.pair (Name.gensym "divide_line") namespace in
     let module M = ArtLib.MakeArt(Name)(Types.Tuple3
       (Types.Option(Name))(PointRope.Data)(PointRope.Data)
     ) in
@@ -311,9 +312,10 @@ module StMake (IntsSt : SpreadTree.SpreadTreeType
 
   (* modified from SpreadTree rope_reduce_name to internalize furthest_from_line *)
   let rec find_furthest
-    : line -> PointRope.Data.t -> Point.t option * Name.t option =
+    : Name.t -> line -> PointRope.Data.t -> Point.t option * Name.t option =
+    fun (namespace : Name.t) ->
     let max_point = max_point_from_line in
-    let fnn = (Name.gensym "find_furthest")  in
+    let fnn = Name.pair (Name.gensym "find_furthest") namespace in
     let module M = ArtLib.MakeArt(Name)(Types.Tuple2
       (Types.Option(Point))(Types.Option(Name))
     ) in
@@ -365,12 +367,14 @@ module StMake (IntsSt : SpreadTree.SpreadTreeType
     in
     fun ln pts -> mfn.M.mfn_data (ln, pts, None)
 
-  let furthest_point_from_line : line -> PointRope.Data.t -> Point.t * Name.t =
+  let furthest_point_from_line : Name.t -> line -> PointRope.Data.t -> Point.t * Name.t =
     (* Used in the "pivot step".  the furthest point defines the two
        lines that we use for the "filter step".
        Note: To make this into an efficient IC algorithm, need to use a
        balanced reduction.  E.g., using either a rope reduction, or an
        iterative list reduction.  *)
+    fun (namespace : Name.t) ->
+    let find_furthest = find_furthest namespace in
     fun line points ->
       match find_furthest line points with
       | None, _ -> failwith "no points far from line"
@@ -388,7 +392,11 @@ module StMake (IntsSt : SpreadTree.SpreadTreeType
     (* Adapton: Use a memo table here.  Our accumulator, hull_accum, is
        a nominal list.  We need to use names because otherwise, the
        accumulator will be unlikely to match after a small change. *)
-    fun (namespace : Name.t) ->    
+    fun (namespace : Name.t) ->
+    let not_empty = Seq.rope_not_empty namespace in
+    let furthest_point = furthest_point_from_line namespace in
+    let divide_line = divide_line namespace in
+    let rope_empty rp = not (not_empty rp) in   
     let module AA = AccumList.Art in
     let mfn = AA.mk_mfn (Name.pair (Name.gensym "quick_hull") namespace)
       (module Types.Tuple3
@@ -398,11 +406,9 @@ module StMake (IntsSt : SpreadTree.SpreadTreeType
       )
       (* INVARIANT: All the input points are *above* the given line. *)
       (fun r ((p1,p2) as line, points, hull_accum) ->
-        (* using length because rope_filter is not currently guarenteed to be minimal, ei, might be `Two(`Zero, One(x)) *)
-       if not (Seq.rope_not_empty points (* FIXME: this call needs to use `namespace` parameter.  we need to create a new memo table when namespace is supplied. Follow pattern used here in quickhull_rec in rope_not_empty.*)) then
-         hull_accum
-       else
-        let pivot_point, _ = furthest_point_from_line line points (* FIXME: this call needs to use `namespace` parameter.  we need to create a new memo table when namespace is supplied.*) in
+        (* using rope_empty because rope_filter is not currently guarenteed to be minimal, ei, might be `Two(`Zero, One(x)) *)
+        if rope_empty points then hull_accum else
+        let pivot_point, _ = furthest_point line points in
         let l_line = (p1, pivot_point) in
         let r_line = (pivot_point, p2) in
         (* old version 
@@ -474,6 +480,7 @@ module StMake (IntsSt : SpreadTree.SpreadTreeType
        a nominal list.  We need to use names because otherwise, the
        accumulator will be unlikely to match after a small change. *)
     fun (namespace : Name.t) ->
+    let furthest_point = furthest_point_from_line namespace in
     let module AA = PointRope.Art in
     let mfn = AA.mk_mfn (Name.pair (Name.gensym "rope_quick_hull") namespace)
       (module Types.Tuple2
@@ -484,7 +491,7 @@ module StMake (IntsSt : SpreadTree.SpreadTreeType
       (fun r ((p1,p2) as line, points) ->
         (* using length because rope_filter is not currently guarenteed to be minimal, ei, might be `Two(`Zero, One(x)) *)
         if Seq.rope_length points <= 0 then `Zero else
-        let pivot_point, p_nm = furthest_point_from_line line points in
+        let pivot_point, p_nm = furthest_point line points in
         let l_line = (p1, pivot_point) in
         let r_line = (pivot_point, p2) in
         let l_points = above_line_l l_line points in

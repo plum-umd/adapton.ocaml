@@ -1002,6 +1002,7 @@ module Reverse = struct
       ListRep.St.List.Art.thunk nm ( fun () ->
                                      let res = rev(force inp) `Nil in
                                      Printf.printf "... Computed: %s\n%!" (ListRep.St.List.Data.string res) ;
+                                     (* Printf.printf "... Computed: %s\n" (ListRep.St.List.Data.string res) ; *)
                                      res
                                    )
     let trusted = List.rev
