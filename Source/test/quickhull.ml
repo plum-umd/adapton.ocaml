@@ -192,8 +192,8 @@ module StMake (IntsSt : SpreadTree.SpreadTreeType
       (module AccumList.Data) (fun r data -> data)
     in
     fun nm data -> (fakecell.AccumList.Art.mfn_nart nm data)
-  let points_cell =
-    let fakecell = PointRope.Art.mk_mfn (Name.gensym "PointRope_cells")
+  let make_points_cell = fun namespace ->
+    let fakecell = PointRope.Art.mk_mfn (Name.pair (Name.gensym "PointRope_cells") namespace)
       (module PointRope.Data) (fun r data -> data)
     in
     fun nm data -> (fakecell.PointRope.Art.mfn_nart nm data)
@@ -251,10 +251,11 @@ module StMake (IntsSt : SpreadTree.SpreadTreeType
 
   let divide_line : Name.t -> line -> Point.t -> PointRope.Data.t -> Name.t * PointRope.Data.t * PointRope.Data.t =
     fun (namespace : Name.t) ->
+    let points_cell = make_points_cell namespace in
     let fnn = Name.pair (Name.gensym "divide_line") namespace in
     let module M = ArtLib.MakeArt(Name)(Types.Tuple3
       (Types.Option(Name))(PointRope.Data)(PointRope.Data)
-    ) in
+                                       ) in
     let mfn = M.mk_mfn fnn
       (module Types.Tuple5(Name)(Point)(Point)(Point)(PointRope.Data))
       (fun r (carried_name, pl, pm, pr, pts) ->
@@ -276,10 +277,14 @@ module StMake (IntsSt : SpreadTree.SpreadTreeType
             let nm3, nms = Name.fork nms in
             let nm4, nms = Name.fork nms in
             let nm5, nms = Name.fork nms in
-            let nm0 = nms in
+            let nm6, nms = Name.fork nms in
+            let nm7, nms = Name.fork nms in
+            let nm0, nms = Name.fork nms in
           let no1, al1, ar1 = M.force (nart nm0 (nm1,l)) in
           let no2, al2, ar2 = M.force (nart nm2 (nm3,r)) in
-          (opt_seq no1 no2), `Name(nm4,`Two(al1, al2)), `Name(nm5, `Two(ar1, ar2))                                                         
+          let al_res = points_cell nm6 (`Two(al1, al2)) in
+          let ar_res = points_cell nm7 (`Two(ar1, ar2)) in
+          (opt_seq no1 no2), `Name(nm4, `Art al_res), `Name(nm5, `Art ar_res)
         | `Art(a) -> divide carried_name (PointRope.Art.force a)
         | `Name(new_name, xs) -> divide new_name xs
       )
@@ -508,6 +513,8 @@ module StMake (IntsSt : SpreadTree.SpreadTreeType
       )
     in
     fun l p -> mfn.AA.mfn_data (l,p)
+
+  let points_cell = make_points_cell (Name.gensym "dum")
 
   let rope_quickhull_main : Name.t -> PointRope.Data.t -> PointRope.Data.t =
     (* Allocate these memoized tables *statically* *)
