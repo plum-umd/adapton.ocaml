@@ -693,6 +693,23 @@ module MakeSeq
     in
     fun rope -> mfn.Len.mfn_data rope
 
+  let rope_not_empty : St.Rope.Data.t -> bool =
+    let module M = St.ArtLib.MakeArt(Name)(Types.Bool) in
+    let mfn = M.mk_mfn (St.Name.gensym "rope_empty")
+      (module St.Rope.Data)
+      (fun r rope ->
+        let empty rope = r.M.mfn_data rope in
+        let memo_empty n rope = r.M.mfn_nart n rope in
+        match rope with
+        | `Zero -> false
+        | `One(x) -> true
+        | `Two(r1,r2) -> (empty r1) || (empty r2)
+        | `Art(a) -> empty (RArt.force a)
+        | `Name(nm, r) -> M.force (memo_empty nm r)
+      )
+    in
+    fun rope -> mfn.M.mfn_data rope
+
   (* non-memoised indexed lookup of a rope, using memoized rope_length for speed *)
   let rope_nth rope n : St.Data.t option =
     if rope_length rope <= n then None else

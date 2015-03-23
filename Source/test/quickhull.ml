@@ -112,6 +112,14 @@ let furthest_point_from_line : line -> points -> (point * float) =
 (* // Non-Incremental version // *)
 (* ///////////////////////////// *)
 
+let opt_seq nm1 nm2 =
+  match nm1 with
+  | Some nm1 -> Some nm1
+  | None ->
+    match nm2 with
+    | None -> None
+    | Some nm2 -> Some nm2
+
 let rec quickhull_rec : line -> points -> points -> points =
   (* Adapton: Use a memo table here.  Our accumulator, hull_accum, is
    a nominal list.  We need to use names because otherwise, the
@@ -240,6 +248,46 @@ module StMake (IntsSt : SpreadTree.SpreadTreeType
     let pointslist = Seq.list_of_rope inp `Nil in
     ints_of_points pointslist
 
+
+  let divide_line : line -> Point.t -> PointRope.Data.t -> Name.t * PointRope.Data.t * PointRope.Data.t =
+    let fnn = (Name.gensym "divide_line") in
+    let module M = ArtLib.MakeArt(Name)(Types.Tuple3
+      (Types.Option(Name))(PointRope.Data)(PointRope.Data)
+    ) in
+    let mfn = M.mk_mfn fnn
+      (module Types.Tuple5(Name)(Point)(Point)(Point)(PointRope.Data))
+      (fun r (carried_name, pl, pm, pr, pts) ->
+        let divide nm pts = r.M.mfn_data (nm,pl,pm,pr,pts) in
+        let nart nm (cn, pts) = r.M.mfn_nart nm (cn,pl,pm,pr,pts) in
+        let l1 = (pl, pm) in
+        let l2 = (pm, pr) in
+        match pts with
+        | `Zero -> (None, `Zero, `Zero)
+        | `One(x) ->
+          if (x = pm) then (Some(carried_name), `Zero, `Zero) else
+          if (line_side_test l1 x) then (None, `Name(carried_name, `One(x)), `Zero) else
+          if (line_side_test l2 x) then (None, `Zero, `Name(carried_name, `One(x))) else
+          (None, `Zero, `Zero)
+        | `Two(l,r) ->
+          let nms = carried_name in
+            let nm1, nms = Name.fork nms in
+            let nm2, nms = Name.fork nms in
+            let nm3, nms = Name.fork nms in
+            let nm4, nms = Name.fork nms in
+            let nm5, nms = Name.fork nms in
+            let nm0 = nms in
+          let no1, al1, ar1 = M.force (nart nm0 (nm1,l)) in
+          let no2, al2, ar2 = M.force (nart nm2 (nm3,r)) in
+          (opt_seq no1 no2), `Name(nm4,`Two(al1, al2)), `Name(nm5, `Two(ar1, ar2))
+        | `Art(a) -> divide carried_name (PointRope.Art.force a)
+        | `Name(new_name, xs) -> divide new_name xs
+      )
+    in
+    fun (pl,pr) pm pts -> 
+      match mfn.M.mfn_data (Name.gensym "initial_name", pl, pm, pr, pts) with
+      | Some(nm), a, b -> nm, a, b
+      | None, _, _ -> failwith "pivot not found"
+
   (* modified from SpreadTree rope_filter to internalize above_line *)
   (* TODO: optimize, compact zeros *)
   let above_line : Name.t -> line -> PointRope.Data.t -> PointRope.Data.t =
@@ -264,14 +312,6 @@ module StMake (IntsSt : SpreadTree.SpreadTreeType
   (* modified from SpreadTree rope_reduce_name to internalize furthest_from_line *)
   let rec find_furthest
     : line -> PointRope.Data.t -> Point.t option * Name.t option =
-    let opt_seq nm1 nm2 =
-      match nm1 with
-      | Some nm1 -> Some nm1
-      | None ->
-        match nm2 with
-        | None -> None
-        | Some nm2 -> Some nm2
-    in
     let max_point = max_point_from_line in
     let fnn = (Name.gensym "find_furthest")  in
     let module M = ArtLib.MakeArt(Name)(Types.Tuple2
@@ -359,12 +399,17 @@ module StMake (IntsSt : SpreadTree.SpreadTreeType
       (* INVARIANT: All the input points are *above* the given line. *)
       (fun r ((p1,p2) as line, points, hull_accum) ->
         (* using length because rope_filter is not currently guarenteed to be minimal, ei, might be `Two(`Zero, One(x)) *)
-        if Seq.rope_length points <= 0 then hull_accum else
-        let pivot_point, p_nm = furthest_point_from_line line points in
+        if not (Seq.rope_not_empty points) then hull_accum else
+        let pivot_point, _ = furthest_point_from_line line points in
         let l_line = (p1, pivot_point) in
         let r_line = (pivot_point, p2) in
+        (* old version 
         let l_points = above_line_l l_line points in
         let r_points = above_line_r r_line points in
+        new version: *) 
+        let p_nm, r_points, l_points =
+          divide_line line pivot_point points in
+
         let nms = p_nm in
           let nm1, nms = Name.fork nms in
           let nm2, nms = Name.fork nms in
