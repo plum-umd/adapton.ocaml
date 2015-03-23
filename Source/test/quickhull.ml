@@ -399,8 +399,10 @@ module StMake (IntsSt : SpreadTree.SpreadTreeType
       (* INVARIANT: All the input points are *above* the given line. *)
       (fun r ((p1,p2) as line, points, hull_accum) ->
         (* using length because rope_filter is not currently guarenteed to be minimal, ei, might be `Two(`Zero, One(x)) *)
-        if not (Seq.rope_not_empty points) then hull_accum else
-        let pivot_point, _ = furthest_point_from_line line points in
+       if not (Seq.rope_not_empty points (* FIXME: this call needs to use `namespace` parameter.  we need to create a new memo table when namespace is supplied. Follow pattern used here in quickhull_rec in rope_not_empty.*)) then
+         hull_accum
+       else
+        let pivot_point, _ = furthest_point_from_line line points (* FIXME: this call needs to use `namespace` parameter.  we need to create a new memo table when namespace is supplied.*) in
         let l_line = (p1, pivot_point) in
         let r_line = (pivot_point, p2) in
         (* old version 
