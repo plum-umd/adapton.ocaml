@@ -43,12 +43,12 @@ module LazyRecalc = struct
     let string n = "&"^(string_of_int n.id)
     let hash seed n = Hashtbl.seeded_hash seed n.id
     let equal n1 n2 = n1.id = n2.id || n1.fn() = n2.fn() 
-    let force { fn; _ } = (* incr Statistics.Counts.evaluate; *) fn()
+    let force { fn; _ } = incr AdaptonStatistics.Counts.evaluate; fn()
     let sanitize n = n
 
-    let cell _ x = { id = next_count(); fn = (fun()->x) }
+    let cell _ x = incr AdaptonStatistics.Counts.create; { id = next_count(); fn = (fun()->x) }
     let set n x = n.fn <- (fun()->x)     
-    let thunk _ f = { id = next_count(); fn = f }
+    let thunk _ f = incr AdaptonStatistics.Counts.create; { id = next_count(); fn = f }
 
 
     let mk_mfn (type a)
@@ -58,11 +58,11 @@ module LazyRecalc = struct
       : Arg.t mfn
     =
       let rec mfn =
-      (* incr Statistics.Counts.evaluate;  *)
+      (* incr AdaptonStatistics.Counts.evaluate;  *)
         { 
           mfn_data = (fun arg -> user_function mfn arg) ;
-          mfn_art  = (fun arg -> cell (Name.nondet()) (user_function mfn arg)) ;
-          mfn_nart = (fun _ arg -> cell (Name.nondet()) (user_function mfn arg)) ;
+          mfn_art  = (fun arg -> incr AdaptonStatistics.Counts.create; { id=next_count(); fn=(fun ()-> user_function mfn arg) } ) ;
+          mfn_nart = (fun _ arg -> incr AdaptonStatistics.Counts.create; { id=next_count(); fn=(fun ()-> user_function mfn arg ) } )
         }
       in mfn
   end
