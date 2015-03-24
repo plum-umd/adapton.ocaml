@@ -781,8 +781,11 @@ module MakeSeq
     fun list rev -> mfn.LArt.mfn_data (list, rev)
 
   let list_reverse_balanced : St.List.Data.t -> St.List.Data.t -> St.List.Data.t =
+    let debug = false in    
     let accum = LArt.mk_mfn (St.Name.gensym "list_reverse_accum")
-                            (module St.List.Data) (fun _ list -> list)
+                            (module St.List.Data) (fun _ list ->
+                                                   (if debug then Printf.printf "... accum=(%s)\n" (St.List.Data.string list));
+                                                   list)
     in
     let module Res = St.ArtLib.MakeArt(Name)(Types.Tuple2(St.List.Data)(St.List.Data)) in
     let module Arg = Types.Tuple5(Types.Option(Name))(Types.Int)(Types.Int)(St.List.Data)(St.List.Data) in
@@ -790,29 +793,34 @@ module MakeSeq
       Res.mk_mfn
         (St.Name.gensym "list_reverse")(module Arg)
         (fun r ((no, lo, hi, list, rev) as arg) ->
-         (* Printf.printf "args=(%s)\n%!" (Arg.string arg) ; *)
+         (if debug then Printf.printf "... args=(%s)\n%!" (Arg.string arg)) ;
          let list_reverse no lo hi list rev = r.Res.mfn_data (no,lo,hi,list,rev) in
          ( match list with
            | `Nil -> (`Nil, rev)
            | `Cons(x, xs) ->
               let hd_lev = Primitives.ffs (St.Data.hash 0 x) in
-              if lo <= hd_lev && hd_lev <= hi then
+              if lo <= hd_lev && hd_lev <= hi then (
                 match no with
                 | None ->
                    let rev = `Cons(x,rev) in
                    let rest, rev = list_reverse None (-1) hd_lev xs rev in
-                   list_reverse None hd_lev hi rest rev
+                   (if debug then Printf.printf "... rest1,rev1 = %s,%s\n%!" (St.List.Data.string rest) (St.List.Data.string rev)) ;
+                   let rest, rev = list_reverse None hd_lev hi rest rev in
+                   (if debug then Printf.printf "... rest2,rev2 = %s,%s\n%!" (St.List.Data.string rest) (St.List.Data.string rev)) ;
+                   rest, rev
                                 
                 | Some nm ->
                    let nm1,nm  = Name.fork nm in
                    let nm2,nm3 = Name.fork nm in
                    let rev = `Name(nm1, `Art(accum.LArt.mfn_nart nm2 (`Cons(x, rev)))) in
                    let rest, rev = Res.force (r.Res.mfn_nart nm3 (None, -1, hd_lev, xs, rev)) in
-                   (* Printf.printf "... rest1,rev1 = %s,%s\n%!" (St.List.Data.string rest) (St.List.Data.string rev) ; *)
+                   (if debug then Printf.printf "...N rest1,rev1 = %s,%s\n%!" (St.List.Data.string rest) (St.List.Data.string rev)) ;
                    let rest, rev = list_reverse None hd_lev hi rest rev in
-                   (* Printf.printf "... rest2,rev2 = %s,%s\n%!" (St.List.Data.string rest) (St.List.Data.string rev) ; *)
+                   (if debug then Printf.printf "...N rest2,rev2 = %s,%s\n%!" (St.List.Data.string rest) (St.List.Data.string rev)) ;
                    rest, rev
+              )
               else (
+                (if debug then Printf.printf "... Basecase: list,rev = %s,%s\n%!" (St.List.Data.string list) (St.List.Data.string rev)) ;
                 match no with
                 | Some nm -> (`Name(nm,list), rev)
                 | None -> (list, rev)                                
@@ -1055,7 +1063,7 @@ module MakeSeq
       )
     in
     fun list -> mfn.LArt.mfn_data list
-   
+
   let list_map_paired
     (op_nm : Name.t)
     (op : St.Data.t -> St.Data.t -> St.Data.t)

@@ -98,7 +98,7 @@ module Option (A : DatType) = struct
       | Some x -> Some (A.sanitize x)
     let string x = match x with
       | None -> "None"
-      | Some x -> "Some"^(A.string x)
+      | Some x -> "Some("^(A.string x)^")"
 end
 
 module Tuple2 (A : DatType) (B : DatType) = struct

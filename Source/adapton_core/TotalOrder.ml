@@ -49,7 +49,7 @@ end = struct
     }
 
     (**/**) (* helper functions *)
-    let nop ts = (Printf.printf "nop invalidator: %d\n" ts.id)
+    let nop ts = () (* (Printf.printf "nop invalidator: %d\n" ts.id) *)
     (**/**)
 
     (**/**) (* sentinel values *)
