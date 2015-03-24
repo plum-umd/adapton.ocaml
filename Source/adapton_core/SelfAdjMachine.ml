@@ -30,6 +30,7 @@ module T = struct
    and meta = { (* 5 + 5 + 5 = 15 words (not including closures of evaluate and unmemo as well as WeakDyn.t) *)
         mid : int;
         mutable enqueued : bool;
+        mutable onstack : bool;
         mutable evaluate : unit -> unit;
         mutable unmemo : unit -> unit;
         mutable start_timestamp : TotalOrder.t; (* for const thunks, {start,end}_timestamp == TotalOrder.null and evaluate == nop *)
@@ -57,6 +58,7 @@ module T = struct
     end)
 
     let eager_id_counter = AdaptonTypes.Counter.make 0
+    let eager_name_counter = AdaptonTypes.Counter.make 0
     let eager_stack = ref []
     let eager_queue = PriorityQueue.create ()
     let eager_start = TotalOrder.create ()
@@ -76,6 +78,7 @@ module T = struct
     let dequeue () =
       let m = PriorityQueue.pop eager_queue in
       assert( m.enqueued );
+      assert( not m.onstack );
       m.enqueued <- false;
       m
 
@@ -85,9 +88,12 @@ module T = struct
           if TotalOrder.is_valid d.start_timestamp then (
             if d.enqueued then
               (if debug then Printf.printf "... already enqueued: dependent %d\n%!" (TotalOrder.id d.start_timestamp))
+            else if d.onstack then
+              (if debug then Printf.printf "... already on stack: dependent %d\n%!" (TotalOrder.id d.start_timestamp))
             else (
               (if debug then Printf.printf "... enqueuing dependent %d\n%!" (TotalOrder.id d.start_timestamp)) ;
               d.enqueued <- true ;
+              assert (not d.onstack) ;
               if PriorityQueue.add eager_queue d then
                 incr Statistics.Counts.dirty
             ))) dependents ()
@@ -235,6 +241,7 @@ let const x =
     meta={
       mid=id;
       enqueued=false;
+      onstack=false;
       evaluate=nop;
       unmemo=nop;
       start_timestamp=TotalOrder.null;
@@ -263,6 +270,7 @@ let update_const m x =
 let evaluate_meta meta f =
   incr Statistics.Counts.evaluate;
   eager_stack := meta::!eager_stack;
+  meta.onstack <- true ;
   let value = try
       (if debug then Printf.printf "... BEGIN -- evaluate_meta: &%d @ (%d,%d):\n%!" meta.mid (TotalOrder.id meta.start_timestamp) (TotalOrder.id meta.end_timestamp));
       let res = f () in
@@ -270,9 +278,11 @@ let evaluate_meta meta f =
       res
     with exn ->
       eager_stack := List.tl !eager_stack;
+      meta.onstack <- false ;
       raise exn
   in
   eager_stack := List.tl !eager_stack;
+  meta.onstack <- false ;
   value
 
 let make_evaluate m f =
@@ -309,6 +319,7 @@ let make_and_eval_node f =
   let meta = {
     mid=id;
     enqueued=false;
+    onstack=false;
     evaluate=nop;
     unmemo=nop;
     start_timestamp=add_timestamp ();
@@ -448,7 +459,26 @@ let mk_mfn (type a)
              m
            )
 
-        | prev ->
+        | Some _ (* CASE: Same name, but UNAVAILABLE  *) ->
+           (* CASE: A modref with the same name exists, but is unavailable to us.
+                    So, we must generate a FRESH BINDING with a FRESH NAME. *)
+           let next_name = AdaptonTypes.Counter.next eager_name_counter in
+           let new_binding = Memo.Table.merge Memo.table Memo.Binding.({ key=Name (Name.pair name (Name.gensym (string_of_int next_name)));
+                                                                         arg=ref arg; value=None }) in
+           
+           incr Statistics.Counts.create;
+           incr Statistics.Counts.miss;
+           (* new_binding.Memo.Binding.arg := arg ; *)
+           let m = make_and_eval_node (fun () -> let res = user_function mfn ( ! ( new_binding.Memo.Binding.arg ) ) in
+                                                 (if debug then Printf.printf "... Computed Result=`%s'.\n%!" (Data.string res)) ;
+                                                 res
+                                      ) in
+           m.meta.unmemo <- (fun () -> Memo.Table.remove Memo.table new_binding);
+           new_binding.Memo.Binding.value <- Some m;
+           make_dependency_edge m;
+           m
+
+        | None ->
            (* note that m.meta.unmemo indirectly holds a reference to binding (via unmemo's closure);
                             this prevents the GC from collecting binding from Memo.table until m itself is collected *)
            incr Statistics.Counts.create;
@@ -461,11 +491,6 @@ let mk_mfn (type a)
            m.meta.unmemo <- (fun () -> Memo.Table.remove Memo.table binding);
            binding.Memo.Binding.value <- Some m;
            make_dependency_edge m;
-           (
-             match prev with
-             | None -> ()
-             | Some old_m -> (enqueue_dependents old_m.meta.dependents)
-           ) ;
            m
       in
 
