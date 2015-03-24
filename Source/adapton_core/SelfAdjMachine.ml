@@ -451,7 +451,7 @@ let mk_mfn (type a)
                             this prevents the GC from collecting binding from Memo.table until m itself is collected *)
            incr Statistics.Counts.create;
            incr Statistics.Counts.miss;
-           binding.Memo.Binding.arg := arg ; (* BUG FIX *)
+           binding.Memo.Binding.arg := arg ;
            let m = make_and_eval_node (fun () -> let res = user_function mfn ( ! ( binding.Memo.Binding.arg ) ) in
                                                  Printf.printf "... Computed Result=`%s'.\n%!" (Data.string res) ;
                                                  res
