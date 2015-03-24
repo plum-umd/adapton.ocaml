@@ -446,7 +446,7 @@ let mk_mfn (type a)
              m
            )
 
-        | _ ->
+        | prev ->
            (* note that m.meta.unmemo indirectly holds a reference to binding (via unmemo's closure);
                             this prevents the GC from collecting binding from Memo.table until m itself is collected *)
            incr Statistics.Counts.create;
@@ -459,6 +459,11 @@ let mk_mfn (type a)
            m.meta.unmemo <- (fun () -> Memo.Table.remove Memo.table binding);
            binding.Memo.Binding.value <- Some m;
            make_dependency_edge m;
+           (
+             match prev with
+             | None -> ()
+             | Some old_m -> (* TODO: enqueue dependents of m *) ()
+           )
            m
       in
 
