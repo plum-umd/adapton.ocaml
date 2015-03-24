@@ -176,7 +176,46 @@ let list_quickhull : int list -> int list = fun inp ->
   let hull = quickhull points in
   List.map int_of_point hull
 
+let hulls_max_dist : points -> points -> float =
+  fun hull1 hull2 ->
+  let (_,_,dist) = 
+    List.fold_left
+    (fun last_best new_pt1 ->
+      List.fold_left
+      (fun ((max_pt1,max_p2,max_dist) as best) new_pt2 ->
+        let new_dist = points_distance new_pt1 new_pt2 in
+        if new_dist > max_dist then
+          (new_pt1, new_pt2, new_dist)
+        else
+          best
+      )
+      last_best
+      hull2
+    )
+    (List.hd hull1, List.hd hull2, points_distance (List.hd hull1) (List.hd hull2))
+    hull1
+  in
+  dist
 
+(* max distance with other inputs: points or int lists that must be broken up *)
+let cloud_max_dist : points -> points -> float =
+  fun points1 points2 ->
+  let hull1 = quickhull points1 in
+  let hull2 = quickhull points2 in
+  hulls_max_dist hull1 hull2
+let list_cloud_max_dist : int list -> int list -> float =
+  fun in1 in2 ->
+  let points1 = List.map point_of_int in1 in
+  let points2 = List.map point_of_int in2 in
+  cloud_max_dist points1 points2 
+
+(* let _ =
+  let test = cloud_max_dist
+    [(1.,1.);(2.,2.);(1.,2.);(2.,1.);(1.5,1.5)]
+    [(5.,5.);(6.,6.);(5.,6.);(6.,5.);(5.5,5.5)]
+  in
+  Printf.printf "should be 50: %f\n%!" (test*.test)
+ *)
 
 (* ///////////////////////// *)
 (* // Incremental version // *)
