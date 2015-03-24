@@ -1143,6 +1143,23 @@ module Pointcloud = struct
     let flush = AL.Eviction.flush
   end
 
+  module List_Max_Distance
+    ( N : sig val name : string end )
+    ( AL : GrifolaType.ArtLibType ) =
+  struct
+    let name = "List_max_dist_" ^ N.name
+    module ListRep = SpreadTreeRep(AL)
+    module QH = Quickhull.StMake(ListRep.St)
+    let compute inp =
+      let nm1, nm2 = Key.fork (Key.nondet()) in
+      let list_max = QH.list_max_dist in
+      ListRep.St.List.Art.thunk nm1 ( fun () -> 
+        list_max nm2 (ListRep.St.List.Art.force inp)
+      )
+    let trusted xs = [int_of_float @@ Quickhull.single_list_max_dist xs]
+    let flush = AL.Eviction.flush
+  end
+
 end
 
 module Iteration = struct
@@ -1374,6 +1391,13 @@ module Experiments = struct
     module ListApp_sac = Pointcloud.List_Quickhull(struct let name = "sac" end)(Sac.ArtLib)
   end
 
+  module List_Max_Distance = struct
+    module ListApp_name = Pointcloud.List_Max_Distance(struct let name = "name" end)(Grifola_name.ArtLib)
+    module ListApp_arggen = Pointcloud.List_Max_Distance(struct let name = "arggen" end)(Grifola_arggen.ArtLib)
+    module ListApp_lazy_recalc = Pointcloud.List_Max_Distance(struct let name = "lazyrecalc" end)(LazyRecalc.ArtLib)
+    module ListApp_sac = Pointcloud.List_Max_Distance(struct let name = "sac" end)(Sac.ArtLib)
+  end
+
   module Rope_iter = struct
     module ListApp_name = Iteration.Rope_iter(struct let name = "name" end)(Grifola_name.ArtLib)
     module ListApp_arg = Iteration.Rope_iter(struct let name = "arg" end)(Grifola_arg.ArtLib)
@@ -1489,6 +1513,12 @@ let raw_experiments =
   (module Experiments.Quickhull.ListApp_arggen       : ListAppType) ;
   (module Experiments.Quickhull.ListApp_lazy_recalc  : ListAppType) ;
   (module Experiments.Quickhull.ListApp_sac          : ListAppType) ;
+
+  (* List_Max_Distance *)
+  (module Experiments.List_Max_Distance.ListApp_name         : ListAppType) ;
+  (module Experiments.List_Max_Distance.ListApp_arggen       : ListAppType) ;
+  (module Experiments.List_Max_Distance.ListApp_lazy_recalc  : ListAppType) ;
+  (module Experiments.List_Max_Distance.ListApp_sac          : ListAppType) ;
 
   (* Benchmarks for overhead comparison: *)
   (module Experiments.AVL_name                         : ListAppType) ;

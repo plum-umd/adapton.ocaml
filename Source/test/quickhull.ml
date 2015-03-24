@@ -197,16 +197,16 @@ let hulls_max_dist : points -> points -> float =
   in
   dist
 
-(* max distance with other inputs: points or int lists that must be broken up *)
+(* max distance with other inputs: points or int list that must be broken up *)
 let cloud_max_dist : points -> points -> float =
   fun points1 points2 ->
   let hull1 = quickhull points1 in
   let hull2 = quickhull points2 in
   hulls_max_dist hull1 hull2
-let list_cloud_max_dist : int list -> int list -> float =
-  fun in1 in2 ->
-  let points1 = List.map point_of_int in1 in
-  let points2 = List.map point_of_int in2 in
+let single_list_max_dist : int list -> float =
+  fun inp ->
+  let points1 = List.map point_of_int inp in
+  let points2 = List.map (fun x -> point_of_int_offset x 300. 300.) inp in
   cloud_max_dist points1 points2 
 
 (* let _ =
@@ -516,7 +516,8 @@ module StMake (IntsSt : SpreadTree.SpreadTreeType
       let nms = nm in
       let nm1, nms = Name.fork nms in
       let nm2, nms = Name.fork nms in
-      let nm3, nm4 = Name.fork nms in
+      let nm3, nms = Name.fork nms in
+      let nm4, nms = Name.fork nms in
       (* using create-force to branch off subcomputations here *)
       (* this helps a lot *)
       let hull = AccumList.Art.force (accum_cell nm1 (
@@ -532,5 +533,19 @@ module StMake (IntsSt : SpreadTree.SpreadTreeType
     let points = points_rope_of_int_list list in
     let hull = quickhull nm points in
     ints_of_points hull
+
+  let list_max_dist : Name.t -> IntsSt.List.Data.t -> IntsSt.List.Data.t =
+  fun nm list ->
+    let points1 = points_rope_of_int_list list in
+    let points2 = points_rope_of_int_list_offset 300. 300. list in
+    let nm1, nm2 = Name.fork nm in
+    let hull1 = quickhull nm1 points1 in
+    let hull2 = quickhull nm2 points2 in
+    (* using the non-inc version now that the hard work is done *)
+    (* TODO: incrementalize following computation *)
+    let raw_pts1 = Seq.take hull1 None in
+    let raw_pts2 = Seq.take hull2 None in
+    let dist = hulls_max_dist raw_pts1 raw_pts2 in
+    `Cons(int_of_float dist,`Nil)
 
 end
