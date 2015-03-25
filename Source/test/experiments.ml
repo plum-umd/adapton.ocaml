@@ -915,6 +915,23 @@ module Linear = struct
     let flush = AL.Eviction.flush
   end
 
+  module List_eager_filter
+    (N : sig val name : string end)
+    (AL : GrifolaType.ArtLibType) =
+  struct
+    let name = "List_eager_filter_" ^ N.name
+    module ListRep = SpreadTreeRep (AL )
+    let filter_even x = x mod 2 = 0
+    let compute inp =
+      let nm1, nm2 = Key.fork (Key.nondet()) in
+      let filter = ListRep.Seq.list_eager_filter nm1 filter_even in
+      ListRep.St.List.Art.thunk nm2 ( fun () -> 
+        filter (ListRep.St.List.Art.force inp)
+      )
+    let trusted = List.filter filter_even
+    let flush = AL.Eviction.flush
+  end
+
   module List_map
     (N : sig val name : string end)
     (AL : GrifolaType.ArtLibType) =
@@ -925,6 +942,23 @@ module Linear = struct
     let compute inp =
       let nm1, nm2 = Key.fork (Key.nondet()) in
       let map = ListRep.Seq.list_map nm1 almost_triple in
+      ListRep.St.List.Art.thunk nm2 ( fun () -> 
+        map (ListRep.St.List.Art.force inp)
+      )
+    let trusted = List.map almost_triple
+    let flush = AL.Eviction.flush
+  end
+
+  module List_eager_map
+    (N : sig val name : string end)
+    (AL : GrifolaType.ArtLibType) =
+  struct
+    let name = "List_eager_map_" ^ N.name
+    module ListRep = SpreadTreeRep (AL )
+    let almost_triple x = x * 2 - 1
+    let compute inp =
+      let nm1, nm2 = Key.fork (Key.nondet()) in
+      let map = ListRep.Seq.list_eager_map nm1 almost_triple in
       ListRep.St.List.Art.thunk nm2 ( fun () -> 
         map (ListRep.St.List.Art.force inp)
       )
@@ -1314,6 +1348,16 @@ module Experiments = struct
     module ListApp_sac = Linear.List_filter(struct let name = "sac" end)(Sac.ArtLib)
   end
 
+  module List_eager_filter = struct
+    module ListApp_name = Linear.List_eager_filter(struct let name = "name" end)(Grifola_name.ArtLib)
+    module ListApp_arg = Linear.List_eager_filter(struct let name = "arg" end)(Grifola_arg.ArtLib)
+    module ListApp_arggen = Linear.List_eager_filter(struct let name = "arggen" end)(Grifola_arggen.ArtLib)
+    module ListApp_lazy_recalc = Linear.List_eager_filter(struct let name = "lazyrecalc" end)(LazyRecalc.ArtLib)
+    module ListApp_eager_noninc = Linear.List_eager_filter(struct let name = "eagernoninc" end)(EagerNonInc.ArtLib)
+    module ListApp_lazy_noninc = Linear.List_eager_filter(struct let name = "lazynoninc" end)(LazyNonInc.ArtLib)
+    module ListApp_sac = Linear.List_eager_filter(struct let name = "sac" end)(Sac.ArtLib)
+  end
+
   module List_map = struct
     module ListApp_name = Linear.List_map(struct let name = "name" end)(Grifola_name.ArtLib)
     module ListApp_arg = Linear.List_map(struct let name = "arg" end)(Grifola_arg.ArtLib)
@@ -1322,6 +1366,16 @@ module Experiments = struct
     module ListApp_eager_noninc = Linear.List_map(struct let name = "eagernoninc" end)(EagerNonInc.ArtLib)
     module ListApp_lazy_noninc = Linear.List_map(struct let name = "lazynoninc" end)(LazyNonInc.ArtLib)
     module ListApp_sac = Linear.List_map(struct let name = "sac" end)(Sac.ArtLib)
+  end
+
+  module List_eager_map = struct
+    module ListApp_name = Linear.List_eager_map(struct let name = "name" end)(Grifola_name.ArtLib)
+    module ListApp_arg = Linear.List_eager_map(struct let name = "arg" end)(Grifola_arg.ArtLib)
+    module ListApp_arggen = Linear.List_eager_map(struct let name = "arggen" end)(Grifola_arggen.ArtLib)
+    module ListApp_lazy_recalc = Linear.List_eager_map(struct let name = "lazyrecalc" end)(LazyRecalc.ArtLib)
+    module ListApp_eager_noninc = Linear.List_eager_map(struct let name = "eagernoninc" end)(EagerNonInc.ArtLib)
+    module ListApp_lazy_noninc = Linear.List_eager_map(struct let name = "lazynoninc" end)(LazyNonInc.ArtLib)
+    module ListApp_sac = Linear.List_eager_map(struct let name = "sac" end)(Sac.ArtLib)
   end
 
   module List_map_paired = struct
@@ -1455,11 +1509,27 @@ let raw_experiments =
   (module Experiments.List_filter.ListApp_lazy_recalc  : ListAppType) ;
   (module Experiments.List_filter.ListApp_sac             : ListAppType) ;
 
+  (* List eager filter *)
+  (module Experiments.List_eager_filter.ListApp_name         : ListAppType) ;
+  (module Experiments.List_eager_filter.ListApp_arggen       : ListAppType) ;
+  (module Experiments.List_eager_filter.ListApp_lazy_recalc  : ListAppType) ;
+  (module Experiments.List_eager_filter.ListApp_lazy_noninc  : ListAppType) ;
+  (module Experiments.List_eager_filter.ListApp_eager_noninc  : ListAppType) ;
+  (module Experiments.List_eager_filter.ListApp_sac             : ListAppType) ;
+
   (* List map *)
   (module Experiments.List_map.ListApp_name         : ListAppType) ;
   (module Experiments.List_map.ListApp_arggen       : ListAppType) ;
   (module Experiments.List_map.ListApp_lazy_recalc  : ListAppType) ;
   (module Experiments.List_map.ListApp_sac          : ListAppType) ;
+
+  (* List eager map *)
+  (module Experiments.List_eager_map.ListApp_name         : ListAppType) ;
+  (module Experiments.List_eager_map.ListApp_arggen       : ListAppType) ;
+  (module Experiments.List_eager_map.ListApp_lazy_recalc  : ListAppType) ;
+  (module Experiments.List_eager_map.ListApp_lazy_noninc  : ListAppType) ;
+  (module Experiments.List_eager_map.ListApp_eager_noninc  : ListAppType) ;
+  (module Experiments.List_eager_map.ListApp_sac          : ListAppType) ;
 
   (* List map paired *)
     (* checking this will fail when list lengths are
