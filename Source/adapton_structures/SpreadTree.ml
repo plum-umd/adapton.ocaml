@@ -1111,12 +1111,13 @@ module MakeSeq
         | `Cons(x, xs) -> `Cons(op x, list_map xs)
         | `Art(a) -> list_map (LArt.force a)
         | `Name(nm, xs) -> 
-          let nm1, nm2 = Name.fork nm in
+          let nm1, nm  = Name.fork nm in
+          let nm2, nm3 = Name.fork nm in
           let ys = (* memoized recursive call: *)
             LArt.force (r.LArt.mfn_nart nm1 xs)
           in
           let ref_ys = list_ref_cell nm2 ys in
-          `Name(nm1, `Art(ref_ys))
+          `Name(nm3, `Art(ref_ys))
       )
     in
     fun list -> mfn.LArt.mfn_data list
