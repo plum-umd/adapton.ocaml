@@ -1088,6 +1088,15 @@ module MakeSeq
     in
     fun list -> mfn.LArt.mfn_data list
 
+  let list_ref_cell
+    : Name.t -> St.List.Data.t -> St.List.Art.t = 
+    let fnn = Name.gensym "list_ref_cell" in
+    let mfn = LArt.mk_mfn fnn
+      (module St.List.Data)
+      (fun r list -> list)
+    in
+    mfn.mfn_nart
+
   let list_eager_map 
     (op_nm : Name.t)
     (op : St.Data.t -> St.Data.t)
@@ -1103,9 +1112,11 @@ module MakeSeq
         | `Art(a) -> list_map (LArt.force a)
         | `Name(nm, xs) -> 
           let nm1, nm2 = Name.fork nm in
-          let art = r.LArt.mfn_nart nm2 xs in
-          ignore(LArt.force art);
-          `Name(nm1, `Art(art))
+          let ys = (* memoized recursive call: *)
+            LArt.force (r.LArt.mfn_nart nm1 xs)
+          in
+          let ref_ys = list_ref_cell nm2 ys in
+          `Name(nm1, `Art(ref_ys))
       )
     in
     fun list -> mfn.LArt.mfn_data list
