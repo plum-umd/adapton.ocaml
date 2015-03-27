@@ -1,4 +1,41 @@
-(*
+open Adapton_core
+open Adapton_structures
+open Primitives
+
+let min_depth = 4
+       
+module Make(St:SpreadTree.SpreadTreeType) = struct  
+  module List = St.List
+  module Name = St.Name
+  module Set = Trie.Set.Make(Trie.Useful(St.Data))(St.Name)(St.ArtLib)
+                            
+  (* This code assumes that names and articulation points always come in the
+   `Name (_, `Art _) pattern (as the list_map above seems to).
+   *)
+  let list_unique : (St.Data.t * St.Data.t) ->
+                    List.Data.t -> List.Data.t =
+    fun (zero, one) ->
+    let loop = List.Art.mk_mfn (Name.gensym "Unique#list_unique")
+    (module AdaptonTypes.Tuple3(Name)(List.Data)(Set))
+    (fun loop (nm, l, s) -> match l with
+    | `Nil -> `Nil
+    | `Cons (i, l') ->
+      let nm', nm'' = Name.fork nm in
+      let i', s' =
+        if Set.mem s i
+        then one, s
+        else zero, Set.nadd nm' s i
+      in
+      `Cons (i', loop.mfn_data (nm'', l', s'))
+    | `Art a -> loop.mfn_data (nm, List.Art.force a, s)
+    | `Name (nm, l') ->
+      let nm', nm'' = Name.fork nm in
+      `Name (nm', `Art (loop.mfn_nart nm'' (nm'', l', s))))
+  in
+  (fun l -> loop.mfn_data (Name.gensym "Unique.list_unique#root_nm", l, Set.empty ~min_depth))
+end
+         
+                                              (*
 From adapton_structures/SpreadTree.ml
  
 let list_map 
@@ -41,45 +78,8 @@ match xs with
      (unique ys (insert n x seen))
 *)
 
-open Adapton_core
-open Adapton_structures
-open Primitives
 
-let min_depth = 4
-       
-module Make(St:SpreadTree.SpreadTreeType) = struct  
-  module List = St.List
-  module Name = St.Name
-  module Set = Trie.Set.Make(Trie.Useful(St.Data))(St.Name)(St.ArtLib)
-                            
-  (* This code assumes that names and articulation points always come in the
-   `Name (_, `Art _) pattern (as the list_map above seems to).
-   *)
-  let list_unique : (St.Data.t * St.Data.t) ->
-                    List.Data.t -> List.Data.t =
-    fun (zero, one) ->
-    let loop = List.Art.mk_mfn (Name.gensym "Unique#list_unique")
-    (module AdaptonTypes.Tuple3(Name)(List.Data)(Set))
-    (fun loop (nm, l, s) -> match l with
-    | `Nil -> `Nil
-    | `Cons (i, l') ->
-      let nm', nm'' = Name.fork nm in
-      let i', s' =
-        if Set.mem s i
-        then one, s
-        else zero, Set.nadd nm' s i
-      in
-      `Cons (i', loop.mfn_data (nm'', l', s'))
-    | `Art a -> loop.mfn_data (nm, List.Art.force a, s)
-    | `Name (nm, l') ->
-      let nm', nm'' = Name.fork nm in
-      `Name (nm', `Art (loop.mfn_nart nm'' (nm'', l', s))))
-  in
-  (fun l -> loop.mfn_data (Name.gensym "Unique.list_unique#root_nm", l, Set.empty ~min_depth))
-end
-         
-
-
+(*
 
 
 module OList = List
@@ -147,3 +147,4 @@ let _ =
   test l0 a0 ;
   test l1 a1 ;
   test l2 a2
+ *)

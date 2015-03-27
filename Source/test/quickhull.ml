@@ -10,6 +10,7 @@
 
 open Adapton_core
 open Primitives
+open Adapton_structures
 
 module Types = AdaptonTypes
 

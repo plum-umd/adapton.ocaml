@@ -1,1 +1,2 @@
+true: for-pack(Adapton_lib.Test)
 <experiments.*>: package(core)
