@@ -127,7 +127,7 @@ let stats_print (handle:out_channel)
 
 module type ListRepType = sig
   type t
-  module St : SpreadTree.SpreadTreeType
+  module St : Adapton_structures.SpreadTree.SpreadTreeType
   module Data : Primitives.ResultType (* XXX *) with type t = int
   module Memotables : Primitives.MemotablesType
   type elm
@@ -714,11 +714,11 @@ module SpreadTreeRep
   (* : ListRepType *) =
 struct
   module ArtLib = ArtLib
-  module St = SpreadTree.MakeSpreadTree(ArtLib)(Key)(Int)
-  module Seq = SpreadTree.MakeSeq(St)
+  module St = Adapton_structures.SpreadTree.MakeSpreadTree(ArtLib)(Key)(Int)
+  module Seq = Adapton_structures.SpreadTree.MakeSeq(St)
   module Data = Int
   module Memotables = ArtLib.Memotables
-  module KvMap = SpreadTree.MakeKvMap(ArtLib)(Key)(struct include Int let compare = compare end)(St)
+  module KvMap = Adapton_structures.SpreadTree.MakeKvMap(ArtLib)(Key)(struct include Int let compare = compare end)(St)
 
   type t   = St.List.Art.t
   type elm = Data.t
@@ -757,16 +757,16 @@ struct
 end
 
 module RepOfSpreadTree
-  (St : SpreadTree.SpreadTreeType)
+  (St : Adapton_structures.SpreadTree.SpreadTreeType)
   (* : ListRepType *) =
 struct
   module St = St
   module ArtLib = St.ArtLib
   module Name = St.Name
-  module Seq = SpreadTree.MakeSeq(St)
+  module Seq = Adapton_structures.SpreadTree.MakeSeq(St)
 
   module Memotables = ArtLib.Memotables
-  module KvMap = SpreadTree.MakeKvMap(ArtLib)(Name)(struct include Int let compare = compare end)(St)
+  module KvMap = Adapton_structures.SpreadTree.MakeKvMap(ArtLib)(Name)(struct include Int let compare = compare end)(St)
 
   type t      = KvMap.KvSt.List.Art.t
   module Data = KvMap.KvSt.Data
@@ -1009,14 +1009,6 @@ module Linear = struct
     let flush = AL.Eviction.flush
   end
 
-end
-
-module Foo = struct
-  module T = Trie.Set.Make(
-                 struct
-                   include Types.Int
-                   let compare = Pervasives.compare
-                 end  )
 end
 
 module Reverse = struct
@@ -1299,7 +1291,7 @@ module Reduction = struct
     ( AL : GrifolaType.ArtLibType ) =
   struct
     let name = "AVL_of_rope_" ^ N.name
-    module St = SpreadTree.MakeSpreadTree(AL)(Key)(Int)
+    module St = Adapton_structures.SpreadTree.MakeSpreadTree(AL)(Key)(Int)
     module ListRep = RepOfSpreadTree ( St )
     let compute inp =
       let rope_of_list = ListRep.KvMap.KvSeq.rope_of_list in

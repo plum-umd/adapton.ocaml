@@ -1,13 +1,13 @@
 open Adapton_core
-open Adapton_structures
 open Primitives
 
 let min_depth = 4
        
-module Make(St:SpreadTree.SpreadTreeType) = struct  
+module Make(St:Adapton_structures.SpreadTree.SpreadTreeType) = struct  
   module List = St.List
   module Name = St.Name
-  module Set = Trie.Set.Make(Trie.Useful(St.Data))(St.Name)(St.ArtLib)
+  module Used = Adapton_structures.Trie.Useful(St.Data)
+  module Set = Adapton_structures.Trie.Set.Make(Used)(St.Name)(St.ArtLib)
                             
   (* This code assumes that names and articulation points always come in the
    `Name (_, `Art _) pattern (as the list_map above seems to).
