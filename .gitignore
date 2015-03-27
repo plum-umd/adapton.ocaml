@@ -14,5 +14,5 @@ _build
 *.byte
 *.d.native
 *.p.byte
-
+*~
 
