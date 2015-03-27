@@ -1,7 +1,7 @@
 open Adapton_core
 open Primitives
 
-let min_depth = 4
+let min_depth = 10
        
 module Make(St:Adapton_structures.SpreadTree.SpreadTreeType) = struct  
   module List = St.List
@@ -19,18 +19,20 @@ module Make(St:Adapton_structures.SpreadTree.SpreadTreeType) = struct
     (module AdaptonTypes.Tuple3(Name)(List.Data)(Set))
     (fun loop (nm, l, s) -> match l with
     | `Nil -> `Nil
-    | `Cons (i, l') ->
-      let nm', nm'' = Name.fork nm in
+    | `Cons (i, l') -> (
+      let nm1, nm2 = Name.fork nm in
       let i', s' =
         if Set.mem s i
         then one, s
-        else zero, Set.nadd nm' s i
+        else zero, Set.nadd nm1 s i
       in
-      `Cons (i', loop.mfn_data (nm'', l', s'))
+      `Cons (i', loop.mfn_data (nm2, l', s'))
+    )
     | `Art a -> loop.mfn_data (nm, List.Art.force a, s)
     | `Name (nm, l') ->
-      let nm', nm'' = Name.fork nm in
-      `Name (nm', `Art (loop.mfn_nart nm'' (nm'', l', s))))
+       let nm1, nm = Name.fork nm in
+       let nm2, nm3 = Name.fork nm in
+      `Name (nm1, `Art (loop.mfn_nart nm2 (nm3, l', s))))
   in
   (fun l -> loop.mfn_data (Name.gensym "Unique.list_unique#root_nm", l, Set.empty ~min_depth))
 end

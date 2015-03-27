@@ -1004,8 +1004,12 @@ module Linear = struct
                                     ( ListRep.St.List.Art.force inp ) )
     module S = Set.Make(struct type t = int let compare = compare end)
     let trusted elms =
-      let elements = List.fold_left (fun s elm -> S.add elm s) S.empty elms in
-      (List.map (fun elm -> if S.mem elm elements then 1 else 0) elms)
+      let rec loop elms set result =
+        match elms with
+        | [] -> List.rev result
+        | elm::elms ->
+           loop elms (S.add elm set) ((if S.mem elm set then 1 else 0)::result)
+      in loop elms S.empty []
     let flush = AL.Eviction.flush
   end
 
@@ -1558,6 +1562,12 @@ let raw_experiments =
   (module Experiments.List_map_paired.ListApp_name         : ListAppType) ;
   (module Experiments.List_map_paired.ListApp_arggen       : ListAppType) ;
   (module Experiments.List_map_paired.ListApp_lazy_recalc  : ListAppType) ;
+
+  (* List unique *)
+  (module Experiments.List_unique.ListApp_name         : ListAppType) ;
+  (module Experiments.List_unique.ListApp_arggen       : ListAppType) ;
+  (module Experiments.List_unique.ListApp_lazy_recalc  : ListAppType) ;
+  (module Experiments.List_unique.ListApp_sac          : ListAppType) ;
 
   (* List_reverse *)
   (module Experiments.List_reverse.ListApp_name         : ListAppType) ;
