@@ -4,7 +4,7 @@ From adapton_structures/SpreadTree.ml
 let list_map 
 (op_nm : Name.t)
 (op : St.Data.t -> St.Data.t)
-: St.List.Data.t -> St.List.Data.t = 
+: St.Listx.Data.t -> St.List.Data.t = 
 let fnn = Name.pair (Name.gensym "list_map") op_nm in
 let mfn = LArt.mk_mfn fnn
       (module St.List.Data)
@@ -45,13 +45,50 @@ open Adapton_core
 open Adapton_structures
 open Primitives
 
+let min_depth = 4
+       
+module Make(St:SpreadTree.SpreadTreeType) = struct  
+  module List = St.List
+  module Name = St.Name
+  module Set = Trie.Set.Make(Trie.Useful(St.Data))(St.Name)(St.ArtLib)
+                            
+  (* This code assumes that names and articulation points always come in the
+   `Name (_, `Art _) pattern (as the list_map above seems to).
+   *)
+  let list_unique : (St.Data.t * St.Data.t) ->
+                    List.Data.t -> List.Data.t =
+    fun (zero, one) ->
+    let loop = List.Art.mk_mfn (Name.gensym "Unique#list_unique")
+    (module AdaptonTypes.Tuple3(Name)(List.Data)(Set))
+    (fun loop (nm, l, s) -> match l with
+    | `Nil -> `Nil
+    | `Cons (i, l') ->
+      let nm', nm'' = Name.fork nm in
+      let i', s' =
+        if Set.mem s i
+        then one, s
+        else zero, Set.nadd nm' s i
+      in
+      `Cons (i', loop.mfn_data (nm'', l', s'))
+    | `Art a -> loop.mfn_data (nm, List.Art.force a, s)
+    | `Name (nm, l') ->
+      let nm', nm'' = Name.fork nm in
+      `Name (nm', `Art (loop.mfn_nart nm'' (nm'', l', s))))
+  in
+  (fun l -> loop.mfn_data (Name.gensym "Unique.list_unique#root_nm", l, Set.empty ~min_depth))
+end
+         
+
+
+
+
 module OList = List
 
 module ArtLib = Grifola.Default.ArtLib
 
 module ST = SpreadTree.MakeSpreadTree(ArtLib)(Key)(AdaptonTypes.Int)
 module List = ST.List
-module Set = Trie.Set.Make(Trie.Useful(AdaptonTypes.Int))(ArtLib)
+module Set = Trie.Set.Make(Trie.Useful(AdaptonTypes.Int))(Key)(ArtLib)
 let min_depth = 4
 
 (* This code assumes that names and articulation points always come in the

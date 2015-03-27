@@ -989,6 +989,25 @@ module Linear = struct
       List.map2 (+) l1 l2
     let flush = AL.Eviction.flush
   end
+    
+  module List_unique
+    (N : sig val name : string end)
+    (AL : GrifolaType.ArtLibType) =
+  struct
+    let name = "List_unique_" ^ N.name
+    module ListRep = SpreadTreeRep (AL )
+    module U = Unique.Make( ListRep.St )
+    let unique = U.list_unique (0,1)
+    let compute inp =
+      ListRep.St.List.Art.thunk (ListRep.St.Name.gensym "List_unique.compute")
+                                ( fun () -> unique                                  
+                                    ( ListRep.St.List.Art.force inp ) )
+    module S = Set.Make(struct type t = int let compare = compare end)
+    let trusted elms =
+      let elements = List.fold_left (fun s elm -> S.add elm s) S.empty elms in
+      (List.map (fun elm -> if S.mem elm elements then 1 else 0) elms)
+    let flush = AL.Eviction.flush
+  end
 
 end
 
@@ -1399,6 +1418,16 @@ module Experiments = struct
     module ListApp_arggen = Reverse.Rope_reverse(struct let name = "arggen" end)(Grifola_arggen.ArtLib)
     module ListApp_lazy_recalc = Reverse.Rope_reverse(struct let name = "lazyrecalc" end)(LazyRecalc.ArtLib)
     module ListApp_sac = Reverse.Rope_reverse(struct let name = "sac" end)(Sac.ArtLib)
+  end
+
+  module List_unique = struct
+    module ListApp_name = Linear.List_unique(struct let name = "name" end)(Grifola_name.ArtLib)
+    module ListApp_arg = Linear.List_unique(struct let name = "arg" end)(Grifola_arg.ArtLib)
+    module ListApp_arggen = Linear.List_unique(struct let name = "arggen" end)(Grifola_arggen.ArtLib)
+    module ListApp_lazy_recalc = Linear.List_unique(struct let name = "lazyrecalc" end)(LazyRecalc.ArtLib)
+    module ListApp_eager_noninc = Linear.List_unique(struct let name = "eagernoninc" end)(EagerNonInc.ArtLib)
+    module ListApp_lazy_noninc = Linear.List_unique(struct let name = "lazynoninc" end)(LazyNonInc.ArtLib)
+    module ListApp_sac = Linear.List_unique(struct let name = "sac" end)(Sac.ArtLib)
   end
 
   module Rope_mergesort = struct
