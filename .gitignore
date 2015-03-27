@@ -1,3 +1,4 @@
+*.gmv
 *.annot
 *.cmo
 *.cma
