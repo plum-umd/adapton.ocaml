@@ -1314,6 +1314,32 @@ module Reduction = struct
 
 end
 
+module Graph = struct
+
+  module Iter (* works: gives advantage to nominal approach. *)
+    ( N : sig val name : string end )
+    ( AL : GrifolaType.ArtLibType ) =
+  struct
+    let name = "Graph_iter_" ^ N.name
+    module St = Adapton_structures.SpreadTree.MakeSpreadTree(AL)(Key)(Int)
+    module ListRep = RepOfSpreadTree ( St )
+
+    module G = Adapton_structures.Graph.Make(Key)(AL)
+                                            (AdaptonTypes.Int)
+                                            (AdaptonTypes.Int)
+                                            (AdaptonTypes.Int)
+    let compute inp =
+      failwith "TODO"
+
+    let trusted x =
+      failwith "TODO"
+
+    let flush = AL.Eviction.flush
+  end
+
+end
+
+                     
 (* ----------------------------------------------------------------------------------------------------- *)
 (* ----------------------------------------------------------------------------------------------------- *)
 (* ----------------------------------------------------------------------------------------------------- *)
@@ -1504,6 +1530,8 @@ module Experiments = struct
   module AVL_arggen = Reduction.AVL_of_rope(struct let name = "grifola_arggen" end)(Grifola_arggen.ArtLib)
   module AVL_lazy_recalc = Reduction.AVL_of_rope(struct let name = "lazy_recalc" end)(LazyRecalc.ArtLib)
 
+  module Graph_iter_name = Graph.Iter(struct let name = "name" end)(Grifola_name.ArtLib)
+
 end
 
 let raw_experiments =
@@ -1625,6 +1653,8 @@ let raw_experiments =
   (module Experiments.AVL_name                         : ListAppType) ;
   (module Experiments.AVL_arggen                       : ListAppType) ;
   (module Experiments.AVL_lazy_recalc                  : ListAppType) ;
+
+  (module Experiments.Graph_iter_name : ListAppType) ;
 
 ]
 
