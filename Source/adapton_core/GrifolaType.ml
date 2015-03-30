@@ -25,6 +25,7 @@ module type NameType = sig
   val pair   : t -> t -> t (* For creating conjunctive names *)
   val fork   : t -> t * t  (* Input name determines two distinct output names. *)
   val height : t -> int    (* (1) Drawn from a negative binomial distro, (2) Should be fixed for all forked ancestors. *)
+  val compare : t -> t -> int (* For Nick. *)
 end
 
 (* Articulation-point interface.
