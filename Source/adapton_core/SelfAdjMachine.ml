@@ -173,7 +173,8 @@ module T = struct
       | [] ->
          (* Force is occuring at the outer layer. *)
          (* Make sure that this value is up to date! *)
-         refresh ()
+         (* refresh () *) (* XXX *)
+         ()
 
     (** Return the value contained by an EagerTotalOrder thunk, computing it if necessary. *)
     let force m =
@@ -259,19 +260,6 @@ let const x =
 let update_cell m x =
   incr Statistics.Counts.update;
   assert (m.meta.start_timestamp == TotalOrder.null) ;
-  (*
-  if m.meta.start_timestamp != TotalOrder.null then
-    begin
-      (* no need to call unmemo since the memo entry will be replaced when it sees start_timestamp is invalid *)
-      m.meta.unmemo <- nop;
-      m.meta.evaluate <- nop;
-      unqueue m.meta;
-      TotalOrder.reset_invalidator m.meta.start_timestamp;
-      TotalOrder.splice ~db:"update_const" ~inclusive:true m.meta.start_timestamp m.meta.end_timestamp;
-      m.meta.start_timestamp <- TotalOrder.null;
-      m.meta.end_timestamp <- TotalOrder.null
-    end;
-   *)
   update m x
 
 let evaluate_meta meta f =
@@ -279,9 +267,11 @@ let evaluate_meta meta f =
   eager_stack := meta::!eager_stack;
   meta.onstack <- true ;
   let value = try
-      (if debug then Printf.printf "... BEGIN -- evaluate_meta: &%d @ (%d,%d):\n%!" meta.mid (TotalOrder.id meta.start_timestamp) (TotalOrder.id meta.end_timestamp));
+      (if debug then Printf.printf "... BEGIN -- evaluate_meta: &%d @ (%d,%d):\n%!"
+                                   meta.mid (TotalOrder.id meta.start_timestamp) (TotalOrder.id meta.end_timestamp));
       let res = f () in
-      (if debug then Printf.printf "... END -- evaluate_meta: &%d @ (%d,%d).\n%!" meta.mid (TotalOrder.id meta.start_timestamp) (TotalOrder.id meta.end_timestamp)) ;
+      (if debug then Printf.printf "... END -- evaluate_meta: &%d @ (%d,%d).\n%!"
+                                   meta.mid (TotalOrder.id meta.start_timestamp) (TotalOrder.id meta.end_timestamp)) ;
       res
     with exn ->
       eager_stack := List.tl !eager_stack;
@@ -295,30 +285,10 @@ let evaluate_meta meta f =
 let make_evaluate m f =
   fun () -> update m (evaluate_meta m.meta f)
 
-                   (*
-(** Update an EagerTotalOrder thunk with a function that may depend on other EagerTotalOrder thunks. *)
-let update_thunk m f =
-  incr Statistics.Counts.update;
-  if m.meta.start_timestamp != TotalOrder.null then
-    begin
-      m.meta.unmemo ();
-      m.meta.unmemo <- nop;
-      m.meta.evaluate <- nop;
-      unqueue m.meta;
-      TotalOrder.reset_invalidator m.meta.start_timestamp;
-      TotalOrder.splice ~inclusive:true m.meta.start_timestamp m.meta.end_timestamp;
-      m.meta.end_timestamp <- TotalOrder.null
-    end;
-  m.meta.start_timestamp <- add_timestamp ();
-  let evaluate = make_evaluate m f in
-  evaluate ();
-  m.meta.end_timestamp <- add_timestamp ();
-  TotalOrder.set_invalidator m.meta.start_timestamp (invalidator m.meta);
-  m.meta.evaluate <- evaluate
-                    *)
-
 let cell nm v = const v (* TODO: Use the name; workaround: use mfn_nart interface instead. *)
-let set = update_cell
+let set m v =
+  (if debug then Printf.printf "... SET\n") ;
+  update_cell m v
 
 let make_and_eval_node f =
   incr Statistics.Counts.create;
