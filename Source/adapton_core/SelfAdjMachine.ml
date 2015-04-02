@@ -7,7 +7,7 @@
 
  **)
 
-let debug = true
+let debug = false
 
 exception Missing_nominal_features
 
@@ -176,11 +176,6 @@ module T = struct
          (* refresh () *) (* XXX *)
          ()
 
-    (** Return the value contained by an EagerTotalOrder thunk, computing it if necessary. *)
-    let force m =
-      make_dependency_edge m ;
-      m.value
-
     let viznode _ = failwith "viznode: not implemented"
 end
 include T
@@ -314,6 +309,12 @@ let thunk nm f =
   (* TODO: Use the name; workaround: use mfn_nart interface instead. *)  
   make_and_eval_node f 
 
+(** Return the value contained by an EagerTotalOrder thunk, computing it if necessary. *)
+let force m =
+  make_dependency_edge m ;
+  (if debug then Printf.printf "... FORCE: %d --> %s\n%!" m.id (Data.string m.value)) ;
+  m.value
+                     
 type 'arg mfn = { mfn_data : 'arg -> Data.t ;      (* Pure recursion. *)
                   mfn_art  : 'arg -> t ;           (* Create a memoized articulation, classically. *)
                   mfn_nart : Name.t -> 'arg -> t ; (* Create a memoized articulation, nominally. *) }
@@ -337,9 +338,13 @@ let mk_mfn (type a)
             | Arg of Arg.t
             | Name of Name.t
 
+          type node = {
+            arg : Arg.t ref ;
+            thunk : Data.t thunk ;
+          }
+                        
           type t = { key : key ;
-                     arg : Arg.t ref ;
-                     mutable nodes : (Data.t thunk) list ;
+                     mutable nodes : node list ;
                    }
 
           let seed = Random.bits ()
@@ -367,20 +372,23 @@ let mk_mfn (type a)
       in
       
       
-      let do_fresh_binding binding =
+      let do_fresh_binding binding arg =
         (* note that m.meta.unmemo indirectly holds a reference to binding (via unmemo's closure);
                             this prevents the GC from collecting binding from Memo.table until m itself is collected *)
         incr Statistics.Counts.create;
         incr Statistics.Counts.miss;
         (* let m = make_node (fun () -> user_function mfn (!(binding.Memo.Binding.arg)) ) in *)
-        let m = make_and_eval_node (fun () -> let res = user_function mfn ( ! ( binding.Memo.Binding.arg ) ) in
+        let ref_arg = ref arg in
+        let m = make_and_eval_node (fun () -> let res = user_function mfn ( ! ref_arg ) in
                                               (if debug then Printf.printf "... Computed Result=`%s'.\n%!" (Data.string res)) ;
                                               res
                                    ) in
+        let node = Memo.Binding.({ arg = ref_arg ; thunk = m; }) in
         m.meta.unmemo <- (fun () ->
                           binding.Memo.Binding.nodes <-
-                            List.filter (fun x -> not (x == m)) binding.Memo.Binding.nodes) ;
-        binding.Memo.Binding.nodes <- (m :: binding.Memo.Binding.nodes) ;
+                            List.filter (fun x -> not (x.Memo.Binding.thunk == m))
+                                        binding.Memo.Binding.nodes) ;
+        binding.Memo.Binding.nodes <- (node :: binding.Memo.Binding.nodes) ;
         make_dependency_edge m;
         m
       in
@@ -396,42 +404,46 @@ let mk_mfn (type a)
       in
       
       (* memoizing constructor *)
-      let rec memo arg =
-        let binding = Memo.Table.merge Memo.table Memo.Binding.({ key=Arg arg; arg=ref arg; nodes=[] }) in
+      let rec memo cur_arg =        
+        let binding = Memo.Table.merge Memo.table Memo.Binding.({ key=Arg cur_arg; nodes=[] }) in
         let rec loop nodes =
           match nodes with
-          | [] -> (do_fresh_binding binding)
-          | m::nodes ->
-             if is_available m then (
-               refresh_same_arg m;
-               m
+          | [] -> (do_fresh_binding binding cur_arg)
+          | node::nodes ->
+             if is_available node.Memo.Binding.thunk then (
+               refresh_same_arg node.Memo.Binding.thunk;
+               node.Memo.Binding.thunk
              )
              else loop nodes
         in loop binding.Memo.Binding.nodes
       in
       
       (* memoizing constructor *)
-      let rec memo_name name arg =
-        let binding = Memo.Table.merge Memo.table Memo.Binding.({ key=Name name; arg=ref arg; nodes=[] }) in
+      let rec memo_name name cur_arg =
+        let binding = Memo.Binding.({ key=Name name; nodes=[] }) in
+        let binding = Memo.Table.merge Memo.table binding in
         let rec loop nodes = match nodes with
-          | [] -> do_fresh_binding binding
-          | m::nodes ->
-             if not (is_available m) then loop nodes else (
-               if Arg.equal arg (!(binding.Memo.Binding.arg)) then (
-                 refresh_same_arg m;
-                 m
+          | [] -> do_fresh_binding binding cur_arg
+          | node::nodes ->
+             if not (is_available node.Memo.Binding.thunk) then
+               loop nodes
+             else (
+               if Arg.equal cur_arg (!(node.Memo.Binding.arg)) then (
+                 refresh_same_arg node.Memo.Binding.thunk;
+                 node.Memo.Binding.thunk
                )
                else (
+                 let m = node.Memo.Binding.thunk in
                  (if debug then Printf.printf "...   memo_name: match (Diff arg): (%d, %d) -- `%s' (old) != `%s' (new)\n%!"
                                               (TotalOrder.id m.meta.start_timestamp) (TotalOrder.id m.meta.end_timestamp)
-                                              (Arg.string !(binding.Memo.Binding.arg)) (Arg.string arg)) ;
+                                              (Arg.string !(node.Memo.Binding.arg)) (Arg.string cur_arg)) ;
                  (if debug then Printf.printf "... ** BEGIN -- memo_name: match (Diff arg)\n%!") ;
                  TotalOrder.splice ~db:"memo_name: Diff arg: #1" !eager_now m.meta.start_timestamp;
                  eager_now := m.meta.start_timestamp;
                  let old_finger = !eager_finger in
                  assert( TotalOrder.compare m.meta.end_timestamp old_finger < 0 );
                  eager_finger := m.meta.end_timestamp;
-                 binding.Memo.Binding.arg := arg ;
+                 node.Memo.Binding.arg := cur_arg ;
                  m.meta.evaluate ();
                  assert( TotalOrder.compare m.meta.start_timestamp !eager_now <= 0 );
                  assert( TotalOrder.compare !eager_now   m.meta.end_timestamp <  0 );
