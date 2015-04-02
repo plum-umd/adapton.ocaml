@@ -127,7 +127,7 @@ let stats_print (handle:out_channel)
 
 module type ListRepType = sig
   type t
-  module St : SpreadTree.SpreadTreeType
+  module St : Adapton_structures.SpreadTree.SpreadTreeType
   module Data : Primitives.ResultType (* XXX *) with type t = int
   module Memotables : Primitives.MemotablesType
   type elm
@@ -714,11 +714,11 @@ module SpreadTreeRep
   (* : ListRepType *) =
 struct
   module ArtLib = ArtLib
-  module St = SpreadTree.MakeSpreadTree(ArtLib)(Key)(Int)
-  module Seq = SpreadTree.MakeSeq(St)
+  module St = Adapton_structures.SpreadTree.MakeSpreadTree(ArtLib)(Key)(Int)
+  module Seq = Adapton_structures.SpreadTree.MakeSeq(St)
   module Data = Int
   module Memotables = ArtLib.Memotables
-  module KvMap = SpreadTree.MakeKvMap(ArtLib)(Key)(struct include Int let compare = compare end)(St)
+  module KvMap = Adapton_structures.SpreadTree.MakeKvMap(ArtLib)(Key)(struct include Int let compare = compare end)(St)
 
   type t   = St.List.Art.t
   type elm = Data.t
@@ -757,16 +757,16 @@ struct
 end
 
 module RepOfSpreadTree
-  (St : SpreadTree.SpreadTreeType)
+  (St : Adapton_structures.SpreadTree.SpreadTreeType)
   (* : ListRepType *) =
 struct
   module St = St
   module ArtLib = St.ArtLib
   module Name = St.Name
-  module Seq = SpreadTree.MakeSeq(St)
+  module Seq = Adapton_structures.SpreadTree.MakeSeq(St)
 
   module Memotables = ArtLib.Memotables
-  module KvMap = SpreadTree.MakeKvMap(ArtLib)(Name)(struct include Int let compare = compare end)(St)
+  module KvMap = Adapton_structures.SpreadTree.MakeKvMap(ArtLib)(Name)(struct include Int let compare = compare end)(St)
 
   type t      = KvMap.KvSt.List.Art.t
   module Data = KvMap.KvSt.Data
@@ -989,15 +989,30 @@ module Linear = struct
       List.map2 (+) l1 l2
     let flush = AL.Eviction.flush
   end
+    
+  module List_unique
+    (N : sig val name : string end)
+    (AL : GrifolaType.ArtLibType) =
+  struct
+    let name = "List_unique_" ^ N.name
+    module ListRep = SpreadTreeRep (AL )
+    module U = Unique.Make( ListRep.St )
+    let unique = U.list_unique (0,1)
+    let compute inp =
+      ListRep.St.List.Art.thunk (ListRep.St.Name.gensym "List_unique.compute")
+                                ( fun () -> unique                                  
+                                    ( ListRep.St.List.Art.force inp ) )
+    module S = Set.Make(struct type t = int let compare = compare end)
+    let trusted elms =
+      let rec loop elms set result =
+        match elms with
+        | [] -> List.rev result
+        | elm::elms ->
+           loop elms (S.add elm set) ((if S.mem elm set then 1 else 0)::result)
+      in loop elms S.empty []
+    let flush = AL.Eviction.flush
+  end
 
-end
-
-module Foo = struct
-  module T = Trie.Set.Make(
-                 struct
-                   include Types.Int
-                   let compare = Pervasives.compare
-                 end  )
 end
 
 module Reverse = struct
@@ -1280,7 +1295,7 @@ module Reduction = struct
     ( AL : GrifolaType.ArtLibType ) =
   struct
     let name = "AVL_of_rope_" ^ N.name
-    module St = SpreadTree.MakeSpreadTree(AL)(Key)(Int)
+    module St = Adapton_structures.SpreadTree.MakeSpreadTree(AL)(Key)(Int)
     module ListRep = RepOfSpreadTree ( St )
     let compute inp =
       let rope_of_list = ListRep.KvMap.KvSeq.rope_of_list in
@@ -1299,6 +1314,32 @@ module Reduction = struct
 
 end
 
+module Graph = struct
+
+  module Iter (* works: gives advantage to nominal approach. *)
+    ( N : sig val name : string end )
+    ( AL : GrifolaType.ArtLibType ) =
+  struct
+    let name = "Graph_iter_" ^ N.name
+    module St = Adapton_structures.SpreadTree.MakeSpreadTree(AL)(Key)(Int)
+    module ListRep = RepOfSpreadTree ( St )
+
+    module G = Adapton_structures.Graph.Make(Key)(AL)
+                                            (AdaptonTypes.Int)
+                                            (AdaptonTypes.Int)
+                                            (AdaptonTypes.Int)
+    let compute inp =
+      failwith "TODO"
+
+    let trusted x =
+      failwith "TODO"
+
+    let flush = AL.Eviction.flush
+  end
+
+end
+
+                     
 (* ----------------------------------------------------------------------------------------------------- *)
 (* ----------------------------------------------------------------------------------------------------- *)
 (* ----------------------------------------------------------------------------------------------------- *)
@@ -1401,6 +1442,16 @@ module Experiments = struct
     module ListApp_sac = Reverse.Rope_reverse(struct let name = "sac" end)(Sac.ArtLib)
   end
 
+  module List_unique = struct
+    module ListApp_name = Linear.List_unique(struct let name = "name" end)(Grifola_name.ArtLib)
+    module ListApp_arg = Linear.List_unique(struct let name = "arg" end)(Grifola_arg.ArtLib)
+    module ListApp_arggen = Linear.List_unique(struct let name = "arggen" end)(Grifola_arggen.ArtLib)
+    module ListApp_lazy_recalc = Linear.List_unique(struct let name = "lazyrecalc" end)(LazyRecalc.ArtLib)
+    module ListApp_eager_noninc = Linear.List_unique(struct let name = "eagernoninc" end)(EagerNonInc.ArtLib)
+    module ListApp_lazy_noninc = Linear.List_unique(struct let name = "lazynoninc" end)(LazyNonInc.ArtLib)
+    module ListApp_sac = Linear.List_unique(struct let name = "sac" end)(Sac.ArtLib)
+  end
+
   module Rope_mergesort = struct
     module ListApp_name = Mergesorts.Rope_mergesort(struct let name = "name" end)(Grifola_name.ArtLib)
     module ListApp_arg = Mergesorts.Rope_mergesort(struct let name = "arg" end)(Grifola_arg.ArtLib)
@@ -1479,6 +1530,8 @@ module Experiments = struct
   module AVL_arggen = Reduction.AVL_of_rope(struct let name = "grifola_arggen" end)(Grifola_arggen.ArtLib)
   module AVL_lazy_recalc = Reduction.AVL_of_rope(struct let name = "lazy_recalc" end)(LazyRecalc.ArtLib)
 
+  module Graph_iter_name = Graph.Iter(struct let name = "name" end)(Grifola_name.ArtLib)
+
 end
 
 let raw_experiments =
@@ -1538,6 +1591,12 @@ let raw_experiments =
   (module Experiments.List_map_paired.ListApp_arggen       : ListAppType) ;
   (module Experiments.List_map_paired.ListApp_lazy_recalc  : ListAppType) ;
 
+  (* List unique *)
+  (module Experiments.List_unique.ListApp_name         : ListAppType) ;
+  (module Experiments.List_unique.ListApp_arggen       : ListAppType) ;
+  (module Experiments.List_unique.ListApp_lazy_recalc  : ListAppType) ;
+  (module Experiments.List_unique.ListApp_sac          : ListAppType) ;
+
   (* List_reverse *)
   (module Experiments.List_reverse.ListApp_name         : ListAppType) ;
   (module Experiments.List_reverse.ListApp_arggen       : ListAppType) ;
@@ -1594,6 +1653,8 @@ let raw_experiments =
   (module Experiments.AVL_name                         : ListAppType) ;
   (module Experiments.AVL_arggen                       : ListAppType) ;
   (module Experiments.AVL_lazy_recalc                  : ListAppType) ;
+
+  (module Experiments.Graph_iter_name : ListAppType) ;
 
 ]
 
