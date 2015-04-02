@@ -7,7 +7,7 @@
 
  **)
 
-let debug = false
+let debug = true
 
 exception Missing_nominal_features
 
@@ -151,7 +151,7 @@ module T = struct
 
     (** Recompute EagerTotalOrder thunks if necessary. *)
     let refresh () =
-        let condition = debug && (not (PriorityQueue.top eager_queue = None)) in
+        let condition = debug && (PriorityQueue.top eager_queue <> None) in
         if condition then Printf.printf ">>> BEGIN: global refresh:\n%!" ;
         if condition then (TotalOrder.iter eager_start (fun ts -> Printf.printf "... iter-dump: %d\n%!" (TotalOrder.id ts)));
         let last_now = !eager_now in
@@ -226,10 +226,14 @@ let invalidator meta ts =
 let update m x =
   if not (Data.equal m.value x) then
     begin
-      (if debug then Printf.printf "... update: ** CHANGED: #%d (%d,%d) **\n%!" m.id (TotalOrder.id m.meta.start_timestamp) (TotalOrder.id m.meta.end_timestamp));
+      (if debug then Printf.printf "... update: ** CHANGED: #%d (%d,%d) **\n%!"
+                                   m.id (TotalOrder.id m.meta.start_timestamp) (TotalOrder.id m.meta.end_timestamp));
       m.value <- x;
       enqueue_dependents m.meta.dependents
     end
+  else
+    (if debug then Printf.printf "... update: ** SAME: #%d (%d,%d) **\n%!"
+                                 m.id (TotalOrder.id m.meta.start_timestamp) (TotalOrder.id m.meta.end_timestamp))
 
 (** Create an EagerTotalOrder thunk from a constant value. *)
 let const x =
@@ -252,8 +256,10 @@ let const x =
   m
 
 (** Update an EagerTotalOrder thunk with a constant value. *)
-let update_const m x =
+let update_cell m x =
   incr Statistics.Counts.update;
+  assert (m.meta.start_timestamp == TotalOrder.null) ;
+  (*
   if m.meta.start_timestamp != TotalOrder.null then
     begin
       (* no need to call unmemo since the memo entry will be replaced when it sees start_timestamp is invalid *)
@@ -265,6 +271,7 @@ let update_const m x =
       m.meta.start_timestamp <- TotalOrder.null;
       m.meta.end_timestamp <- TotalOrder.null
     end;
+   *)
   update m x
 
 let evaluate_meta meta f =
@@ -311,7 +318,7 @@ let update_thunk m f =
                     *)
 
 let cell nm v = const v (* TODO: Use the name; workaround: use mfn_nart interface instead. *)
-let set = update_const
+let set = update_cell
 
 let make_and_eval_node f =
   incr Statistics.Counts.create;

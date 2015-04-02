@@ -1,10 +1,11 @@
 suffix=_sac
 experiments="\
-           List_eager_map\
-           List_eager_filter\
+           List_reverse\
+\
            List_map\
            List_filter\
-           List_reverse\
+           List_eager_filter\
+           List_eager_map\
            Rope_min\
            Rope_sum\
            Rope_mergesort\
