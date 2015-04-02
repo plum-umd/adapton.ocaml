@@ -4,7 +4,10 @@ open GrifolaType
 
 
 module RandomInput = struct
-  let complete (node_count:int) (edge_count:int) =
+  let generate (node_count:int) (edge_count:int)
+      : ((int * int) list)         (* (node-id, node-data) list *)
+        * ((int * int * int) list) (* (node-id, node-id, edge-data) list *)
+    =
     let nodes =
       let rec loop n =
         if n < 0 then []
