@@ -15,4 +15,5 @@ _build
 *.d.native
 *.p.byte
 *~
+*.csv
 
