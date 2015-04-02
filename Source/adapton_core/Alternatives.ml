@@ -102,7 +102,8 @@ module LazyRecalc = struct
       let snd nm art = if true then mfn_snd.Art2.mfn_art art else mfn_snd.Art2.mfn_nart nm art
 
       let split nm x = let nm1,nm2 = Name.fork nm in (fst nm1 x, snd nm2 x)
-    end
+    end      
+    let sac_refresh () = ()
   end
 end
 
@@ -207,6 +208,7 @@ module EagerNonInc = struct
 
       let split nm x = let nm1,nm2 = Name.fork nm in (fst nm1 x, snd nm2 x)
     end
+    let sac_refresh () = ()
   end
 end
 
@@ -311,6 +313,7 @@ module LazyNonInc = struct
 
       let split nm x = let nm1,nm2 = Name.fork nm in (fst nm1 x, snd nm2 x)
     end
+    let sac_refresh () = ()
   end
 end
                       
@@ -356,5 +359,6 @@ module Sac = struct
 
       let split nm x = let nm1,nm2 = Name.fork nm in (fst nm1 x, snd nm2 x)
     end
+    let sac_refresh () = S.refresh ()
   end
 end

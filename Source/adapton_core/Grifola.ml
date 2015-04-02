@@ -1642,6 +1642,7 @@ module Make (Params:AParamsType) = struct
 
       let split nm x = let nm1,nm2 = Name.fork nm in (fst nm1 x, snd nm2 x)
     end
+    let sac_refresh () = ()
   end
 
 end (* Grifola module *)

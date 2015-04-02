@@ -432,9 +432,10 @@ module MakeSeq
   let rec insert_elm list_art h nm_tl_opt =
     match nm_tl_opt with
     | Some (nm, tl_art) ->
+      assert ( list_art <> tl_art );
       let list_art_content = St.List.Art.force list_art in
       St.List.Art.set list_art (`Cons(h, `Name(nm, `Art(tl_art)))) ;
-      St.List.Art.set tl_art list_art_content
+      St.List.Art.set tl_art list_art_content ;
     | None ->
       let list_art_content = St.List.Art.force list_art in
       St.List.Art.set list_art (`Cons(h, list_art_content))
@@ -781,7 +782,7 @@ module MakeSeq
     fun list rev -> mfn.LArt.mfn_data (list, rev)
 
   let list_reverse_balanced : St.List.Data.t -> St.List.Data.t -> St.List.Data.t =
-    let debug = false in    
+    let debug = false in
     let accum = LArt.mk_mfn (St.Name.gensym "list_reverse_accum")
                             (module St.List.Data) (fun _ list ->
                                                    (if debug then Printf.printf "... accum=(%s)\n" (St.List.Data.string list));
@@ -793,7 +794,7 @@ module MakeSeq
       Res.mk_mfn
         (St.Name.gensym "list_reverse")(module Arg)
         (fun r ((no, lo, hi, list, rev) as arg) ->
-         (if debug then Printf.printf "... args=(%s)\n%!" (Arg.string arg)) ;
+         (if debug then Printf.printf "... list_reverse:args=(%s)\n%!" (Arg.string arg)) ;
          let list_reverse no lo hi list rev = r.Res.mfn_data (no,lo,hi,list,rev) in
          ( match list with
            | `Nil -> (`Nil, rev)
