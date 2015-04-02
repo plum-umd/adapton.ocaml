@@ -121,4 +121,10 @@ module type ArtLibType = sig
 
   module Eviction : EvictionType
   module Memotables : MemotablesType
+
+  (* Only needed for SAC, which refreshes globally/manually. This is a
+     no-op for Adapton. (Adapton is not global, but done transparently,
+     on-demand, when and if affected arts are force'd). 
+   *)
+  val sac_refresh : unit -> unit
 end

@@ -229,6 +229,7 @@ module Make_experiment ( ListApp : ListAppType ) = struct
   (* ---------------------------------------------------------------------- *)
 
   let name = ListApp.name
+
   let demand_list = ListApp.ListRep.take
 
   module T = Types
@@ -732,7 +733,9 @@ struct
 
   let next x = Seq.next_art (St.List.Art.force x)
 
-  let take x count = Seq.take (St.List.Art.force x) count
+  let take x count =
+    ArtLib.sac_refresh () ;
+    Seq.take (St.List.Art.force x) count
 
   let delete_elm list =
     let h,_ = Seq.delete_elm list in
@@ -781,7 +784,9 @@ struct
   let next x = KvMap.KvSeq.next_art (KvMap.KvSt.List.Art.force x)
   let last x = failwith "unimplemented"
 
-  let take x count = KvMap.KvSeq.take (KvMap.KvSt.List.Art.force x) count
+  let take x count =
+    ArtLib.sac_refresh () ;
+    KvMap.KvSeq.take (KvMap.KvSt.List.Art.force x) count
 
   let delete_elm list =
     let h,_ = KvMap.KvSeq.delete_elm list in
