@@ -1,3 +1,4 @@
+suffix=_sac
 experiments="\
            List_eager_map\
            List_eager_filter\
@@ -13,7 +14,7 @@ experiments="\
 hline=-----------------------
 hline=$hline$hline$hline$hline$hline$hline
 for e in $experiments; do
-    e="$e"_sac
+    e="$e$suffix"
     cmd="./experiments.byte\
        --experiment $e\
        --n 100\
@@ -21,7 +22,16 @@ for e in $experiments; do
     echo $hline
     echo $e
     echo $hline
-    $cmd || \
-        echo $0: Experiment \'$e\' Failed.  Halting further experiments.\
-            && exit -1
+    $cmd || {
+        echo $0: Experiment \'$e\' Failed. ;
+        echo $0: Halting further experiments. ;
+        echo $0: Run this to reproduce error: \`$cmd\`\ ;
+        exit -1
+    }
+done
+
+echo $hline
+echo "Success! All tests passed:"
+for e in $experiments; do
+    echo "\t$e$suffix";
 done
