@@ -619,44 +619,49 @@ module MakeSeq
       | _ -> failwith "tree_of_list: impossible"
       )
 
-  let rope_of_list_rec : int -> int -> St.Rope.Data.t -> St.List.Data.t -> St.Rope.Data.t * St.List.Data.t =
+  let rope_of_list_rec : Name.t option -> int -> int -> St.Rope.Data.t -> St.List.Data.t -> St.Rope.Data.t * St.List.Data.t =
     let module P = St.ArtLib.MakeArtTuple2(Name)(St.Rope.Art)(St.List.Art) in
     let rope_of_list_rec =
       let mfn = P.Art.mk_mfn (St.Name.gensym "rope_of_list_rec")
-        (module Types.Tuple4(Types.Int)(Types.Int)(St.Rope.Data)(St.List.Data))
-        (fun r (parent_lev, rope_lev, rope, list) ->
-          let rope_of_list_rec pl tl t l = r.P.Art.mfn_data (pl,tl,t,l) in
+        (module Types.Tuple5(Types.Option(Name))(Types.Int)(Types.Int)(St.Rope.Data)(St.List.Data))
+        (fun r (nm_opt, parent_lev, rope_lev, rope, list) ->
+          let rope_of_list_rec no pl tl t l = r.P.Art.mfn_data (no,pl,tl,t,l) in
           ( match list with
           | `Nil -> rope, `Nil
           | `Cons (hd, tl) ->
             let ffs = Primitives.ffs in
             let hd_lev = ffs (St.Data.hash 0 hd) in
             if rope_lev <= hd_lev && hd_lev <= parent_lev then (
-              let right, rest = rope_of_list_rec hd_lev (-1) (`One hd) tl in
-              let rope = `Two(rope, right) in
-              rope_of_list_rec parent_lev hd_lev rope rest
+              match nm_opt with
+              | None ->
+                let right, rest = rope_of_list_rec None hd_lev (-1) (`One hd) tl in
+                let rope = `Two(rope, right) in
+                rope_of_list_rec None parent_lev hd_lev rope rest
+              | Some(nm) ->
+                let nm1,nm  = Name.fork nm in
+                let nm2,nm3 = Name.fork nm in
+                let right, rest = P.split nm1 (r.P.Art.mfn_nart nm2 (None, hd_lev, (-1), (`One hd), tl)) in
+                let rope = `Two(rope, `Name(nm3, `Art(right))) in
+                rope_of_list_rec None parent_lev hd_lev rope (LArt.force rest)
             )
             else (
-             rope, list
+              match nm_opt with
+              | None -> rope, list
+              | Some(nm) -> rope, `Name(nm, list)
             )
-          | `Art art -> rope_of_list_rec parent_lev rope_lev rope (St.List.Art.force art)
-          | `Name(nm, list) ->
-            let nm1, nm  = Name.fork nm in
-            let nm2, nm3 = Name.fork nm in
-            let rope_rest = r.P.Art.mfn_nart nm1 (parent_lev,rope_lev,rope,list) in
-            let _,   rest = P.Art.force rope_rest in
-            let rope = P.fst nm2 rope_rest in (* TODO: Perf opt: Avoid making extra thunk here. *)
-            (`Name(nm3, `Art rope), rest) (* BUGFIX: Do "primitive recursion": Do not introduce a `Name, or `Art around rest. *)
-          ))
+          | `Art art -> rope_of_list_rec None parent_lev rope_lev rope (LArt.force art)
+          | `Name(nm, list) -> rope_of_list_rec (Some nm) parent_lev rope_lev rope list
+          )
+        )
       in
-      fun pl tl t l -> mfn.P.Art.mfn_data (pl, tl, t, l)
+      fun nm pl tl t l -> mfn.P.Art.mfn_data (nm, pl, tl, t, l)
     in
     rope_of_list_rec
 
   let rope_of_list : St.List.Data.t -> St.Rope.Data.t =
     fun list ->
       let rope, rest =
-        rope_of_list_rec max_int (-1) (`Zero) list
+        rope_of_list_rec None max_int (-1) (`Zero) list
       in
       (* assert (list_is_empty rest) ; *)
       rope
