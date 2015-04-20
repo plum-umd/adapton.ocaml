@@ -624,6 +624,7 @@ module MakeSeq
     let rope_of_list_rec =
       let mfn = P.Art.mk_mfn (St.Name.gensym "rope_of_list_rec")
         (module Types.Tuple5(Types.Option(Name))(Types.Int)(Types.Int)(St.Rope.Data)(St.List.Data))
+
         (fun r (nm_opt, parent_lev, rope_lev, rope, list) ->
           let rope_of_list_rec no pl tl t l = r.P.Art.mfn_data (no,pl,tl,t,l) in
           ( match list with
@@ -649,7 +650,7 @@ module MakeSeq
               | None -> rope, list
               | Some(nm) -> rope, `Name(nm, list)
             )
-          | `Art art -> rope_of_list_rec None parent_lev rope_lev rope (LArt.force art)
+          | `Art art -> rope_of_list_rec nm_opt parent_lev rope_lev rope (LArt.force art)
           | `Name(nm, list) -> rope_of_list_rec (Some nm) parent_lev rope_lev rope list
           )
         )
