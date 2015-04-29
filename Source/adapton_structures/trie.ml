@@ -107,6 +107,7 @@ module type S = sig
   val cardinal : t -> int
   val of_list : ?min_depth:int -> elt list -> t
   val to_list : t -> elt list
+  val fold : ('a -> elt -> 'a) -> 'a -> t -> 'a
   val structural_fold :
       (module Primitives.DatType with type t = 'a) ->
       ?empty:(BS.t -> 'a -> 'a) ->
@@ -121,8 +122,7 @@ module MakePlace
   (Name: NameType)
   (A : ArtLibType)
        : S with type elt = E.t
-           and  type Name.t = Name.t
-                              = struct
+           and  type Name.t = Name.t = struct
 
   type elt = E.t
 
@@ -307,6 +307,14 @@ module MakePlace
       | Name (_,  t) | Root (_, t) -> loop h t
     in
     loop i t
+
+  let rec fold (f : 'a -> elt -> 'a) (a : 'a) : t -> 'a = function
+    | Node (_, t, t') -> fold f (fold f a t) t'
+    | Empty _         -> a
+    | Atom (_, es)    -> S.fold (fun n a -> f a n) es a
+    | Root (_, t)     -> fold f a t
+    |  Art  ar        -> fold f a (Art.force ar)
+    | Name (_, t)     -> fold f a t
 
   let structural_fold
       (type o)
@@ -595,12 +603,13 @@ module Set = struct
     val cardinal : t -> int
     val of_list : ?min_depth:int -> elt list -> t
     val to_list : t -> elt list
+    val fold : ('a -> elt -> 'a) -> 'a -> t -> 'a
     val structural_fold :
       (module DatType with type t = 'a) ->
       ?empty:(BS.t -> 'a -> 'a) ->
        ?atom:(BS.t -> elt -> 'a -> 'a) ->
        ?node:(BS.t -> 'a -> 'a -> 'a) ->
-      string -> t -> 'a -> 'a    
+      string -> t -> 'a -> 'a
   end
 
   module Make(E : GoodDatType)(Name:NameType)(A : ArtLibType) : S
@@ -690,6 +699,51 @@ module Map = struct
       (fun k -> match find t k with
       | Some _ -> true
       | None   -> false)
+
+  end
+
+end
+
+module Rel = struct
+
+  module type S = sig
+    type sv
+    module VS : Set.S with type elt = sv
+    include Map.S with type v = VS.t
+    val   join : Name.t -> t -> k -> sv -> t
+    val branch : ('b -> 'a -> 'b) -> 'b -> t -> k -> (sv -> 'a) -> 'b
+  end
+
+  module Make
+    (K : GoodDatType)
+    (V : GoodDatType)
+    (N : NameType)
+    (A : ArtLibType)
+    : S with type k = K.t
+         and type sv = V.t
+         and type Name.t = N.t = struct
+    
+    type sv = V.t
+    module VS = Set.Make(V)(N)(A)
+    include Map.Make(K)(VS)(N)(A)
+
+    let join : Name.t -> t -> k -> sv -> t =
+      fun nm t k v ->
+        let vs' = match find t k with
+          | Some vs -> VS.add vs v
+          | None    -> VS.singleton v
+        in
+        nadd nm t k vs'
+
+    let branch
+        (type a)
+        (type b)
+        (add   : (b -> a -> b))
+        (empty : b) : t -> k -> (sv -> a) -> b =
+      fun t k f ->
+        match find t k with
+        | None -> empty
+        | Some vs -> VS.fold (fun a n -> add a (f n)) empty vs
 
   end
 
