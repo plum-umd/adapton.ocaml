@@ -361,41 +361,37 @@ module MakePlace
       else Node (bs, Atom (zerobs, es), Empty onebs)
 
   let internal_union : t -> t -> t =
-      let loop = Art.mk_mfn
-          (Name.gensym "Trie.MakeInc#internal_union")
-          (module AdaptonTypes.Tuple2(Data)(Data))
-          (fun loop -> function
-             | t, t' when equal t t' -> t'
-             | Atom (bs, es), Atom (bs', es')
-                    (* these choices assume no hash collisions *)
-               when E.place (S.choose es) = E.place (S.choose es') ->
-               Atom (bs, es')
-             | Empty _, t | t, Empty _ -> t
-             | Name _, _  | _, Name _  ->
-               (* CONFUSION: I don't know how these Name constructors
-                  are supposed to be used. Does it make sense to union
-                  a Name with a non-Name? Can there be two Name
-                  contstructors one on top of another? Do I always
-                  need to rebuild a name when I go through a name--and
-                  if so, what happens in the Name/not-Name case? *)
-               failwith "I don't know what this means"
-             | Art a, t' -> loop.Art.mfn_data (Art.force a, t')
-             | t, Art a' -> loop.Art.mfn_data (t, Art.force a')
-             | t, t' -> (match split_atomic t, split_atomic t' with
-                 | sat, Empty _ | Empty _, sat -> sat
-                 | Node (bs, zerot, onet), Node (bs', zerot', onet') ->
-                   Node (bs,
-                         loop.Art.mfn_data (zerot, zerot'),
-                         loop.Art.mfn_data (onet,  onet'))
-                 | _ -> assert false (* split atomic only returns Node or Empty *))) in
-      (fun t t' -> loop.Art.mfn_data (t, t'))
-
+    let loop = Art.mk_mfn
+        (Name.gensym "Trie.MakeInc#internal_union")
+        (module AdaptonTypes.Tuple2(Data)(Data))
+        (fun loop -> function
+           | t, t' when equal t t' -> t'
+           | Atom (bs, es), Atom (bs', es')
+             (* these choices assume no hash collisions *)
+             when E.place (S.choose es) = E.place (S.choose es') ->
+             Atom (bs, es')
+           | Empty _, t | t, Empty _ -> t
+           | Name (nm, t), Name (nm', t') ->
+             let nm'' = Name.pair nm nm' in
+             Name (nm'', Art.force (loop.Art.mfn_nart nm'' (t, t')))
+           | t', Name (nm, t)
+           | Name (nm, t), t' -> Art.force (loop.Art.mfn_nart nm (t, t'))
+           | Art a, t' -> loop.Art.mfn_data (Art.force a, t')
+           | t, Art a' -> loop.Art.mfn_data (t, Art.force a')
+           | t, t' -> (match split_atomic t, split_atomic t' with
+               | sat, Empty _ | Empty _, sat -> sat
+               | Node (bs, zerot, onet), Node (bs', zerot', onet') ->
+                 Node (bs,
+                       loop.Art.mfn_data (zerot, zerot'),
+                       loop.Art.mfn_data (onet,  onet'))
+               | _ -> assert false (* split atomic only returns Node or Empty *))) in
+    (fun t t' -> loop.Art.mfn_data (t, t'))
+    
   let rec union (t : t) (t' : t) : t = match t, t' with
     | Root (md, t), Root (md', t') when md = md' ->
       Root (md, internal_union t t')
     | Art a, _  -> union (Art.force a) t'
     | _, Art a' -> union t (Art.force a')
-    | Name _, _ | _, Name _ -> failwith "Same confusion as in internal_union" (* <- CONFUSION *)
     | Root (md, _), Root (md', _) ->
       failwith "Refusing union two tries with different minimum depths."
     | t, t' -> failwith "Cannot union non Root tries."
@@ -649,6 +645,7 @@ module Map = struct
     val cardinal : t -> int
     val find : t -> k -> v option
     val mem : t -> k -> bool
+    val fold : ('a -> k -> v -> 'a) -> 'a -> t -> 'a
     val structural_fold :
       (module DatType with type t = 'a) ->
       ?empty:(BS.t -> 'a  -> 'a) ->
@@ -690,6 +687,8 @@ module Map = struct
     let add (t : t) (k : k) (v : v) : t = add t (k, v)
     let nadd (n : Name.t) (t : t) (k : k) (v : v) : t = nadd n t (k, v)
 
+    let fold f = fold (fun a (k, v) -> f a k v)
+
     let find (t : t) : k -> v option =
       (fun k -> match find (fun (k', _) -> K.equal k k') t (K.hash _PLACEMENT_SEED k) with
       | Some (_, v) -> Some v
@@ -710,8 +709,10 @@ module Rel = struct
     type sv
     module VS : Set.S with type elt = sv
     include Map.S with type v = VS.t
-    val   join : Name.t -> t -> k -> sv -> t
-    val branch : ('b -> 'a -> 'b) -> 'b -> t -> k -> (sv -> 'a) -> 'b
+    val    join : Name.t -> t -> k -> sv -> t
+    val clobber : Name.t -> t -> k -> sv -> t
+    val  branch : ('b -> 'a -> 'b) -> 'b -> t -> k -> (sv -> 'a) -> 'b
+    val  svfold : ('a -> k -> sv -> 'a) -> 'a -> t -> 'a
   end
 
   module Make
@@ -726,6 +727,9 @@ module Rel = struct
     type sv = V.t
     module VS = Set.Make(V)(N)(A)
     include Map.Make(K)(VS)(N)(A)
+
+    let clobber : Name.t -> t -> k -> sv -> t =
+      fun nm t k v -> nadd nm t k (VS.singleton v)
 
     let join : Name.t -> t -> k -> sv -> t =
       fun nm t k v ->
@@ -745,9 +749,20 @@ module Rel = struct
         | None -> empty
         | Some vs -> VS.fold (fun a n -> add a (f n)) empty vs
 
+    let svfold (type a) (f : a -> k -> sv -> a) : a -> t -> a =
+      fold (fun a k -> VS.fold (fun a v -> f a k v) a)
+
   end
 
 end
+
+
+module Graph = struct
+
+  
+
+end
+
 
 (*
 module Test  = struct
@@ -778,7 +793,7 @@ module Test  = struct
          nm >:: (fun ctxt -> assert_equal ~printer ~cmp:eq ~ctxt o (f i0 i1)))
       l
 
-  let nm = Name.nondet
+  let nm = Key.nondet
 
   let bs_suite =
     let pow_tests  =
@@ -810,7 +825,7 @@ module Test  = struct
          1, (2, 1), (3, 5)] in
     "bit strings" >::: pow_tests@flip_tests@is_set_tests@prepend_tests
 
-  module S = Set.Make(Useful(AdaptonTypes.String))
+  module S = Set.Make(Useful(AdaptonTypes.String))(Key)(Grifola.Default.ArtLib)
 
   let set_suite =
     let min_depth = 4 in
@@ -922,7 +937,7 @@ module Test  = struct
       ] in
     "Nominal Set" >::: (cardinal_tests@mem_tests@equal_tests@hash_eq_tests)
 
-  module M = Map.Make(Useful(AdaptonTypes.String))(Useful(AdaptonTypes.Int))
+  module M = Map.Make(Useful(AdaptonTypes.String))(Useful(AdaptonTypes.Int))(Key)(Grifola.Default.ArtLib)
 
   let nmap_suite = 
     let k0, k1, k2, k3, k4     = "a", "c", "d", "j", "gah"   in
@@ -937,7 +952,7 @@ module Test  = struct
       [(*nt0, 0; nt1, 1; nt1', 1; nt2, 2; nt2', 2; nt3, 3; nt3', 3; nt4, 4; nt4', 4; nt5, 4*)] in
     let nmem_tests = binary_tests "mem" M.mem
       [nt0, k0, false; nt0, k1, false;
-       M.nadd (Name.nondet ()) nt1 k0 v1, k0, true;
+       M.nadd (Key.nondet ()) nt1 k0 v1, k0, true;
        nt1, k0, true; nt1', k0, false; nt1', k1, true;
        nt2, k1, true; nt2', k1, true; nt2', k0, true;
        nt3, k0, true; nt3', k0, true; nt3, k2, true;
@@ -968,5 +983,4 @@ module Test  = struct
 end
 
 let _ = Test.run ()
-
 *)
