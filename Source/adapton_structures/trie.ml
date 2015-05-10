@@ -759,7 +759,54 @@ end
 
 module Graph = struct
 
-  
+  module type S = sig
+
+    type vertex
+    include Rel.S with type sv = vertex
+
+    val mem_vertex : t -> vertex -> bool
+    val mem_edge   : t -> vertex -> vertex -> bool
+    val add_edge : Name.t -> t -> vertex -> vertex -> t
+    val to_dot : t -> string
+    val fold_edges : ('a -> vertex -> vertex -> 'a) -> 'a -> t -> 'a
+
+  end
+
+  module Make
+    (V : GoodDatType)
+    (N : NameType)
+    (A : ArtLibType)
+    : S with type vertex = V.t
+         and type Name.t = N.t = struct
+    
+    type vertex = V.t
+    include Rel.Make(V)(V)(N)(A)
+
+    let mem_edge t v v' = match find t v with
+      | Some vs -> VS.fold (fun a v'' -> a || V.equal v' v'') false vs
+      | None    -> false
+
+    let mem_vertex = mem
+    let add_edge = join
+
+    let to_dot _ = failwith "unimplemented"
+
+    let fold_edges (type a) f a t : a = svfold f a t
+
+    let string_of_list ?(sep=" ") ?(border=(fun s -> "(" ^ s ^ ")")) soe l =
+      if List.length l > 0 then
+        let elts = List.fold_right (fun elt a -> (soe elt)^sep^a) l "" in
+        border (String.sub elts 0 ((String.length elts)-(String.length sep)))
+      else border ""
+
+    let show t =
+      string_of_list
+        (fun (v, vs) -> Printf.sprintf "(%s %s)" (V.string v) (VS.string vs))
+        (to_list t)
+    let pp ff p = Format.pp_print_string ff (show p)
+    let string = show
+
+  end
 
 end
 
