@@ -32,8 +32,7 @@ let _PLACEMENT_SEED = 42
  * zeros aren't conflated.
  *)
 module BS : sig
-  include DatType with type t = int * int
-  val compare : t -> t -> int
+  include GoodDatType with type t = int * int
   val pow     : int -> int -> int
   val flip    : int -> int -> int
   val is_set  : int -> int -> bool
@@ -60,6 +59,8 @@ end = struct
         | 0, v -> a
         | l, v -> loop ((if v mod 2 = 0 then "0" else "1")^a) (l-1, v lsr 1) in
       loop "" bs
+  let pp fmt s = Format.fprintf fmt "%s" (string s)
+  let show = string
   let hash = Hashtbl.seeded_hash
   let sanitize x = x
   
@@ -138,6 +139,7 @@ module MakePlace
                 ((String.length elts)-(String.length sep)))^" }"
       else "{}"             
     let hash seed s = fold (fun x a -> E.hash a x) s seed
+    let pp fmt s = Format.fprintf fmt "%s" (string s)
   end
 
   type 'art _t =  Node of  BS.t * 'art _t * 'art _t
@@ -146,6 +148,43 @@ module MakePlace
                |  Root of  int * 'art _t
                |  Name of Name.t * 'art _t
                |   Art of  'art
+
+(*  let rec pp__t poly_art fmt =
+    function
+    | Node (a0,a1,a2) ->
+      (Format.fprintf fmt "@[<hov2>Trie.MakePlace.Node (@,";
+       (((BS.pp fmt) a0;
+         Format.fprintf fmt ",@ ";
+         (pp__t (fun fmt  -> poly_art fmt) fmt) a1);
+        Format.fprintf fmt ",@ ";
+        (pp__t (fun fmt  -> poly_art fmt) fmt) a2);
+       Format.fprintf fmt "@])")
+    | Atom (a0,a1) ->
+      (Format.fprintf fmt "@[<hov2>Trie.MakePlace.Atom (@,";
+       ((BS.pp fmt) a0; Format.fprintf fmt ",@ "; (S.pp fmt) a1);
+       Format.fprintf fmt "@])")
+    | Empty a0 ->
+      (Format.fprintf fmt "(@[<hov2>Trie.MakePlace.Empty@ ";
+       (BS.pp fmt) a0;
+       Format.fprintf fmt "@])")
+    | Root (a0,a1) ->
+      (Format.fprintf fmt "@[<hov2>Trie.MakePlace.Root (@,";
+       ((Format.fprintf fmt "%d") a0;
+        Format.fprintf fmt ",@ ";
+        (pp__t (fun fmt  -> poly_art fmt) fmt) a1);
+       Format.fprintf fmt "@])")
+    | Name (a0,a1) ->
+      (Format.fprintf fmt "@[<hov2>Trie.MakePlace.Name (@,";
+       (Format.fprintf fmt "%s" (Name.string a0);
+        Format.fprintf fmt ",@ ";
+        (pp__t (fun fmt  -> poly_art fmt) fmt) a1);
+       Format.fprintf fmt "@])")
+    | Art a0 ->
+      (Format.fprintf fmt "(@[<hov2>Trie.MakePlace.Art@ ";
+       (poly_art fmt) a0;
+       Format.fprintf fmt "@])")
+    and show__t poly_art x = Format.asprintf "%a" (pp__t poly_art) x*)
+
   let rec compare__t poly_art lhs rhs =
     match (lhs, rhs) with
     | (Node (lhs0,lhs1,lhs2),Node (rhs0,rhs1,rhs2)) ->
@@ -231,6 +270,9 @@ module MakePlace
       in
       loop
 
+    let show = string
+    let pp fmt s = Format.fprintf fmt "%s" (string s)
+
     let hash : int -> t -> int =
       let rec hash (seed : int) : t -> int = function
         | Node (bs, t, t') -> BS.hash (hash (hash seed t') t) bs
@@ -257,6 +299,8 @@ module MakePlace
     include ArtType with type Data.t = Data.t
                      and type Name.t = Name.t
     val compare : t -> t -> int
+    val pp : Format.formatter -> t -> unit
+    val show : t -> string
   end = struct
     include A.MakeArt(Name)(Data)
     let show = string
@@ -427,7 +471,7 @@ module MakePlace
         | Atom _ -> assert false (* <-- Can't happen if the minimum depth is not violated. *)
         | Root _ -> assert false (* <-- Always unwrap the root in `add`. *)
       in
-      (fun md t e -> loop md e (0, 0) (E.place e) 0 t)
+      (fun md t e -> loop md e (0, 0) (E.place e) 1 t)
 
   let rec add t e = match t with
     | Root (md, t) -> Root (md, deep_add md t e)
@@ -536,10 +580,10 @@ module MakePlace
                let t0, t1 = thunk nm' t0, thunk nm'' t1 in
                Node (bs, Art t0, Art t1)
            | Art a -> loop.Art.mfn_data (nm, min, e, bs, h, m, (Art.force a))
-           | Name (_, Art a) -> (* <-- handling in a single case maintains the invariant
+           | Name (_, Art a) -> (* <-- handling in a single case maintains the invariant *)
              let nm', nm'' = Name.fork nm in (* that Names always surround Arts  *)
-             Name (nm', Art (loop.Art.mfn_nart nm'' (nm'', min, e, bs, h, m, (Art.force a))))*)
-             loop.Art.mfn_data (nm, min, e, bs, h, m, (Art.force a))
+             Name (nm', Art (loop.Art.mfn_nart nm'' (nm'', min, e, bs, h, m, (Art.force a))))
+             (*loop.Art.mfn_data (nm, min, e, bs, h, m, (Art.force a))*)
            (* Why does this make sense? Deep add is ensuring that every recursive call, other
               than this one, is wrapped with a Name (..., (n)Art ...). One iteration before
               we reach this case, we're guaranteed to be wrapped with a Name (..., (n)Art __),
@@ -600,6 +644,7 @@ module Set = struct
     val of_list : ?min_depth:int -> elt list -> t
     val to_list : t -> elt list
     val fold : ('a -> elt -> 'a) -> 'a -> t -> 'a
+    val subsumes : ?order:(elt -> elt -> bool) -> t -> t -> bool
     val structural_fold :
       (module DatType with type t = 'a) ->
       ?empty:(BS.t -> 'a -> 'a) ->
@@ -622,6 +667,13 @@ module Set = struct
 
     let string t = "set "^(string t)
 
+    let subsumes ?(order = (fun x x' -> E.compare x x' >= 0))
+        (t : t) (t' : t) : bool =
+      fold
+        (fun a x' -> a || fold (fun a x -> a && order x x') a t)
+        false
+        t'
+        
   end
 
 end
@@ -671,6 +723,8 @@ module Map = struct
     (struct
       include AdaptonTypes.Tuple2(K)(V)
       let string (k, v) = "["^(K.string k)^" -> "^(V.string v)^"]"
+      let pp fmt s = Format.fprintf fmt "%s" (string s)
+      let show = string
       let equal (k, v) (k', v') = K.equal k k' && V.equal v v'
       let hash seed (k, v) = K.hash (V.hash seed v) k
       let place = place
@@ -737,7 +791,7 @@ module Rel = struct
           | Some vs -> VS.add vs v
           | None    -> VS.singleton v
         in
-        nadd nm t k vs'
+        (*nadd nm t k vs'*) add t k vs'
 
     let branch
         (type a)
@@ -787,7 +841,12 @@ module Graph = struct
       | None    -> false
 
     let mem_vertex = mem
-    let add_edge = join
+    let add_edge nm t v v' =
+      if mem_vertex t v'
+      then join nm t v v'
+      else
+        let nm, nm' = Name.fork nm in
+        join nm' (nadd nm t v' (VS.empty ~min_depth:4)) v v'
 
     let to_dot _ = failwith "unimplemented"
 
@@ -799,12 +858,12 @@ module Graph = struct
         border (String.sub elts 0 ((String.length elts)-(String.length sep)))
       else border ""
 
-    let show t =
+    (*let show t =
       string_of_list
         (fun (v, vs) -> Printf.sprintf "(%s %s)" (V.string v) (VS.string vs))
         (to_list t)
     let pp ff p = Format.pp_print_string ff (show p)
-    let string = show
+      let string = show*)
 
   end
 
