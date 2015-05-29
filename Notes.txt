@@ -21,35 +21,32 @@ Main goals:
 STATUS:
 
   AS2 not working
-  Granularity control testing is buggy, needs new list mod technique
   Object interface not implemented
   New datastructure in progress
 
 TODO:
 
 Major:
-  (issue 2)Update AS2 to Grifola
+  (issue 2)Update AS2 to Grifola (delayed because it doesn't make use of Nominal features)
   (issue 3)implement basic list mergesort (with contract-reduce)
+    This might be to complex, and using a probabilistically balanced computation
+     structure (see list reverse) subsumes our rope and list varients
   (issue 4)create an oo interface to encapsulate data types (discussed below)
-  Expand alternative Artlib modules
-  Test out granularity control
-  (issue 13)make edits to coarse-grained lists in the right places
 
 
 Minor:
   Use _tags for internal dependency
   (issue 5)move install script to makefile (findlib install [deps])
   Remove non-working code
-  Remove old granularity control code
-  (issue 6)fix title line of experiments
   (issue 7)include a 'compare' item to the datatypes
-  (issue 8)get the logging to work
+  (issue 8 and 23)get the logging to work
+  Expand alternative Artlib modules
 
 Determine:
   mutual recursion strategy
     compiler doesn't allow: let memo1 (params) = ... and memo2 (params) = ... in
   a better articulation strategy for datastructures
-    currently trying hierarchal hash structure on mutable list, maintaining (recreating) structure with edits
+    currently trying hierarchal hash structure on mutable list (probabilistic tree), maintaining (recreating) structure with edits
 
 
 
@@ -76,14 +73,15 @@ Singleton questions:
     more?
 
   when are memotables accessed?
+    automatically any time the memoized function is run
 
   how do you set up a namespace?
-    create an artType, the same type will still produce a different namespace
+    create a new artType, the same type will still produce a different namespace
 
   since tables are given names, is there a global table that memo matches memotables?
     possibly, but unimplemented
 
-  what's the difference between DatType memos and memo funcions
+  what's the difference between DatType memos and memo functions
     DatType is value or return type, functions are code with parameter and return type
 
   how do you set up thunks to simulate a recursive call? (is it even important)
@@ -145,14 +143,9 @@ OO Interface:
 
 New Datastructures
   attempting more integrated spreadtree structure
-  s = 1+R:(a)+A:(n*a)+D:(d*s)+B:(s*s) [ +C:(s) ]
-    R:Ready, A:Art, D:Data, B:Branch, C:continue
+  s = 1+R:(a)+A:(n*a)+D:(d*s)+B:(s*s)
+    R:Ready, A:Art, D:Data, B:Branch
     a:art, n:name, d:data, s:recursive structure
-    C is meant to be a link to the next item, to avoid extra stack usage
-      it should actually link to the branch that leads to it, to allow 
-      circular access. It is marked to help computation terminate
-
-  with C, all lists should start with B(list, Nil) so that they can be cyclic
 
   constructor can take a value parameter to determine item level in structure
 

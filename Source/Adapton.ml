@@ -7,6 +7,7 @@ TODO: Thoroughly test all renamings, first-class modules are sensitive to it!
 *)
 
 include Adapton_core
+module Name = Key
 module Types = AdaptonTypes
 module Statistics = AdaptonStatistics
 module Structures = Adapton_structures
