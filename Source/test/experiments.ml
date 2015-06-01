@@ -513,11 +513,11 @@ module Make_experiment ( ListApp : ListAppType ) = struct
         [("ss-swap1",swap1Stats); ("ss-swap2",swap2Stats)]
       in
 
-      let do_bigswap_interaction pos mid_art demand_count =
+      let do_move_interaction pos mid_art demand_count =
         let msg () =
-          Printf.sprintf "bs-bswap1 %d; demand %d" pos demand_count
+          Printf.sprintf "mv-move1 %d; demand %d" pos demand_count
         in
-        let _, bswap1Stats = Stats.measure begin fun () ->
+        let _, move1Stats = Stats.measure begin fun () ->
           if not (input_art == mid_art) then (
             let temp = ListApp.ListRep.force_art input_art in
             ListApp.ListRep.set_art input_art (ListApp.ListRep.force_art mid_art);
@@ -535,9 +535,9 @@ module Make_experiment ( ListApp : ListAppType ) = struct
           output_graphstate ~label:(msg ()) graphout ;
         end ;
         let msg () =
-          Printf.sprintf "bs-bswap2 %d; demand %d" pos demand_count
+          Printf.sprintf "mv-move2 %d; demand %d" pos demand_count
         in
-        let _, bswap2Stats = Stats.measure begin fun () ->
+        let _, move2Stats = Stats.measure begin fun () ->
           if not (input_art == mid_art) then (
             let temp = ListApp.ListRep.force_art input_art in
             ListApp.ListRep.set_art input_art (ListApp.ListRep.force_art final_art);
@@ -555,7 +555,7 @@ module Make_experiment ( ListApp : ListAppType ) = struct
           Viz.flush_ticks_out graphout ;
           output_graphstate ~label:(msg ()) graphout ;
         end ;
-        [("bs-bswap1",bswap1Stats); ("bs-bswap2",bswap2Stats)]
+        [("mv-move1",move1Stats); ("mv-move2",move2Stats)]
       in
 
       let rec benchmark_demand (demand:float) = if demand <= 0.0 then () else
@@ -568,7 +568,7 @@ module Make_experiment ( ListApp : ListAppType ) = struct
             let stats_list3 = if List.mem "di" Params.interactions then do_delete_insert_interaction   change_pos_idx change_pos_inp demand_count else [] in
             let stats_list4 = if List.mem "id" Params.interactions then do_insert_delete_interaction   change_pos_idx change_pos_inp demand_count else [] in
             let stats_list5 = if List.mem "ss" Params.interactions then do_swap_swap_interaction       change_pos_idx change_pos_inp demand_count else [] in
-            let stats_list6 = if List.mem "bs" Params.interactions then do_bigswap_interaction         change_pos_idx change_pos_inp demand_count else [] in
+            let stats_list6 = if List.mem "mv" Params.interactions then do_move_interaction            change_pos_idx change_pos_inp demand_count else [] in
             List.iter (fun (interaction_desc,stats) ->
               stats_print handle Params.sample_num name interaction_desc
                 Params.n initial_dcg_size
@@ -1541,7 +1541,7 @@ module Default_perf_params : ParamsType = struct
   let num_lists = 1    (* Number of distinct input lists. *)
   let fullinit = false
   let granularity = 0
-  let interactions = [ "di"; "id"; "ss"; "rr"; "r"; "bs"]
+  let interactions = [ "di"; "id"; "ss"; "rr"; "r"; "mv"]
   let experiment = ""
   let outfile = default_outfile
   module Flags = struct
@@ -1657,7 +1657,7 @@ module Commandline_params : ParamsType = struct
     ("--r",   Arg.Unit  (fun () -> interactions_ := "r"  :: !interactions_), " add interaction: replace");
     ("--rr",  Arg.Unit  (fun () -> interactions_ := "rr" :: !interactions_), " add interaction: replace, replace");
     ("--ss",  Arg.Unit  (fun () -> interactions_ := "ss" :: !interactions_), " add interaction: swap, swap");
-    ("--bs",  Arg.Unit  (fun () -> interactions_ := "bs" :: !interactions_), " add interaction: swap entire list");
+    ("--mv",  Arg.Unit  (fun () -> interactions_ := "mv" :: !interactions_), " add interaction: move front of list to back, return");
 
     ("--perf-flags",  Arg.Unit  (fun () -> flags_ := (module Perf_flags)), " performance flags");
     ("--test-flags",  Arg.Unit  (fun () -> flags_ := (module Test_flags)), " testing flags");
