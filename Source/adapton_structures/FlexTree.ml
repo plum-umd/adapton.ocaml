@@ -1,7 +1,8 @@
-(** Struct: an experimental alternative to spreadtrees
+(** FlexTree: an experimental alternative to spreadtrees
 
 
 TODO: determine what statistics need to be managed in this module
+TODO: Remove 'Continue' cases, it's an unnessecary complexity 
 
 *)
 open Adapton_core
@@ -63,7 +64,7 @@ module MakeCommonStruct
   | `Data of Data.t * 'art art_struct
   | `Art of Name.t * 'art
   | `Branch of 'art art_struct * 'art art_struct
-    (* constrain `Continue to branches? *)  
+    (* constrain `Continue to branches? *) (* Continue should be removed *) 
   | `Continue of 'art art_struct
   ]
 
