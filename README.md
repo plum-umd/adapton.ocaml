@@ -5,18 +5,25 @@ adapton.ocaml
 
 Yit's original mecurial repo is here: https://bitbucket.org/khooyp/adapton.ocaml
 
+Adapton runs as a local opam 1.2+ package, installed with 'make opam-pin'.
+
 To build and run the imp interpreter:
 
-   make imp
-   ./_build/Sample/Implang/implang.native
+    make imp
+    ./_build/Sample/Implang/implang.native
 
 To run a first experiment:
 
     make test
     cd script
-    ./test-avl.sh
+    ./simplemerge.sh
 
-    out/avlropesort.csv contains result data.
+    test takes 2-5 minutes, runs incremental mergesort on a few lists
+
+    results saved to out/simplemerge.csv.
+
+    template/Charts.xlsx visualizes an instance of this data
+        on 'data' sheet: Data->Refresh Data, with your own data as you please
 
 To use externally:
 
@@ -39,11 +46,9 @@ External example: Sample/Trivial
 
     ocamlbuild -use-ocamlfind find_0_bit.native
 
-To use in toplevel:
+Toplevel example:
 
     make opam-pin (once)
-
-Toplevel example:
 
     ocaml
     #use "topfind";;
