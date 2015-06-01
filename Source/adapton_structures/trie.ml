@@ -3,14 +3,6 @@ open Adapton_core
 open Primitives
 open GrifolaType
 
-(* let fork_n nm n = *)
-(*   let rec loop nm acc = function *)
-(*     | n when n <= 0 -> acc *)
-(*     | n -> *)
-(*       let nm', nm'' = Name.fork nm in *)
-(*       loop nm'' (nm'::acc) n in *)
-(*   loop nm [] n *)
-
 module Useful(D : DatType) = struct
   include D
   let compare : t -> t -> int = Pervasives.compare
@@ -103,6 +95,7 @@ module type S = sig
   val singleton : ?min_depth:int -> elt -> t
   val add : t -> elt -> t
   val nadd : Name.t -> t -> elt -> t
+  val sadd : t -> elt -> t
   val union : t -> t -> t
   val find : (elt -> bool) -> t -> int -> elt option
   val cardinal : t -> int
@@ -128,6 +121,8 @@ module MakePlace
   type elt = E.t
 
   module Name = Name
+  let name_of_data (type d) (module D : DatType with type t = d) (d : d) : Name.t =
+    Name.gensym (string_of_int (D.hash (Hashtbl.hash "Trie#name_of_data") d))
                
   module S = struct
     include Set.Make(E)
@@ -239,6 +234,8 @@ module MakePlace
     type t = Art.t _t
 
     let rec compare = compare__t Art.compare
+
+    let equal = ""
     
     let rec equal t t' = match t, t' with
       | Node (bs, t, u), Node (bs', t', u') ->
@@ -415,13 +412,25 @@ module MakePlace
              when E.place (S.choose es) = E.place (S.choose es') ->
              Atom (bs, es')
            | Empty _, t | t, Empty _ -> t
+           | Name (nm, Art a), Name (nm', Art a') ->
+             let nm'' = Name.pair nm nm' in
+             Name (nm'', Art (loop.Art.mfn_nart nm'' (Art.force a, Art.force a')))
+           | t, Name (nm, Art a) ->
+             failwith "Should this be possible?"
+             (*let nm', _ = Name.fork nm in
+               Name (nm', Art (loop.Art.mfn_nart nm' (t, Art.force a)))*)
+           | Name (nm, Art a), t ->
+             failwith "Should this be possible?"
+             (*let nm', _ = Name.fork nm in
+               Name (nm', Art (loop.Art.mfn_nart nm' (Art.force a, t)))*)
+           (*| Name (nm, Art a), t' -> Art.force (loop.Art.mfn_nart nm (t, t'))
            | Name (nm, t), Name (nm', t') ->
              let nm'' = Name.pair nm nm' in
              Name (nm'', Art.force (loop.Art.mfn_nart nm'' (t, t')))
            | t', Name (nm, t)
-           | Name (nm, t), t' -> Art.force (loop.Art.mfn_nart nm (t, t'))
-           | Art a, t' -> loop.Art.mfn_data (Art.force a, t')
-           | t, Art a' -> loop.Art.mfn_data (t, Art.force a')
+             | Name (nm, t), t' -> Art.force (loop.Art.mfn_nart nm (t, t'))*)
+           | Art a, t' -> Art (loop.Art.mfn_art (Art.force a, t'))
+           | t, Art a' -> Art (loop.Art.mfn_art (t, Art.force a'))
            | t, t' -> (match split_atomic t, split_atomic t' with
                | sat, Empty _ | Empty _, sat -> sat
                | Node (bs, zerot, onet), Node (bs', zerot', onet') ->
@@ -604,6 +613,12 @@ module MakePlace
       Name (nm', nadd nm'' t e)
     | _ -> assert false (* <-- user code can't hold on to just a Node, Atom, or Empty *)
 
+  let sadd : t -> elt -> t =
+    let nm : t * elt -> Name.t =
+      name_of_data (module AdaptonTypes.Tuple2(Data)(E))
+    in
+    fun t e -> nadd (nm (t, e)) t e
+
   let singleton ?(min_depth = 1) (e : elt) : t = add (empty ~min_depth) e
 
   let of_list ?(min_depth = 1) (l : elt list) : t =
@@ -638,6 +653,7 @@ module Set = struct
     val singleton : ?min_depth:int -> elt -> t
     val add : t -> elt -> t
     val nadd : Name.t -> t -> elt -> t
+    val sadd : t -> elt -> t
     val union : t -> t -> t
     val mem : t -> elt -> bool
     val cardinal : t -> int
@@ -692,6 +708,7 @@ module Map = struct
     val singleton : ?min_depth:int -> k -> v -> t
     val add : t -> k -> v -> t
     val nadd : Name.t -> t -> k -> v -> t
+    val sadd : t -> k -> v -> t
     val union : t -> t -> t
     val is_empty : t -> bool
     val cardinal : t -> int
@@ -740,6 +757,7 @@ module Map = struct
 
     let add (t : t) (k : k) (v : v) : t = add t (k, v)
     let nadd (n : Name.t) (t : t) (k : k) (v : v) : t = nadd n t (k, v)
+    let sadd (t : t) (k : k) (v : v) : t = sadd t (k, v)
 
     let fold f = fold (fun a (k, v) -> f a k v)
 
@@ -761,12 +779,15 @@ module Rel = struct
 
   module type S = sig
     type sv
-    module VS : Set.S with type elt = sv
-    include Map.S with type v = VS.t
-    val    join : Name.t -> t -> k -> sv -> t
-    val clobber : Name.t -> t -> k -> sv -> t
-    val  branch : ('b -> 'a -> 'b) -> 'b -> t -> k -> (sv -> 'a) -> 'b
-    val  svfold : ('a -> k -> sv -> 'a) -> 'a -> t -> 'a
+    module Vs : Set.S with type elt = sv
+    include Map.S with type v = Vs.t
+    val     join : t -> k -> sv -> t
+    val    njoin : Name.t -> t -> k -> sv -> t
+    val    sjoin : t -> k -> sv -> t
+    val  clobber : t -> k -> sv -> t
+    val nclobber : Name.t -> t -> k -> sv -> t
+    val   branch : ('b -> 'a -> 'b) -> 'b -> t -> k -> (sv -> 'a) -> 'b
+    val   svfold : ('a -> k -> sv -> 'a) -> 'a -> t -> 'a
   end
 
   module Make
@@ -779,19 +800,39 @@ module Rel = struct
          and type Name.t = N.t = struct
     
     type sv = V.t
-    module VS = Set.Make(V)(N)(A)
-    include Map.Make(K)(VS)(N)(A)
+    module Vs = Set.Make(V)(N)(A)
+    module M = Map.Make(K)(Vs)(N)(A)
+    include M
+    let name_of_data (type d) (module D : DatType with type t = d) (d : d) : Name.t =
+      Name.gensym (string_of_int (D.hash (Hashtbl.hash "Trie#name_of_data") d))
 
-    let clobber : Name.t -> t -> k -> sv -> t =
-      fun nm t k v -> nadd nm t k (VS.singleton v)
+    let nclobber : Name.t -> t -> k -> sv -> t =
+      fun nm t k v -> nadd nm t k (Vs.singleton v)
 
-    let join : Name.t -> t -> k -> sv -> t =
+    let clobber : t -> k -> sv -> t =
+      fun t k v -> add t k (Vs.singleton v)
+
+    let njoin : Name.t -> t -> k -> sv -> t =
       fun nm t k v ->
         let vs' = match find t k with
-          | Some vs -> VS.add vs v
-          | None    -> VS.singleton v
+          | Some vs -> Vs.add vs v
+          | None    -> Vs.singleton v
         in
-        (*nadd nm t k vs'*) add t k vs'
+        nadd nm t k vs'
+
+    let sjoin : t -> k -> sv -> t =
+      let nm : t * k * sv -> Name.t =
+        name_of_data (module AdaptonTypes.Tuple3(M)(K)(V))
+      in
+      fun t k sv -> njoin (nm (t, k, sv)) t k sv
+
+    let join : t -> k -> sv -> t =
+      fun t k v ->
+        let vs' = match find t k with
+          | Some vs -> Vs.add vs v
+          | None    -> Vs.singleton v
+        in
+        add t k vs'
 
     let branch
         (type a)
@@ -801,10 +842,10 @@ module Rel = struct
       fun t k f ->
         match find t k with
         | None -> empty
-        | Some vs -> VS.fold (fun a n -> add a (f n)) empty vs
+        | Some vs -> Vs.fold (fun a n -> add a (f n)) empty vs
 
     let svfold (type a) (f : a -> k -> sv -> a) : a -> t -> a =
-      fold (fun a k -> VS.fold (fun a v -> f a k v) a)
+      fold (fun a k -> Vs.fold (fun a v -> f a k v) a)
 
   end
 
@@ -820,7 +861,8 @@ module Graph = struct
 
     val mem_vertex : t -> vertex -> bool
     val mem_edge   : t -> vertex -> vertex -> bool
-    val add_edge : Name.t -> t -> vertex -> vertex -> t
+    val add_edge  : t -> vertex -> vertex -> t
+    val nadd_edge : Name.t -> t -> vertex -> vertex -> t
     val to_dot : t -> string
     val fold_edges : ('a -> vertex -> vertex -> 'a) -> 'a -> t -> 'a
 
@@ -837,16 +879,21 @@ module Graph = struct
     include Rel.Make(V)(V)(N)(A)
 
     let mem_edge t v v' = match find t v with
-      | Some vs -> VS.fold (fun a v'' -> a || V.equal v' v'') false vs
+      | Some vs -> Vs.fold (fun a v'' -> a || V.equal v' v'') false vs
       | None    -> false
 
     let mem_vertex = mem
-    let add_edge nm t v v' =
+    let nadd_edge nm t v v' =
       if mem_vertex t v'
-      then join nm t v v'
+      then njoin nm t v v'
       else
         let nm, nm' = Name.fork nm in
-        join nm' (nadd nm t v' (VS.empty ~min_depth:4)) v v'
+        njoin nm' (nadd nm t v' (Vs.empty ~min_depth:4)) v v'
+    let add_edge t v v' =
+      if mem_vertex t v'
+      then join t v v'
+      else
+        join (add t v' (Vs.empty ~min_depth:4)) v v'
 
     let to_dot _ = failwith "unimplemented"
 
@@ -860,7 +907,7 @@ module Graph = struct
 
     (*let show t =
       string_of_list
-        (fun (v, vs) -> Printf.sprintf "(%s %s)" (V.string v) (VS.string vs))
+        (fun (v, vs) -> Printf.sprintf "(%s %s)" (V.string v) (Vs.string vs))
         (to_list t)
     let pp ff p = Format.pp_print_string ff (show p)
       let string = show*)

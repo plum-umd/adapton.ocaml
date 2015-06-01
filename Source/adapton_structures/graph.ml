@@ -41,7 +41,7 @@ module RandomInput = struct
      edges)
 end
 
-
+(*
 module Make
          (Name : NameType)
          (ArtLib : ArtLibType)
@@ -102,3 +102,4 @@ module Make
 
   end
 
+*)
