@@ -1193,6 +1193,7 @@ module Reduction = struct
 
 end
 
+(*
 module Graph = struct
 
   module Iter
@@ -1217,7 +1218,7 @@ module Graph = struct
   end
 
 end
-
+*)
                      
 (* ----------------------------------------------------------------------------------------------------- *)
 (* ----------------------------------------------------------------------------------------------------- *)
@@ -1400,7 +1401,7 @@ module Experiments = struct
   module AVL_arggen = Reduction.AVL_of_rope(struct let name = "grifola_arggen" end)(Grifola_arggen.ArtLib)
   module AVL_lazy_recalc = Reduction.AVL_of_rope(struct let name = "lazy_recalc" end)(LazyRecalc.ArtLib)
 
-  module Graph_iter_name = Graph.Iter(struct let name = "name" end)(Grifola_name.ArtLib)
+  (*module Graph_iter_name = Graph.Iter(struct let name = "name" end)(Grifola_name.ArtLib)*)
 
 end
 
@@ -1518,7 +1519,7 @@ let raw_experiments =
   (module Experiments.AVL_arggen                       : ListAppType) ;
   (module Experiments.AVL_lazy_recalc                  : ListAppType) ;
 
-  (module Experiments.Graph_iter_name : ListAppType) ;
+  (*(module Experiments.Graph_iter_name : ListAppType) ;*)
 
 ]
 
