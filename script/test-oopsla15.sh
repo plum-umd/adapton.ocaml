@@ -195,7 +195,7 @@ done
 
 FILE=$FILE_PRE/list_eager_filter.csv
 #len - length of the list, must be a multiple of --num-changes, which has a default of 10
-for len in 1000 2000 3000 4000 5000 6000 7000 8000 9000 10000; do
+for len in 10000; do
   #samp - sample number, is the random seed that is used to create the initial data to be modified
   for samp in 1 2 3 4 5 6 7; do
     #gran- granularity, average articulation chunk size is 2^gran 
@@ -222,7 +222,7 @@ done
 
 FILE=$FILE_PRE/list_eager_map.csv
 #len - length of the list, must be a multiple of --num-changes, which has a default of 10
-for len in 1000 2000 3000 4000 5000 6000 7000 8000 9000 10000; do
+for len in 10000; do
   #samp - sample number, is the random seed that is used to create the initial data to be modified
   for samp in 1 2 3 4 5 6 7; do
     #gran- granularity, average articulation chunk size is 2^gran 
