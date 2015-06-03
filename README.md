@@ -61,6 +61,7 @@ Toplevel example:
     AInt.force ax2;;
     AInt.set a 7;;
     AInt.force ax2;;
+    exit 0;;
 
 After Changing source:
 
