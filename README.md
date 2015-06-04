@@ -18,23 +18,22 @@ To run a first experiment:
     cd script
     ./simplemerge.sh
 
-    test takes 2-5 minutes, runs incremental mergesort on a few lists
-
-    results saved to out/simplemerge.csv.
+`test` takes 2-5 minutes, runs incremental mergesort on a few lists.
+results saved to out/simplemerge.csv.
 
     template/Charts.xlsx visualizes an instance of this data
         on 'data' sheet: Data->Refresh Data, with your own data as you please
 
-To use externally:
+**To use externally:**
 
     make opam-pin (once)
 
-    in your source:
+in your source:
 
     open Adapton_lib
 
-    Adapton.Grifola will be available, along with all of adapton_core/
-    Adapton.Structures.Spreadtree will be available, along with all of adapton_structures/
+`Adapton.Grifola` will be available, along with all of `adapton_core/`
+`Adapton.Structures.Spreadtree` will be available, along with all of `adapton_structures/`
 
     compile your project using opam package 'adapton'.
 
