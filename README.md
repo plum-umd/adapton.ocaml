@@ -29,7 +29,7 @@ results saved to out/simplemerge.csv.
 
 `make opam-pin` (once)
 
-**in your source:**
+in your source:
 
     open Adapton_lib
 
@@ -43,7 +43,7 @@ with ocamlbuild, in `_tags`:
     <true>: thread
     <true>: package(adapton)
 
-**External example: Sample/Trivial**
+**External example:** `Sample/Trivial`
 
     ocamlbuild -use-ocamlfind find_0_bit.native
 
