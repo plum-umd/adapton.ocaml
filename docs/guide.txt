@@ -1,5 +1,9 @@
-A guide to working with adapton.ocaml
 updated 6-3-15
+
+A guide to working with adapton.ocaml
+
+Introduction
+============
 
 Nominal Adapton is a general purpose incremental computation engine. Users are
 able to write somewhat standard code (plus the inclusion of names along with
@@ -32,6 +36,9 @@ internally from the experiments program. We call experiments from a simple bash
 script for ease of use and record of trials. Results are saved as CSV files,
 which can be loaded into excel spreadsheets in the templates folder for
 generating summary information and visialization.
+
+List Experiments
+================
 
 Each experiment begins by generating an input list. Then some calculation is
 done to get an output list. Next the input list is modified in some way, at
@@ -146,6 +153,9 @@ median - composition of mergesort and center. This is our main test for
     list elements. It's a open area of our research that hasn't been in a paper
     yet.
 
+Experiment Results
+==================
+
 By default, results are appended to CSV files in the out/ directory. They have a
 number of columns. Some of these have names that are in need of update. Here's
 what they mean:
@@ -168,8 +178,48 @@ create,create % - count of new adapton nodes
 tables - count of active memo tables
 granularity - From (--gran)
 
-There are a couple of excel files in the templates/ directory that can be used
-to visualize the CSV results data.
+There are a couple of excel files in the template directory that can be used
+to visualize the CSV results data. They initially contain sample data from
+the 'simplemerge.sh' script. Any of the generated CSV files can be loaded and
+many parameters can be adjusted. Often we concatenate several results files
+so that we can compare tests after a code change. You will want to modify the
+test name so that the different runs can be distinguished. A simple command to
+do this is "sed 's/[old]/[new]/g' [input.csv] > [output.csv]", changing only
+characters inside []. We have, for example, changed Rope_mergesort_name to
+old_Rope_mergesort_name to compare.
+
+template/Charts.xlsx contains a number of data tables, charts and adjustable
+parameters. You can load data by switching to the 'data' sheet and selecting
+'Data->Refresh Data' from the menu. If you end up importing a new sheet, the
+important options are to choose are delimiters of both comma and tab, and to
+treat consecutive delimiters as one. The 'Summary' sheet will be updated with
+all the new data, and has parameters labeled in green that can be modified. The
+'average' sheet does all the main calculations, but does include adjustments
+for the sample numbers, in case you used something different than 1-7.
+
+The Charts excel file is designed to compare multiple tests. There is a pale
+green option bar across the top with the potential values from the initial data.
+This data does not automatically refresh, but can be used for communication
+purposes. The bright green labels are for entering parameters. They are labeled
+with their effects. The initial run is the test to extract initial list creation
+data from. We usually use an Adapton alternative like lazyrecalc. This can be
+generated independent of interactions with a command like: "experiments.native 
+--experiment [exp]_lazyrecalc --0" as in the test-gran.sh script.
+
+The rest of the parameters are more straight forward. There is a table for the
+name of test and label in the chart. Up to 5 entries can be used. Unused lines
+may appear in the chart if it is not manually restricted to the first few
+entries. The rest of the parameters apply to their sections, selecting one
+parameter per set, like the interaction 'id-insert', and the rest are
+incorporated in the data. One section plots against list length, the next plots
+against granularity (though that data is excluded in the simple test set), the
+final section plots agaist interaction. There are two bar charts with the same
+data, but grouped differently.
+
+
+
+
+
 
 
 
