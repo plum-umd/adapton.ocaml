@@ -5,7 +5,7 @@ adapton.ocaml
 
 Yit's original mecurial repo is here: https://bitbucket.org/khooyp/adapton.ocaml
 
-Adapton runs as a local opam 1.2+ package, installed with 'make opam-pin'.
+Adapton runs as a local opam 1.2+ package, installed with `make opam-pin`.
 
 **To build and run the imp interpreter:**
 
@@ -22,11 +22,12 @@ Adapton runs as a local opam 1.2+ package, installed with 'make opam-pin'.
 results saved to out/simplemerge.csv.
 
 `template/Charts.xlsx` visualizes an instance of this data
+
     on 'data' sheet: Data->Refresh Data, with your own data as you please
 
 **To use externally:**
 
-    make opam-pin (once)
+`make opam-pin` (once)
 
 **in your source:**
 
@@ -38,6 +39,7 @@ results saved to out/simplemerge.csv.
 compile your project using opam package `adapton`.
 
 with ocamlbuild, in `_tags`:
+    
     <true>: thread
     <true>: package(adapton)
 
@@ -47,7 +49,7 @@ with ocamlbuild, in `_tags`:
 
 **Toplevel example:**
 
-  make opam-pin (once)
+`make opam-pin` (once)
 
     ocaml
     #use "topfind";;
