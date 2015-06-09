@@ -111,7 +111,7 @@ The **Getting Started** guide above automatically collects experimental data.  H
 
 **Running Manual List and Tree Tests**
 
-The list experiments system was developed over a longer period of time so it is a little easier to use. The `docs/` directory contains a longer guide to use it. Feel free to skip to the listing of parameters to `experiments.native` to try out more options. The test script we ran above is `script/test-oopsla15.sh`. This also has two sets of options, the second being the set reported in our paper.
+The list experiments system was developed over a longer period of time so it is a little easier to use. The `docs/` directory contains a longer guide to use it. Feel free to skip to the listing of parameters to `experiments.native` to try out more options. The test script we ran above is `script/test-oopsla15.sh`. This script begins with a list of options, which can be edited manually.
 
 The following sequence will generate results:
 
@@ -121,7 +121,7 @@ The following sequence will generate results:
 
   >[guest@ic adapton.ocaml]$ ./experiment.native --experiment Rope_mergesort_name --0 --r --num-changes 1 --n 50000
 
-Again these tests are more demanding than in the paper, but less thorough. We see that Non-Adapton ('lazyrecalc') takes much less time to generate the initial list, but far more time to make an incremental change than Adapton ('name'). The terminal output is sufficient for our description, but the raw output can be found by:
+These tests are more demanding than those reported in the paper, but each invocation only performs a single sample. We see that Non-Adapton ('lazyrecalc') takes much less time to generate the initial list, but far more time to make an incremental change than Adapton ('name'). The terminal output is sufficient for our description, but the raw output can be found by:
 
   >[guest@ic adapton.ocaml]$ cd out/
 
