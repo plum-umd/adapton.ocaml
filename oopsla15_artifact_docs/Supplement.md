@@ -10,11 +10,11 @@ There are two ways to use this repository. One is as a library, and the other is
 
 See the readme file in the main directory for some examples of library use. There are currently no major examples in the repository.
 
-We have been developing a number of list-based example programs within an extention to Adapton located in the `Source/adapton_structures` directory. This is a currently incomplete list library, where having names as first-class values within data can be very beneficial.
+We have been developing a number of list-based example programs within an extension to Adapton located in the `Source/adapton_structures` directory. This is a currently incomplete list library, where having names as first-class values within data can be very beneficial.
 
 There are a number of internal examples set up for testing purposes.  They can all be run with `experiments.native`, which has many parameters available. Calling this executable with `--help` will give a simple list of parameters, and calling it with `--experiment [anyletter]` will fail but generate a list of available experiments to run.
 
-The scripts folder contains a number of example uses of our test program. Our workflow has been to develop code within the Adapton library and call it internally from the experiments program. We call experiments from a simple bash script for ease of use and record of trials. Results are saved as CSV files, which can be loaded into excel spreadsheets in the templates folder for generating summary information and visialization.
+The scripts folder contains a number of example uses of our test program. Our workflow has been to develop code within the Adapton library and call it internally from the experiments program. We call experiments from a simple bash script for ease of use and record of trials. Results are saved as CSV files, which can be loaded into excel spreadsheets in the templates folder for generating summary information and visualization.
 
 List Experiments
 ----------------
@@ -36,7 +36,7 @@ An explanation of the parameters to experiments.native follows:
 * `--fullinit` (default unset)
     * the initial generation time for the output list is measured at 100% demand, regardless of the value of --demand
 * `--outfile [filename]` (default out/experiments.csv)
-    * the file to append result data to, created if nessecary
+    * the file to append result data to, created if necessary
 * `--experiment [name]` (no default)
     * an experiment to run, required for results
 * `--0` (default r,rr,di,id,ss)
@@ -44,7 +44,7 @@ An explanation of the parameters to experiments.native follows:
 * `--r`
     * adds 'r-replace' interaction: replace one element with another, no reversal
 * `--rr`
-    * adds 'rr-relace1' and 'rr-replace2': replace one element of the list with another; reverse this procedure to restore the original
+    * adds 'rr-replace1' and 'rr-replace2': replace one element of the list with another; reverse this procedure to restore the original
 * `--di`
     * adds 'di-delete' and 'di-insert': delete an item of the list; reinsert
 * `--id`
@@ -63,23 +63,23 @@ An explanation of the parameters to experiments.native follows:
     * outputs simplified version of the above to the screen
 
 
-An explaination of the experiments available to run follows:
+An explanation of the experiments available to run follows:
 
-Most experiment titles are divided up into three sections delimited by an underscore. The final word is the articulation library used. This is some version of Adapton, or an alternative to it. Basicaly, it provides the methods to deal with names.
+Most experiment titles are divided up into three sections delimited by an underscore. The final word is the articulation library used. This is some version of Adapton, or an alternative to it. Basically, it provides the methods to deal with names.
 
-'name' is the main Adapton version being presented, using programmer supplied names to distinguish updatable sections of data. 'arg' and 'arggen' are versions that use a hash of function parameters. 'arggen' is the version used in Classic Adapton. 'sac' is an attempt to replicate the methods of self-adjusting computation. It is not fully implemented at this time and may not provide correct results for the more complicated tests.
+'name' is the main Adapton version being presented, using programmer supplied names to distinguish updateable sections of data. 'arg' and 'arggen' are versions that use a hash of function parameters. 'arggen' is the version used in Classic Adapton. 'sac' is an attempt to replicate the methods of self-adjusting computation. It is not fully implemented at this time and may not provide correct results for the more complicated tests.
 
 There are two non-incremental alternatives to Adapton: 'eagernoninc' does all calculations at the time of definition. 'lazynoninc' does all calculations at the first request for results. Neither of these will return the correct result after an incremental change. They are used for performance testing only.
 
 'lazyrecalc' is the version we've been using for most of our comparison testing. It calculates results when forced, but does not save them. It returns correct results after an incremental change, without the overhead of Adapton techniques. As an alternative to Adapton, its limitation is that it cannot select data affected by a change, so it must rerun all calculations requested.
 
-The first word in the experiment title currently groups experiments by datastructure used. All experiments take an input list, but most of the time we find it benneficial to convert the list into some type of tree structure to get the most bennefit from Adapton. At the time of this guide, we are using only the original list structure, or a rope structure, which is a tree with data in the leaves only.
+The first word in the experiment title currently groups experiments by data structure used. All experiments take an input list, but most of the time we find it beneficial to convert the list into some type of tree structure to get the most benefit from Adapton. At the time of this guide, we are using only the original list structure, or a rope structure, which is a tree with data in the leaves only.
 
-Here are explainations for the various computations available for experiments:
+Here are explanations for the various computations available for experiments:
 
 * filter, map - common list computations. We filter even numbers and perform trivial math. The eager version updates all data when forced after a change. The non-eager version only updates forced items.
 * map_paired - breaks a list into even and odd elements and them sums pairs to produce an output list. Currently the trusted computation (for --test-flags) requires lists with an even num of elements, so id and di interactions fail.
-* unique - a mapping to '1' the first time an element is encounted, '0' each additional time. This makes use of a trie structure internally as a set.
+* unique - a mapping to '1' the first time an element is encountered, '0' each additional time. This makes use of a trie structure internally as a set.
 * quickhull - interprets the input list as a sequence of 2d points, and returns a list of elements corresponding to the outermost points of the group.
 * max_dist - similar to quickhull, but only returns a single element
 * reverse - reverses a list. The List version generates a computation graph structured like a rope, the Rope version converts the list to a rope and runs a standard algorithm (producing the same computation structure)
@@ -101,7 +101,7 @@ what they mean:
 * Test - The interaction
 * Size - Initial input list length
 * Mod Pos, Mod Pos % - location in the list of the interaction; % of list size
-* Demand, Demand % - The amout of the output list requested; % of list size
+* Demand, Demand % - The amount of the output list requested; % of list size
 * Time - Seconds required to return the demanded output list
 * Unit Cost - Optional statistic, often measuring computation count 
 * Heap - A snapshot of heap memory used. Ballpark number for comparisons
@@ -119,7 +119,7 @@ There are a couple of excel files in the template directory that can be used to 
 
 The `Charts.xlsx` excel file is designed to compare multiple tests. There is a pale green option bar across the top with the potential values from the initial data. This data does not automatically refresh, but can be used for communication purposes. The bright green labels are for entering parameters. They are labeled with their effects. The initial run is the test to extract initial list creation data from. We usually use an Adapton alternative like lazyrecalc. This can be generated independent of interactions with a command like: `experiments.native --experiment [exp]_lazyrecalc --0` as in the `test-gran.sh` script.
 
-The rest of the parameters are more straight forward. There is a table for the name of test and label in the chart. Up to 5 entries can be used. Unused lines may appear in the chart if it is not manually restricted to the first few entries. The rest of the parameters apply to their sections, selecting one parameter per set, like the interaction 'id-insert', and the rest are incorporated in the data. One section plots against list length, the next plots against granularity (though that data is excluded in the simple test set), the final section plots agaist interaction. There are two bar charts with the same data, but grouped differently.
+The rest of the parameters are more straight forward. There is a table for the name of test and label in the chart. Up to 5 entries can be used. Unused lines may appear in the chart if it is not manually restricted to the first few entries. The rest of the parameters apply to their sections, selecting one parameter per set, like the interaction 'id-insert', and the rest are incorporated in the data. One section plots against list length, the next plots against granularity (though that data is excluded in the simple test set), the final section plots against interaction. There are two bar charts with the same data, but grouped differently.
 
 Programmer's Guide for *Incremental Computation with Names* (**ICwN**)
 ======================================================================
@@ -141,7 +141,7 @@ The `Source` paths below are relative to the `adapton.ocaml` repository.  The HT
   (Ropes versus trees: In the implementation, we refer to binary trees
   as **ropes** when all their elements are restricted to leaf
   positions.  Other binary trees that store elements at internal nodes
-  are simply **trees**.  This distiction is absent in **ICwN**.)
+  are simply **trees**.  This distinction is absent in **ICwN**.)
 
  * The [Quickhull module (Source/test/quickhull.ml)](http://github.com/plum-umd/adapton.ocaml/tree/master/Source/test/quickhull.ml)
 uses tree and list definitions above to define the quickhull algorithm for convex hulls.
