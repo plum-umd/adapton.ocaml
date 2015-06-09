@@ -48,7 +48,7 @@ Getting Started with Adapton's OOPSLA'15 Artifact
  trends should not vary as much, so we encourage reviewers to consider
  speedups rather than time taken.
 
-5. (Optional) Recreate the full experiments we reported in our paper.
+5. **(Optional)** Recreate the full experiments we reported in our paper.
 
   * Run the script above with the `full` option:
 
