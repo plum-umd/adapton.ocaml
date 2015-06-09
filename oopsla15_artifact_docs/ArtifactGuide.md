@@ -79,17 +79,17 @@ Our main Adapton git repo has been cloned to `adapton.ocaml/`.
 It is also available publicly at https://github.com/plum-umd/adapton.ocaml.
 
 **Contents of `adapton.ocaml` directory**:
- * `script/` sample scripts for correctness and performance testing.
- * `Source/` our implementation. 
- * `Sample/` example stub code for new projects.
- * `out/`    results from scripts, after they run.
- * `oopsla15_data_log` data that we collected for the paper, along with the spreadsheet we used for post-processing it.
+ * `script/`  -- sample scripts for correctness and performance testing.
+ * `Source/`  -- our implementation. 
+ * `Sample/`  -- example stub code for new projects.
+ * `out/`     -- results from scripts, after they run.
+ * `oopsla15_data_log` -- data that we collected for the paper, along with the spreadsheet we used for post-processing it.
 
 The following is a clone of our development repository for the IMP interpreter:
 
 >[guest@ic adapton.ocaml]$ cd ../incremental-computation
 
-*Contents of `incremental-computation` directory**:
+**Contents of `incremental-computation` directory**:
 
  * `imptests.native` -- the testing executable (compiled OCaml code).
  * `test.py`         -- a helper testing script.
