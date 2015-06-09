@@ -52,7 +52,7 @@ Our main Adapton git repo has been cloned to `adapton.ocaml/`.
 It is also available publically at https://github.com/plum-umd/adapton.ocaml
 From here you can rebuild our test program `experiments.native` or make the Adapton library available for use with opam with `make opam-reload` (or `make opam-pin` the first time).
 
-The `script/` directory contains some sample test scripts we've been using. `Sample/` and `Source/` contain our code. `out/` contains any results from scripts. `templates/` contains excel files used to visualize data. Feel free to clone the repo elsewhere to make use of them. The supplemental documentation contains a guide to the experiments that will be available publically in the `docs/` folder.
+The `script/` directory contains some sample test scripts we've been using. `Sample/` and `Source/` contain our code. `out/` contains any results from scripts. `templates/` contains excel files used to visualize data. Feel free to clone the repo elsewhere to make use of them. The supplemental documentation contains a guide to the experiments that will be available in the public `docs/` folder.
 
 The directory `oopsla15_data_log` contains all our original results data that made it into the paper, along with the spreadsheet we used for post-processing.
 
@@ -109,8 +109,3 @@ Deviations from our Paper's Results
 All our results were from a 2.26 GHz Intel Mac Pro with 16 GB of RAM running Mac OS X 10.6.8. Our original data can be found in `adapton.ocaml/oopals15_data_log/`. We measure the time taken to perform calculations both processor intensive and memory intensive. Results may vary greatly depending on the system used. The trends should not vary as much, so we encourage reviewers to consider speedups rather than time taken.
 
 Adapton has a great deal of overhead, both in memory and initial computation time. For this artifact, we have prepared our tests to generate a result set in a short period of time. This may not be enough to show off the benefits of Adapton in all cases. We encourage you to test manually with more demanding parameters as we have demonstrated above.
-
-
-We hope this guide provides a good starting point to further explore our work!
-
-
