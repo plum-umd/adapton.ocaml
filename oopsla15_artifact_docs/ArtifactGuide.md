@@ -21,11 +21,9 @@ Getting Started with Adapton's OOPSLA'15 Artifact
 
     >Password: guest (text hidden)
 
-4. Run our test script
+4. Run our test script and inspect the generated tables:
+
   >[guest@ic ~]$ ./recreate-results.sh
-
-
-  * Take a look at the generated tables
 
   >[guest@ic ~]$ less table1-results.txt
 
