@@ -27,9 +27,9 @@ Getting Started with Adapton's OOPSLA'15 Artifact
 
   * Take a look at the generated tables
 
-    >[guest@ic ~]$ less table1-results.txt
+  >[guest@ic ~]$ less table1-results.txt
 
-    >[guest@ic ~]$ less table2-results.txt
+  >[guest@ic ~]$ less table2-results.txt
 
  The format of these two table files matches that of the tables in the paper (tables 1 and 2).
 
