@@ -12,8 +12,7 @@ Getting Started with Adapton's OOPSLA'15 Artifact
 
 3. Run the VM and log on
   1. Double-click the icon in the left pane
-  2. A window will open with Arch Linux
-    * there is no internal windowing system
+  2. A window will open with Arch Linux (command-line only; there is no internal windowing system).
   3. Hit enter or wait a few seconds to advance from the boot screen
   4. Enter the user/password: guest/guest
 
