@@ -1,43 +1,45 @@
-Step by step guide to Adapton's OOPSLA'15 Artifact
-==================================================
+Getting Started with Adapton's OOPSLA'15 Artifact
+=================================================
 
-Supplement to Getting Started
------------------------------
+1. Install a Program to run the virtual machine 
+  * We used VirtualBox with default settings
+  1. Go to https://www.virtualbox.org/wiki/Downloads
+  2. Select the appropriate option for your platform
+  3. Install the program
 
-* If you don't already have a way to run a VM, we suggest (https://www.virtualbox.org/wiki/Downloads)
+2. Import Adapton's .ova file [TODO include file name]
+  * From Menu: File->Import Appliance...
 
-  * Download and install one of the first 4 options depending on system type
-    
-    * This guide was written from OSX
+3. Run the VM and log on
+  1. Double-click the icon in the left pane
+  2. A window will open with Arch Linux
+    * there is no internal windowing system
+  3. Hit enter or wait a few seconds to advance from the boot screen
+  4. Enter the user/password: guest/guest
 
-* Import the VM with default settings
+    >ic login: guest
 
-  `File->Import Appliance...` [TODO include file name]
+    >Password: guest (text hidden)
 
-* Run the VM by double-clicking the icon in the left pane
-
-* A window will open with Arch Linux
-
-  * there is no internal windowing system
-  * hit enter or wait a few seconds to advance from the boot screen
-
-* At the login prompt, enter the user name 'guest', and the password 'guest'
-
-  >ic login: guest
-
-  >Password: guest (text hidden)
-
-* Generate our sample test results
-
+4. Run our test script
   >[guest@ic ~]$ ./recreate-results.sh
 
-* Take a look at how they turned out
 
-  >[guest@ic ~]$ less table1-results.txt
+  * Take a look at the generated tables
 
-  >[guest@ic ~]$ less table2-results.txt
+    >[guest@ic ~]$ less table1-results.txt
 
-Let us know if you have any trouble!
+    >[guest@ic ~]$ less table2-results.txt
+
+  * Our original paper data is in `adapton.ocaml/oopals15_data_log/`
+
+  * To recreate our paper's data, use the script: `recreate-results.sh full`
+    * If you plan on running our full test set which takes the better part of a day to run, you'll need to change settings on the VM to allow 8 GB of memory
+
+5. Let us know if you have any trouble!
+
+Step by step guide to Adapton's OOPSLA'15 Artifact
+==================================================
 
 Included in the VM
 ------------------
@@ -50,7 +52,7 @@ Our main Adapton git repo has been cloned to `adapton.ocaml/`.
 It is also available publically at https://github.com/plum-umd/adapton.ocaml
 From here you can rebuild our test program `experiments.native` or make the Adapton library available for use with opam with `make opam-reload` (or `make opam-pin` the first time).
 
-The `script/` directory contains some sample test scripts we've been using. `Sample/` and `Source/` contain our code. `out/` contains any results from scripts. `templates/` contains excel files used to visualize data. Feel free to clone the repo elsewhere to make use of them. The supplemental documentation contains a guide to the experiments that will be available publically in the `docs/` folder.
+The `script/` directory contains some sample test scripts we've been using. `Sample/` and `Source/` contain our code. `out/` contains any results from scripts. `templates/` contains excel files used to visualize data. Feel free to clone the repo elsewhere to make use of them. The supplemental documentation contains a guide to the experiments that will be available in the public `docs/` folder.
 
 The directory `oopsla15_data_log` contains all our original results data that made it into the paper, along with the spreadsheet we used for post-processing.
 
@@ -107,6 +109,3 @@ Deviations from our Paper's Results
 All our results were from a 2.26 GHz Intel Mac Pro with 16 GB of RAM running Mac OS X 10.6.8. Our original data can be found in `adapton.ocaml/oopals15_data_log/`. We measure the time taken to perform calculations both processor intensive and memory intensive. Results may vary greatly depending on the system used. The trends should not vary as much, so we encourage reviewers to consider speedups rather than time taken.
 
 Adapton has a great deal of overhead, both in memory and initial computation time. For this artifact, we have prepared our tests to generate a result set in a short period of time. This may not be enough to show off the benefits of Adapton in all cases. We encourage you to test manually with more demanding parameters as we have demonstrated above.
-
-
-We hope this guide provides a good starting point to further explore our work!
