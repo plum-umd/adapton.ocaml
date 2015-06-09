@@ -44,17 +44,13 @@ Included in the VM
 
   >[guest@ic ~]$ ls
 
-A copy of this guide and Getting Started are available in `docs/`.
-
 Our main Adapton git repo has been cloned to `adapton.ocaml/`.
   >[guest@ic ~]$ cd adapton.ocaml/
 
 It is also available publically at https://github.com/plum-umd/adapton.ocaml
-From here you can rebuild our test program `experiments.native` or make the Adapton library available for use with opam with `make opam-reload` or `make opam-pin` the first time
+From here you can rebuild our test program `experiments.native` or make the Adapton library available for use with opam with `make opam-reload` (or `make opam-pin` the first time).
 
-These steps have already been completed in the VM image and again above. See the `Makefile` for options. `README.md` is a text file that contains a number of examples of usage.
-
-The `script/` directory contains some sample test scripts we've been using. `Sample/` and `Source/` contain our code. `out/` contains any results from scripts. `templates/` contains excel files used to visualize data. Feel free to clone the repo elsewhere to make use of them. The `docs/` directory contains a guide to use them and run our experiments.
+The `script/` directory contains some sample test scripts we've been using. `Sample/` and `Source/` contain our code. `out/` contains any results from scripts. `templates/` contains excel files used to visualize data. Feel free to clone the repo elsewhere to make use of them. The supplemental documentation contains a guide to the experiments that will be available publically in the `docs/` folder.
 
 The directory `oopsla15_data_log` contains all our original results data that made it into the paper, along with the spreadsheet we used for post-processing.
 
@@ -71,7 +67,7 @@ The imp test script that generates data for table2 is `test.py`. You can edit th
 
 Nano has common commands listed at the bottom. Press control-x to exit and y [enter] to save your work.
 
-The parameters at the top are set to run simpler tests that finish quickly. 'array_size' and 'intl_input' must be powers of 2. The second group of parameters are the ones used in the paper submission. This script is run as part of the test set above. You can call it as above, or add a parameter to run the longer set of tests `adapton-test full`. This will take many hours, though.
+The parameters at the top are set to run simpler tests that finish quickly. 'array_size' and 'intl_input' must be powers of 2. The second group of parameters are the ones used in the paper submission. This script is run as part of the test set above. You can call it as above, or add a parameter to run the longer set of tests `reproduce-results.sh full`. This will take many hours, though.
 
 Tests can also be run individualy. We don't suggest doing this unless you want to deal with the details of how our tests work, but the following sequence will produce results:
 
