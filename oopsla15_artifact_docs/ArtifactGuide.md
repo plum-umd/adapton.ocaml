@@ -1,43 +1,45 @@
-Step by step guide to Adapton's OOPSLA'15 Artifact
-==================================================
+Getting Started with Adapton's OOPSLA'15 Artifact
+=================================================
 
-Supplement to Getting Started
------------------------------
+1. Install a Program to run the virtual machine 
+  * We used VirtualBox with default settings
+  1. Go to https://www.virtualbox.org/wiki/Downloads
+  2. Select the appropriate option for your platform
+  3. Install the program
 
-* If you don't already have a way to run a VM, we suggest (https://www.virtualbox.org/wiki/Downloads)
+2. Import Adapton's .ova file [TODO include file name]
+  * From Menu: File->Import Appliance...
 
-  * Download and install one of the first 4 options depending on system type
-    
-    * This guide was written from OSX
+3. Run the VM and log on
+  1. Double-click the icon in the left pane
+  2. A window will open with Arch Linux
+    * there is no internal windowing system
+  3. Hit enter or wait a few seconds to advance from the boot screen
+  4. Enter the user/password: guest/guest
 
-* Import the VM with default settings
+    >ic login: guest
 
-  `File->Import Appliance...` [TODO include file name]
+    >Password: guest (text hidden)
 
-* Run the VM by double-clicking the icon in the left pane
-
-* A window will open with Arch Linux
-
-  * there is no internal windowing system
-  * hit enter or wait a few seconds to advance from the boot screen
-
-* At the login prompt, enter the user name 'guest', and the password 'guest'
-
-  >ic login: guest
-
-  >Password: guest (text hidden)
-
-* Generate our sample test results
-
+4. Run our test script
   >[guest@ic ~]$ ./recreate-results.sh
 
-* Take a look at how they turned out
 
-  >[guest@ic ~]$ less table1-results.txt
+  * Take a look at the generated tables
 
-  >[guest@ic ~]$ less table2-results.txt
+    >[guest@ic ~]$ less table1-results.txt
 
-Let us know if you have any trouble!
+    >[guest@ic ~]$ less table2-results.txt
+
+  * Our original paper data is in `adapton.ocaml/oopals15_data_log/`
+
+  * To recreate our paper's data, use the script: `recreate-results.sh full`
+    * If you plan on running our full test set which takes the better part of a day to run, you'll need to change settings on the VM to allow 8 GB of memory
+
+5. Let us know if you have any trouble!
+
+Step by step guide to Adapton's OOPSLA'15 Artifact
+==================================================
 
 Included in the VM
 ------------------
@@ -110,3 +112,5 @@ Adapton has a great deal of overhead, both in memory and initial computation tim
 
 
 We hope this guide provides a good starting point to further explore our work!
+
+
