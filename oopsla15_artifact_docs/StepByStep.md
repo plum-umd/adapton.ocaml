@@ -4,11 +4,11 @@ Step by step guide to Adapton's OOPSLA'15 Artifact
 Supplement to Getting Started
 -----------------------------
 
-* If you don't already have a way to run a VM, we suggest [VirtualBox](https://www.virtualbox.org/wiki/Downloads)
+* If you don't already have a way to run a VM, we suggest (https://www.virtualbox.org/wiki/Downloads)
 
-* Download and install one of the first 4 options depending on system type
-  
-  * This guide was written from OSX
+  * Download and install one of the first 4 options depending on system type
+    
+    * This guide was written from OSX
 
 * Import the VM with default settings
 
@@ -112,6 +112,5 @@ All our results were from a 2.26 GHz Intel Mac Pro with 16 GB of RAM running Mac
 
 Adapton has a great deal of overhead, both in memory and initial computation time. For this artifact, we have prepared our tests to generate a result set in a short period of time. This may not be enough to show off the benefits of Adapton in all cases. We encourage you to test manually with more demanding parameters as we have demonstrated above.
 
-[TODO consider a short tour of the code]
 
 We hope this guide provides a good starting point to further explore our work!
