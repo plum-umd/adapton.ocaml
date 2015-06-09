@@ -41,24 +41,44 @@ Getting Started with Adapton's OOPSLA'15 Artifact
 Step by step guide to Adapton's OOPSLA'15 Artifact
 ==================================================
 
-Included in the VM
+VM Contents
 ------------------
 
   >[guest@ic ~]$ ls
 
 Our main Adapton git repo has been cloned to `adapton.ocaml/`.
+
   >[guest@ic ~]$ cd adapton.ocaml/
 
-It is also available publically at https://github.com/plum-umd/adapton.ocaml
-From here you can rebuild our test program `experiments.native` or make the Adapton library available for use with opam with `make opam-reload` (or `make opam-pin` the first time).
+It is also available publically at https://github.com/plum-umd/adapton.ocaml.
 
-The `script/` directory contains some sample test scripts we've been using. `Sample/` and `Source/` contain our code. `out/` contains any results from scripts. `templates/` contains excel files used to visualize data. Feel free to clone the repo elsewhere to make use of them. The supplemental documentation contains a guide to the experiments that will be available in the public `docs/` folder.
+ * `script/` holds some sample scripts for correctness and performance testing.
+ * `Source/` holds our implementation. 
+ * `Sample/` holds example stub code for new projects.
+ * `out/`    holds results from scripts, after they run.
+ * `oopsla15_data_log` holds the data that we collected for the paper, along with the spreadsheet we used for post-processing it.
+ *  xxx
+ *  xxx
+ *  xxx
 
-The directory `oopsla15_data_log` contains all our original results data that made it into the paper, along with the spreadsheet we used for post-processing.
+Make targets
+-------------
+
+* `make test`         -- rebuilds our test program `experiments.native`
+* `make test-db`      -- rebuilds our test program `experiments.byte` (bytecode with debugging symbols)
+* `make opam-pin`     -- builds adapton library and use `opam` to install it locally
+* `make opam-reload`  -- use after `opam-pin` has been run once
+
+
+Other tests (for IMP interpreter)
+----------------------------------
 
   >[guest@ic adapton.ocaml]$ cd ../incremental-computation
 
-This is a clone of our development repository. At the time of this writing we're reorganising to separate what we want to be public from what we want to stay private. When compiled as above, the executable (`imptests.native`), test script (`test.py`), and results directory (`results/`) are located here. The `imp/` directory contains the code being tested. 
+This is a clone of our development repository for the IMP interpreter.
+It consists of the executable (`imptests.native`), test script
+(`test.py`), and results directory (`results/`) are located here. The
+`imp/` directory contains the code being tested.
 
 
 Running Manual Experiments
