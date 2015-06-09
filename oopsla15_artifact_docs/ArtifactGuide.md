@@ -87,7 +87,7 @@ It is also available publicly at https://github.com/plum-umd/adapton.ocaml.
 
 The following is a clone of our development repository for the IMP interpreter:
 
->[guest@ic adapton.ocaml]$ cd ../incremental-computation
+>[guest@ic adapton.ocaml]$ cd ~/incremental-computation
 
 **Contents of `incremental-computation` directory**:
 
@@ -109,26 +109,7 @@ Running Manual Experiments
 
 The **Getting Started** guide above automatically collects experimental data.  However, some users may want to run individual experiments manually.
 
-The imp test script that generates data for table2 is `test.py`. You can edit the common parameters at the top:
-  >[guest@ic incremental-computation]$ nano test.py
-
-Nano has common commands listed at the bottom. Press control-x to exit and y [enter] to save your work.
-
-The parameters at the top are set to run simpler tests that finish quickly. 'array_size' and 'intl_input' must be powers of 2. The second group of parameters are the ones used in the paper submission. This script is run as part of the test set above. You can call it as above, or add a parameter to run the longer set of tests `reproduce-results.sh full`. This will take many hours, though.
-
-Tests can also be run individually. We don't suggest doing this unless you want to deal with the details of how our tests work, but the following sequence will produce results:
-
-  >[guest@ic incremental-computations]$ ./imptests.native --artlib fromscratch --test fact3 --record --fact 10000
-
-  >[guest@ic incremental-computations]$ ./imptests.native --artlib structural --test fact3 --record --fact 10000
-
-  >[guest@ic incremental-computations]$ ./imptests.native --artlib nominal --test fact3 --record --fact 10000
-
-  >[guest@ic incremental-computations]$ cd results
-
-  >[guest@ic incremental-computations]$ tail fact-begin-swap-assign.csv
-
-What you see is the raw output file. The last three lines are the ones we just generated. They are more demanding but less thorough then the paper's results. The first floating point number in each line is the initial program run time. The second floating point number is the incremental run time. As you can see, Adapton ('structural', 'nominal') takes slightly longer for the initial program than Non-Adapton ('fromscratch'). The benefit is in the incremental change runtime, where Adapton performs far better.
+**Running Manual List and Tree Tests**
 
 The list experiments system was developed over a longer period of time so it is a little easier to use. The `docs/` directory contains a longer guide to use it. Feel free to skip to the listing of parameters to `experiments.native` to try out more options. The test script we ran above is `script/test-oopsla15.sh`. This also has two sets of options, the second being the set reported in our paper.
 
@@ -147,3 +128,29 @@ Again these tests are more demanding than in the paper, but less thorough. We se
   >[guest@ic adapton.ocaml]$ tail experiments.csv
 
 Here each test has a line for initial construction, one for each change made, and one for final heap size. The time is the second floating point number (the first one with some decimal digits).
+
+**Running Manual IMP Tests**
+
+The imp test script that generates data for table2 is `test.py`. You can edit the common parameters at the top:
+  >[guest@ic incremental-computation]$ nano test.py
+
+Nano has common commands listed at the bottom. Press control-x to exit and y [enter] to save your work.
+
+The parameters at the top are set to run simpler tests that finish quickly. 'array_size' and 'intl_input' must be powers of 2. The second group of parameters are the ones used in the paper submission. This script is run as part of the test set above. You can call it as above, or add a parameter to run the longer set of tests `reproduce-results.sh full`. This will take many hours, though.
+
+Tests can also be run individually. We don't suggest doing this unless you want to deal with the details of how our tests work, but the following sequence will produce results:
+
+  >[guest@ic adapton.ocaml]$ cd ~/incremental-computation
+
+  >[guest@ic incremental-computations]$ ./imptests.native --artlib fromscratch --test fact3 --record --fact 10000
+
+  >[guest@ic incremental-computations]$ ./imptests.native --artlib structural --test fact3 --record --fact 10000
+
+  >[guest@ic incremental-computations]$ ./imptests.native --artlib nominal --test fact3 --record --fact 10000
+
+  >[guest@ic incremental-computations]$ cd results
+
+  >[guest@ic incremental-computations]$ tail fact-begin-swap-assign.csv
+
+What you see is the raw output file. The last three lines are the ones we just generated. They are more demanding but less thorough then the paper's results. The first floating point number in each line is the initial program run time. The second floating point number is the incremental run time. As you can see, Adapton ('structural', 'nominal') takes slightly longer for the initial program than Non-Adapton ('fromscratch'). The benefit is in the incremental change runtime, where Adapton performs far better.
+
