@@ -23,9 +23,13 @@ Getting Started with Adapton's OOPSLA'15 Artifact
 
       >Password: guest (text hidden)
 
-4. Run our test script and inspect the generated tables:
+4. Run our test script:
 
     >[guest@ic ~]$ ./recreate-results.sh
+
+    * This will take 5-10 minutes
+
+5. Inspect the generated tables:
 
     >[guest@ic ~]$ less table1-results.txt
 
@@ -51,7 +55,7 @@ Getting Started with Adapton's OOPSLA'15 Artifact
  trends should not vary as much, so we encourage reviewers to consider
  speedups rather than time taken.
 
-5. **(Optional)** Recreate the full experiments we reported in our paper.
+6. **(Optional)** Recreate the full experiments we reported in our paper.
 
     * Run the script above with the `full` option:
 
@@ -65,7 +69,7 @@ Getting Started with Adapton's OOPSLA'15 Artifact
 
     * Our original raw data is in `adapton.ocaml/oopals15_data_log/`
 
-6. Let us know if you have any trouble!
+7. Let us know if you have any trouble!
 
 Step by step guide to Adapton's OOPSLA'15 Artifact
 ==================================================
@@ -73,11 +77,11 @@ Step by step guide to Adapton's OOPSLA'15 Artifact
 VM Contents
 ------------------
 
-    >[guest@ic ~]$ ls
+  >[guest@ic ~]$ ls
 
 Our main Adapton git repo has been cloned to `adapton.ocaml/`.
 
-    >[guest@ic ~]$ cd adapton.ocaml/
+  >[guest@ic ~]$ cd adapton.ocaml/
 
 It is also available publicly at https://github.com/plum-umd/adapton.ocaml.
 
@@ -91,7 +95,7 @@ It is also available publicly at https://github.com/plum-umd/adapton.ocaml.
 
 The following is a clone of our development repository for the IMP interpreter:
 
-    >[guest@ic adapton.ocaml]$ cd ~/incremental-computation
+  >[guest@ic adapton.ocaml]$ cd ~/incremental-computation
 
 **Contents of `incremental-computation` directory**:
 
@@ -116,7 +120,7 @@ The **Getting Started** guide above automatically collects experimental data.  H
 
 **Running Manual List and Tree Tests**
 
-The list experiments system was developed over a longer period of time so it is a little easier to use. The `docs/` directory contains a longer guide to use it. Feel free to skip to the listing of parameters to `experiments.native` to try out more options. The test script we ran above is `script/test-oopsla15.sh`. This script begins with a list of options, which can be edited manually.
+The list experiments system was developed over a longer period of time so it is a little easier to use. The supplement to this guide contains a longer explaination of how to use it. Feel free to skip to the listing of parameters to `experiments.native` to try out more options. The test script we ran above is `script/test-oopsla15.sh`. This script begins with a list of options, which can be edited manually.
 
 The following sequence will generate results:
 
@@ -128,16 +132,17 @@ The following sequence will generate results:
 
 These tests are more demanding than those reported in the paper, but each invocation only performs a single sample. We see that Non-Adapton ('lazyrecalc') takes much less time to generate the initial list, but far more time to make an incremental change than Adapton ('name'). The terminal output is sufficient for our description, but the raw output can be found by:
 
-    >[guest@ic adapton.ocaml]$ cd out/
-
-    >[guest@ic adapton.ocaml]$ tail experiments.csv
+  >[guest@ic adapton.ocaml]$ cd out/
+  
+  >[guest@ic adapton.ocaml]$ tail experiments.csv
 
 Here each test has a line for initial construction, one for each change made, and one for final heap size. The time is the second floating point number (the first one with some decimal digits).
 
 **Running Manual IMP Tests**
 
 The imp test script that generates data for table2 is `test.py`. You can edit the common parameters at the top:
-    >[guest@ic incremental-computation]$ nano test.py
+  
+  >[guest@ic incremental-computation]$ nano test.py
 
 Nano has common commands listed at the bottom. Press control-x to exit and y [enter] to save your work.
 
@@ -145,17 +150,17 @@ The parameters at the top are set to run simpler tests that finish quickly. 'arr
 
 Tests can also be run individually. We don't suggest doing this unless you want to deal with the details of how our tests work, but the following sequence will produce results:
 
-    >[guest@ic adapton.ocaml]$ cd ~/incremental-computation
+  >[guest@ic adapton.ocaml]$ cd ~/incremental-computation
 
-    >[guest@ic incremental-computations]$ ./imptests.native --artlib fromscratch --test fact3 --record --fact 10000
+  >[guest@ic incremental-computations]$ ./imptests.native --artlib fromscratch --test fact3 --record --fact 10000
 
-    >[guest@ic incremental-computations]$ ./imptests.native --artlib structural --test fact3 --record --fact 10000
+  >[guest@ic incremental-computations]$ ./imptests.native --artlib structural --test fact3 --record --fact 10000
 
-    >[guest@ic incremental-computations]$ ./imptests.native --artlib nominal --test fact3 --record --fact 10000
+  >[guest@ic incremental-computations]$ ./imptests.native --artlib nominal --test fact3 --record --fact 10000
 
-    >[guest@ic incremental-computations]$ cd results
+  >[guest@ic incremental-computations]$ cd results
 
-    >[guest@ic incremental-computations]$ tail fact-begin-swap-assign.csv
+  >[guest@ic incremental-computations]$ tail fact-begin-swap-assign.csv
 
 What you see is the raw output file. The last three lines are the ones we just generated. They are more demanding but less thorough then the paper's results. The first floating point number in each line is the initial program run time. The second floating point number is the incremental run time. As you can see, Adapton ('structural', 'nominal') takes slightly longer for the initial program than Non-Adapton ('fromscratch'). The benefit is in the incremental change runtime, where Adapton performs far better.
 
