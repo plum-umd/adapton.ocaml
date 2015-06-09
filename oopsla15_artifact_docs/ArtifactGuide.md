@@ -50,7 +50,9 @@ Getting Started with Adapton's OOPSLA'15 Artifact
 
 5. (Optional) Recreate the full experiments we reported in our paper.
 
-  * To recreate our paper's data, use the script: `recreate-results.sh full`
+  * Run the script above with the `full` option:
+
+    `recreate-results.sh full`
 
   * Unlike the short version described above, this invocation of the
     script (using `full`) will take most of a day to run, and will
