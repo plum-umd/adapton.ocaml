@@ -50,39 +50,38 @@ Our main Adapton git repo has been cloned to `adapton.ocaml/`.
 
   >[guest@ic ~]$ cd adapton.ocaml/
 
-It is also available publically at https://github.com/plum-umd/adapton.ocaml.
+It is also available publicly at https://github.com/plum-umd/adapton.ocaml.
 
- * `script/` holds some sample scripts for correctness and performance testing.
- * `Source/` holds our implementation. 
- * `Sample/` holds example stub code for new projects.
- * `out/`    holds results from scripts, after they run.
- * `oopsla15_data_log` holds the data that we collected for the paper, along with the spreadsheet we used for post-processing it.
- *  xxx
- *  xxx
- *  xxx
+**Contents of `adapton.ocaml` directory**:
+ * `script/` sample scripts for correctness and performance testing.
+ * `Source/` our implementation. 
+ * `Sample/` example stub code for new projects.
+ * `out/`    results from scripts, after they run.
+ * `oopsla15_data_log` data that we collected for the paper, along with the spreadsheet we used for post-processing it.
+
+The following is a clone of our development repository for the IMP interpreter:
+
+>[guest@ic adapton.ocaml]$ cd ../incremental-computation
+
+*Contents of `incremental-computation` directory**:
+
+ * `imptests.native` -- the testing executable (compiled OCaml code).
+ * `test.py`         -- a helper testing script.
+ * `results/`        -- results directory, with raw output measurements.
+ * `imp/`            -- the OCaml code being tested.
 
 Make targets
 -------------
-
 * `make test`         -- rebuilds our test program `experiments.native`
 * `make test-db`      -- rebuilds our test program `experiments.byte` (bytecode with debugging symbols)
 * `make opam-pin`     -- builds adapton library and use `opam` to install it locally
 * `make opam-reload`  -- use after `opam-pin` has been run once
 
 
-Other tests (for IMP interpreter)
-----------------------------------
-
-  >[guest@ic adapton.ocaml]$ cd ../incremental-computation
-
-This is a clone of our development repository for the IMP interpreter.
-It consists of the executable (`imptests.native`), test script
-(`test.py`), and results directory (`results/`) are located here. The
-`imp/` directory contains the code being tested.
-
-
 Running Manual Experiments
 --------------------------
+
+The **Getting Started** guide above automatically collects experimental data.  However, some users may want to run individual experiments manually.
 
 The imp test script that generates data for table2 is `test.py`. You can edit the common parameters at the top:
   >[guest@ic incremental-computation]$ nano test.py
@@ -91,7 +90,7 @@ Nano has common commands listed at the bottom. Press control-x to exit and y [en
 
 The parameters at the top are set to run simpler tests that finish quickly. 'array_size' and 'intl_input' must be powers of 2. The second group of parameters are the ones used in the paper submission. This script is run as part of the test set above. You can call it as above, or add a parameter to run the longer set of tests `reproduce-results.sh full`. This will take many hours, though.
 
-Tests can also be run individualy. We don't suggest doing this unless you want to deal with the details of how our tests work, but the following sequence will produce results:
+Tests can also be run individually. We don't suggest doing this unless you want to deal with the details of how our tests work, but the following sequence will produce results:
 
   >[guest@ic incremental-computations]$ ./imptests.native --artlib fromscratch --test fact3 --record --fact 10000
 
