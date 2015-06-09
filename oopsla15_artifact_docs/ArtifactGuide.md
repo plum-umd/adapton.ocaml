@@ -31,12 +31,39 @@ Getting Started with Adapton's OOPSLA'15 Artifact
 
     >[guest@ic ~]$ less table2-results.txt
 
-  * Our original paper data is in `adapton.ocaml/oopals15_data_log/`
+ The format of these two table files matches that of the tables in the paper (tables 1 and 2).
+
+ However, to generate these tables quickly, the `recreate-results.sh`
+ script performs fewer samples and runs our benchmarks on smaller
+ inputs than in the paper's tables.  For this reason, the results from
+ this script will not generally match the tables in the paper.  In
+ particular, our speedups generally **increase with increased input
+ sizes**.  (Instructions to create the full experiments are below).
+
+ We welcome you to perform interactive tests with more demanding
+ parameters, described further below.
+
+ All our results reported in the paper were from a 2.26 GHz Intel Mac
+ Pro with 16 GB of RAM running Mac OS X 10.6.8. Our original data can
+ be found in `adapton.ocaml/oopals15_data_log/`. We measure the time
+ taken to perform calculations both processor intensive and memory
+ intensive. Results may vary greatly depending on the system used. The
+ trends should not vary as much, so we encourage reviewers to consider
+ speedups rather than time taken.
+
+5. (Optional) Recreate the full experiments we reported in our paper.
 
   * To recreate our paper's data, use the script: `recreate-results.sh full`
-    * If you plan on running our full test set which takes the better part of a day to run, you'll need to change settings on the VM to allow 8 GB of memory
 
-5. Let us know if you have any trouble!
+  * Unlike the short version described above, this invocation of the
+    script (using `full`) will take most of a day to run, and will
+    require different VM settings.  In particular, you'll need to
+    change settings on the VM to allow 8 GB of memory (the default is
+    4 GB).
+
+  * Our original raw data is in `adapton.ocaml/oopals15_data_log/`
+
+6. Let us know if you have any trouble!
 
 Step by step guide to Adapton's OOPSLA'15 Artifact
 ==================================================
@@ -121,10 +148,3 @@ Again these tests are more demanding than in the paper, but less thorough. We se
   >[guest@ic adapton.ocaml]$ tail experiments.csv
 
 Here each test has a line for initial construction, one for each change made, and one for final heap size. The time is the second floating point number (the first one with some decimal digits).
-
-Deviations from our Paper's Results
------------------------------------
-
-All our results were from a 2.26 GHz Intel Mac Pro with 16 GB of RAM running Mac OS X 10.6.8. Our original data can be found in `adapton.ocaml/oopals15_data_log/`. We measure the time taken to perform calculations both processor intensive and memory intensive. Results may vary greatly depending on the system used. The trends should not vary as much, so we encourage reviewers to consider speedups rather than time taken.
-
-Adapton has a great deal of overhead, both in memory and initial computation time. For this artifact, we have prepared our tests to generate a result set in a short period of time. This may not be enough to show off the benefits of Adapton in all cases. We encourage you to test manually with more demanding parameters as we have demonstrated above.
