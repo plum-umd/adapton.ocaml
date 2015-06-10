@@ -93,10 +93,10 @@ The following sequence will generate results:
 
   >[guest@ic ~]$ cd adapton.ocaml/
 
-  >[guest@ic adapton.ocaml]$ ./experiment.native --experiment Rope_mergesort_lazyrecalc --0 --r --num-changes 1 --n 50000
+  >[guest@ic adapton.ocaml]$ ./experiment.native --experiment Rope\_mergesort\_lazyrecalc --0 --r --num-changes 1 --n 50000
 
-  >[guest@ic adapton.ocaml]$ ./experiment.native --experiment Rope_mergesort_name --0 --r --num-changes 1 --n 50000
-
+  >[guest@ic adapton.ocaml]$ ./experiment.native --experiment Rope\_mergesort\_name --0 --r --num-changes 1 --n 50000
+  
 Try using `--help` for help:
 
   >[guest@ic adapton.ocaml]$ ./experiment.native --help
@@ -129,7 +129,7 @@ The imp test script that generates data for table2 is `test.py`. You can edit th
 Nano has common commands listed at the bottom. Press control-x to exit and y [enter] to save your work.
 
 The parameters at the top are set to run simpler tests that finish
-quickly. 'array_size' and 'intl_input' must be powers of 2. The second
+quickly.`array_size` and `intl_input` must be powers of 2. The second
 group of parameters are the ones used in the paper submission. This
 script is run as part of the test set above. You can call it as above,
 or add a parameter to run the longer set of tests
