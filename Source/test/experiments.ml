@@ -1397,11 +1397,14 @@ module Experiments = struct
     module ListApp_sac = Reduction.Rope_sum(struct let name = "sac" end)(Sac.ArtLib)
   end
 
+(* older or unfinished experiments
+
   module AVL_name = Reduction.AVL_of_rope(struct let name = "grifola_name" end)(Grifola_name.ArtLib)
   module AVL_arggen = Reduction.AVL_of_rope(struct let name = "grifola_arggen" end)(Grifola_arggen.ArtLib)
   module AVL_lazy_recalc = Reduction.AVL_of_rope(struct let name = "lazy_recalc" end)(LazyRecalc.ArtLib)
 
-  (*module Graph_iter_name = Graph.Iter(struct let name = "name" end)(Grifola_name.ArtLib)*)
+  module Graph_iter_name = Graph.Iter(struct let name = "name" end)(Grifola_name.ArtLib)
+*)
 
 end
 
@@ -1514,12 +1517,16 @@ let raw_experiments =
   (module Experiments.List_Max_Distance.ListApp_lazy_recalc  : ListAppType) ;
   (module Experiments.List_Max_Distance.ListApp_sac          : ListAppType) ;
 
+(* older or unfinished experiments
+
   (* Benchmarks for overhead comparison: *)
   (module Experiments.AVL_name                         : ListAppType) ;
   (module Experiments.AVL_arggen                       : ListAppType) ;
   (module Experiments.AVL_lazy_recalc                  : ListAppType) ;
 
-  (*(module Experiments.Graph_iter_name : ListAppType) ;*)
+  (module Experiments.Graph_iter_name : ListAppType) ;
+
+*)
 
 ]
 
@@ -1541,7 +1548,7 @@ module Default_perf_params : ParamsType = struct
   let num_lists = 1    (* Number of distinct input lists. *)
   let fullinit = false
   let granularity = 0
-  let interactions = [ "di"; "id"; "ss"; "rr"; "r"; "mv"]
+  let interactions = [ "di"; "id"; "ss"; "rr"; "r"]
   let experiment = ""
   let outfile = default_outfile
   module Flags = struct
@@ -1626,7 +1633,7 @@ module Commandline_params : ParamsType = struct
     ("--n",           Arg.Int   (fun n -> n_ := n),           " input size");
     ("--num-changes", Arg.Int   (fun n -> num_changes_ := n), " number of changes to input");
     ("--demand",      Arg.Float (fun n -> demand_ := n),      " percent of output to observe");
-    ("--num-lists",   Arg.Int   (fun n -> num_lists_ := n),   " number of lists to try");
+(*    ("--num-lists",   Arg.Int   (fun n -> num_lists_ := n),   " number of lists to try"); *)
     ("--gran",        Arg.Int   (fun n -> granularity_ := n), " granularity of articulation points");
     ("--fullinit",    Arg.Set   fullinit_,                    " demand full list at initialization");
     ("--outfile",     Arg.String(fun s -> outfile_ := s),     " file to save output to");
