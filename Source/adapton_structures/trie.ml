@@ -314,10 +314,7 @@ module MakePlace
         (module Data)
         (fun _ t -> t)
     in
-    fun nm t -> match t with
-    | Name (nm', Art a) when nm' = nm -> t
-    | Name (_, Art a) -> failwith "doubled Name node!!!"
-    | t ->
+    fun nm t ->
       let art = ident.Art.mfn_nart nm t in
       ignore (Art.force art) ;
       Name (nm, Art art)
