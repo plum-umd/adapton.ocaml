@@ -29,10 +29,10 @@ test-log:
 	ocamlbuild -cflags -ppopt,"-DADAPTON_LOG" Source/test/experiments.native -verbose 1
 
 opam-pin:
-	opam pin add adapton .
+	opam pin -y add adapton .
 
 opam-remove:
-	opam pin remove adapton
+	opam pin -y remove adapton
 
 opam-reload: opam-remove opam-pin
 
