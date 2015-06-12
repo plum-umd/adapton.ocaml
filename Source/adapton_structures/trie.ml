@@ -89,17 +89,17 @@ module type S = sig
 
   include GoodDatType with type t = Data.t
 
+  val top_name : t -> string
   val empty : ?min_depth:int -> t
   val is_empty : t -> bool
   val force : t -> t
-  val singleton : ?min_depth:int -> elt -> t
-  val add : t -> elt -> t
+  val singleton : ?min_depth:int -> Name.t -> elt -> t
   val nadd : Name.t -> t -> elt -> t
   val sadd : t -> elt -> t
   val union : t -> t -> t
   val find : (elt -> bool) -> t -> int -> elt option
   val cardinal : t -> int
-  val of_list : ?min_depth:int -> elt list -> t
+  val of_list : ?min_depth:int -> Name.t -> elt list -> t
   val to_list : t -> elt list
   val fold : ('a -> elt -> 'a) -> 'a -> t -> 'a
   val structural_fold :
@@ -307,20 +307,20 @@ module MakePlace
 
   include Data
 
-  let thunk : Name.t -> t -> Art.t =
-    let loop =
+  let thunk : Name.t -> t -> t =
+    let ident =
       Art.mk_mfn
         (Name.gensym "Trie.MakePlace#thunk")
         (module Data)
-        (fun loop -> function
-           | Art a       -> loop.mfn_data (Art.force a)
-           | Name (_, t) -> loop.mfn_data t
-           | t -> t)
+        (fun _ t -> t)
     in
-    fun nm t ->
-      let art = loop.mfn_nart nm t in
+    fun nm t -> match t with
+    | Name (nm', Art a) when nm' = nm -> t
+    | Name (_, Art a) -> failwith "doubled Name node!!!"
+    | t ->
+      let art = ident.Art.mfn_nart nm t in
       ignore (Art.force art) ;
-      art
+      Name (nm, Art art)
 
   let rec is_empty = function
     | Root (_, t) -> is_empty t
@@ -337,14 +337,24 @@ module MakePlace
     | Empty _      -> x
     | Atom _       -> x
 
-  let empty ?(min_depth = 1) : t = Root (min_depth mod 32, Empty (0, 0))
+  let empty : ?min_depth:int -> t =
+    fun ?(min_depth=1) ->
+      let md = min_depth mod 32 in
+      let nm0 = Name.gensym ("Adapton.Trie#empty" ^ (string_of_int md)) in
+      let nm1, nm2 = Name.fork nm0 in
+      thunk nm1 (Root (md, thunk nm2 (Empty (0, 0))))
+
+  let top_name : t -> string = function
+    | Name (nm, _) -> Name.string nm
+    | _ -> "not a name"
 
   let find (pred : elt -> bool) (t : t) (i : int) : elt option =
     let rec loop h = function
       | Empty bs         -> None
       | Node (bs, t, t') -> loop (h lsr 1) (if h mod 2 = 0 then t else t')
       |  Art   a         -> loop h (Art.force a)
-      | Atom (bs, es)    -> S.fold (fun n -> function None when pred n -> Some n | a -> a) es None
+      | Atom (bs, es)    ->
+        S.fold (fun n -> function None when pred n -> Some n | a -> a) es None
       | Name (_,  t) | Root (_, t) -> loop h t
     in
     loop i t
@@ -375,7 +385,8 @@ module MakePlace
            | Atom (bs, es)    -> S.fold (atom bs) es o
            | Root (_, t)     -> loop.IO.mfn_data (o, t)
            |  Art   a         -> loop.IO.mfn_data (o, Art.force a)
-           | Name (nm, t)     -> IO.force (loop.IO.mfn_nart nm (o, t)))
+           | Name (nm, t)     ->
+             IO.force (loop.IO.mfn_nart nm (o, t)))
     in
     (fun t o -> loop.IO.mfn_data (o, t))
 
@@ -392,225 +403,114 @@ module MakePlace
     let suffix ((l, v) : BS.t) (k : int) : bool = v land k = v in
     function
     | ((Empty _) as t) | ((Node _) as t) -> t
-    (* Definitely no Roots, and I don't think Arts or Names belong here either *)
-    | Root _ | Art  _ | Name _ -> assert false
     | Atom (bs, es) ->
       let zerobs = BS.prepend 0 bs in
       let  onebs = BS.prepend 1 bs in
       if suffix onebs (E.place (S.choose es)) (* <-- this choice assumes no hash collisions. *)
       then Node (bs, Empty zerobs, Atom (onebs, es))
       else Node (bs, Atom (zerobs, es), Empty onebs)
-
-  let internal_union : t -> t -> t =
+    | _ -> assert false
+      
+  let union : t -> t -> t =
     let loop = Art.mk_mfn
-        (Name.gensym "Trie.MakeInc#internal_union")
+        (Name.gensym "Trie.MakeInc#union")
         (module AdaptonTypes.Tuple2(Data)(Data))
         (fun loop -> function
-           | t, t' when equal t t' -> t'
-           | Atom (bs, es), Atom (bs', es')
-             (* these choices assume no hash collisions *)
-             when E.place (S.choose es) = E.place (S.choose es') ->
-             Atom (bs, es')
-           | Empty _, t | t, Empty _ -> t
-           | Name (nm, Art a), Name (nm', Art a') ->
-             let nm'' = Name.pair nm nm' in
-             Name (nm'', Art (loop.Art.mfn_nart nm'' (Art.force a, Art.force a')))
-           | t, Name (nm, Art a) ->
-             failwith "Should this be possible?"
-             (*let nm', _ = Name.fork nm in
-               Name (nm', Art (loop.Art.mfn_nart nm' (t, Art.force a)))*)
-           | Name (nm, Art a), t ->
-             failwith "Should this be possible?"
-             (*let nm', _ = Name.fork nm in
-               Name (nm', Art (loop.Art.mfn_nart nm' (Art.force a, t)))*)
-           (*| Name (nm, Art a), t' -> Art.force (loop.Art.mfn_nart nm (t, t'))
-           | Name (nm, t), Name (nm', t') ->
-             let nm'' = Name.pair nm nm' in
-             Name (nm'', Art.force (loop.Art.mfn_nart nm'' (t, t')))
-           | t', Name (nm, t)
-             | Name (nm, t), t' -> Art.force (loop.Art.mfn_nart nm (t, t'))*)
-           | Art a, t' -> Art (loop.Art.mfn_art (Art.force a, t'))
-           | t, Art a' -> Art (loop.Art.mfn_art (t, Art.force a'))
-           | t, t' -> (match split_atomic t, split_atomic t' with
-               | sat, Empty _ | Empty _, sat -> sat
-               | Node (bs, zerot, onet), Node (bs', zerot', onet') ->
-                 Node (bs,
-                       loop.Art.mfn_data (zerot, zerot'),
-                       loop.Art.mfn_data (onet,  onet'))
-               | _ -> assert false (* split atomic only returns Node or Empty *))) in
+        | t, t' when equal t t' -> t'
+        | Name (nm, Art a), Name (nm', Art a') ->
+          let nm'' = Name.pair nm nm' in
+          thunk nm'' (loop.Art.mfn_data (Art.force a, Art.force a'))
+        | Root (md, t), Root (md', t') when md = md' ->
+          Root (md, loop.Art.mfn_data (t, t'))
+        | Atom (bs, es), Atom (bs', es')
+          (* these choices assume no hash collisions *)
+          when E.place (S.choose es) = E.place (S.choose es') ->
+          Atom (bs, es')
+        | Empty _, t | t, Empty _ -> t
+        | t, t' ->
+          (match split_atomic t, split_atomic t' with
+          | sat, Empty _ | Empty _, sat -> sat
+          | Node (bs, zerot, onet), Node (bs', zerot', onet') ->
+            Node (bs,
+                  loop.Art.mfn_data (zerot, zerot'),
+                  loop.Art.mfn_data (onet,  onet'))
+          | _ -> assert false (* split atomic only returns Node or Empty *))) in
     (fun t t' -> loop.Art.mfn_data (t, t'))
-    
-  let rec union (t : t) (t' : t) : t = match t, t' with
-    | Root (md, t), Root (md', t') when md = md' ->
-      Root (md, internal_union t t')
-    | Art a, _  -> union (Art.force a) t'
-    | _, Art a' -> union t (Art.force a')
-    | Root (md, _), Root (md', _) ->
-      failwith "Refusing union two tries with different minimum depths."
-    | t, t' -> failwith "Cannot union non Root tries."
 
-  (* Recurs down the minimum depth and the trie to have an element
-   * added; when we run out of trie we just wrap with nodes until the
-   * minimum depth is reached.  bs is the current bit string, h is the
-   * element's hash (which gets lsred as we recur), m is the current
-   * depth in the trie. When m = min, i.e. when we've reached the
-   * minimum depth, we insert the element into the trie at that
-   * level.
-   *)
-  let deep_add : int -> t -> elt -> t =
-      let rec loop min e bs h m = function
-        | Empty _ when m = min -> Atom (bs, S.singleton e)
-        | t'      when m = min -> internal_union t' (Atom (bs, S.singleton e))
-        | Empty _ ->
-          if h mod 2 = 0
-          then
-            let zerobs = BS.prepend 0 bs in
-            Node (bs, loop min e zerobs (h lsr 1) (m+1) (Empty zerobs), Empty (BS.prepend 1 bs))
-          else
-            let onebs = BS.prepend 1 bs in
-            Node (bs,  Empty (BS.prepend 0 bs), loop min e onebs (h lsr 1) (m+1) (Empty onebs))
-        | Node (bs, t, t') ->
-          if h mod 2 = 0
-          then Node (bs, loop min e (BS.prepend 0 bs) (h lsr 1) (m+1) t, t')
-          else Node (bs, t, loop min e (BS.prepend 1 bs) (h lsr 1) (m+1) t')
-        | Name (nm, t) ->
-          let nm', _ = Name.fork nm in (* <-- CONFUSION: is there a way to get just one new name? *)
-          Name (nm', loop min e bs h m t)
-        | Art a -> loop min e bs h m (Art.force a)
-        | Atom _ -> assert false (* <-- Can't happen if the minimum depth is not violated. *)
-        | Root _ -> assert false (* <-- Always unwrap the root in `add`. *)
-      in
-      (fun md t e -> loop md e (0, 0) (E.place e) 1 t)
-
-  let rec add t e = match t with
-    | Root (md, t) -> Root (md, deep_add md t e)
-    | Art    a     -> add (Art.force a) e
-    | Name (nm, t) ->
-      let nm', _ = Name.fork nm in
-      Name (nm', add t e)
-    | _ -> assert false (* <-- user code can't hold on to just a Node, Atom, or Empty *)
-
-  let eager_internal_nom_add : Name.t -> elt -> BS.t -> int -> t -> t =
+  let internal_nadd : Name.t -> elt -> BS.t -> int -> t -> t =
     let loop = Art.mk_mfn
-        (Name.gensym "Trie.MakePlace#internal_nom_add")
+        (Name.gensym "Trie.MakePlace#internal_nadd")
         (module AdaptonTypes.Tuple5(Name)(E)(BS)(AdaptonTypes.Int)(Data))
         (fun loop (nm, e, bs, h, t) -> match t with
-           | Empty _ -> Atom (bs, S.singleton e)
-           | Node (bs, t0, t1) ->
-             let nm', nm'' = Name.fork nm in
-             if h mod 2 = 0
-             then
-               (*let art = loop.Art.mfn_nart nm'
-                   (nm', e, (BS.prepend 0 bs), (h lsr 1), t0) in
-               ignore (Art.force art) ;
-                 Node (bs, Art art, t1)*)
-               
-               let t0 = loop.Art.mfn_data
-                   (nm', e, (BS.prepend 0 bs), (h lsr 1), t0) in
-               let t0, t1 = thunk nm' t0, thunk nm'' t1 in
-                 Node (bs, Art t0, Art t1)
-             else
-               (*let art = loop.Art.mfn_nart nm''
-                   (nm'', e, (BS.prepend 1 bs), (h lsr 1), t1) in
-               ignore (Art.force art) ;
-                 Node (bs, t0, Art art)*)
-               
-               let t1 = loop.Art.mfn_data
-                 (nm'', e, (BS.prepend 1 bs), (h lsr 1), t1) in
-               let t0, t1 = thunk nm' t0, thunk nm'' t1 in
-                 Node (bs, Art t0, Art t1)
-           | Atom (bs, es) when E.place (S.choose es) = E.place e -> (* <-- assumes no collisions *)
-             Atom (bs, S.add e (S.filter (fun e' -> E.place e' <> E.place e) es))
-           | Art a
-           | Name (_, Art a) -> loop.Art.mfn_data (nm, e, bs, h, (Art.force a))
-           | Root _ -> assert false (* <-- Don't pass Roots to loop *)
-           | (Atom _) as t  ->
-             let nm', nm'' = Name.fork nm in
-             Art.force (loop.Art.mfn_nart nm' (nm'', e, bs, h, (split_atomic t))))
+        | Empty _ -> Atom (bs, S.singleton e)
+        | Node (bs, t0, t1) ->
+          if h mod 2 = 0
+          then
+            let t0 = loop.Art.mfn_data (nm, e, (BS.prepend 0 bs), (h lsr 1), t0) in
+            Node (bs, t0, t1)
+          else               
+            let t1 = loop.Art.mfn_data (nm, e, (BS.prepend 1 bs), (h lsr 1), t1) in
+            Node (bs, t0, t1)
+        | Atom (bs, es) when E.place (S.choose es) = E.place e -> (* <-- assumes no collisions *)
+          Atom (bs, S.add e (S.filter (fun e' -> E.place e' <> E.place e) es))
+        | Name (_, Art a) ->
+          let nm, nm' = Name.fork nm in
+          let t = loop.Art.mfn_data (nm', e, bs, h, Art.force a) in
+          thunk nm t
+        | (Atom _) as t  -> loop.Art.mfn_data (nm, e, bs, h, split_atomic t)
+        | t -> assert false)
     in
-    (fun nm e bs h t ->
-       let nm', nm'' = Name.fork nm in
-       Art.force (loop.Art.mfn_nart nm' (nm'', e, bs, h, t)))
+    fun nm e bs h t -> loop.Art.mfn_data (nm, e, bs, h, t)
 
-  let eager_nom_add : Name.t -> t -> elt -> t =
-    (fun nm t e -> eager_internal_nom_add nm e (0, 0) (E.place e) t)
-
-  let eager_nom_deep_add : Name.t -> int -> t -> elt -> t =
+  let nadd_deep : Name.t -> int -> t -> elt -> t =
     let loop = Art.mk_mfn
-        (Name.gensym "Trie.MakePlace#internal_nom_add")
+        (Name.gensym "Trie.MakePlace#nadd_deep")
         (module AdaptonTypes.Tuple7(Name)(AdaptonTypes.Int)(E)(BS)(AdaptonTypes.Int)(AdaptonTypes.Int)(Data))
         (fun loop (nm, min, e, bs, h, m, t) -> match t with
            | Empty _ when m = min -> Atom (bs, S.singleton e)
-           | t'      when m = min -> eager_internal_nom_add nm e bs h t'
+           | t'      when m = min -> internal_nadd nm e bs h t'
            | Empty _ ->
-             let nm', nm'' = Name.fork nm in
+             let nm,  nm'  = Name.fork nm in
+             let nm', nm'' = Name.fork nm' in
              if h mod 2 = 0
              then
-               (*let zerobs = BS.prepend 0 bs in
-               let art = loop.Art.mfn_nart nm'
-                   (nm', min, e, zerobs, (h lsr 1), (m+1), (Empty zerobs)) in
-               ignore (Art.force art) ;
-                 Node (bs, Art art, Empty (BS.prepend 1 bs))*)
                let zerobs = BS.prepend 0 bs in
-               let t0 = loop.Art.mfn_data
-                 (nm', min, e, zerobs, (h lsr 1), (m+1), (Empty zerobs)) in
-               let t0, t1 = thunk nm' t0, thunk nm'' (Empty (BS.prepend 1 bs)) in
-               Node (bs, Art t0, Art t1)
+               let t0 = loop.Art.mfn_data (nm'', min, e, zerobs, (h lsr 1), (m+1), (Empty zerobs)) in
+               let t1 = Empty (BS.prepend 1 bs) in
+               Node (bs, thunk nm t0, thunk nm' t1)
              else
-               (*let onebs = BS.prepend 1 bs in
-               let art = loop.Art.mfn_nart nm''
-                   (nm'', min, e, onebs, (h lsr 1), (m+1), (Empty onebs)) in
-               ignore (Art.force art) ;
-                 Node (bs, Empty (BS.prepend 0 bs), Art art)*)
                let onebs = BS.prepend 1 bs in
-               let t1 = loop.Art.mfn_data
-                 (nm'', min, e, onebs, (h lsr 1), (m+1), (Empty onebs)) in
-               let t0, t1 = thunk nm' (Empty (BS.prepend 0 bs)), thunk nm'' t1 in
-               Node (bs, Art t0, Art t1)
+               let t0 = Empty (BS.prepend 0 bs) in
+               let t1 = loop.Art.mfn_data (nm'', min, e, onebs, (h lsr 1), (m+1), (Empty onebs)) in
+               Node (bs, thunk nm t0, thunk nm' t1)
            | Node (bs, t0, t1) ->
-             let nm', nm'' = Name.fork nm in
              if h mod 2 = 0
              then
-               (*let art = loop.Art.mfn_nart nm'
-                   (nm', min, e, (BS.prepend 0 bs), (h lsr 1), (m+1), t0) in
-               ignore (Art.force art) ;
-                 Node (bs, Art art, t1)*)
-               let t0 = loop.Art.mfn_data
-                 (nm', min, e, (BS.prepend 0 bs), (h lsr 1), (m+1), t0) in
-               let t0, t1 = thunk nm' t0, thunk nm'' t1 in
-               Node (bs, Art t0, Art t1)
+               let t0 = loop.Art.mfn_data (nm, min, e, (BS.prepend 0 bs), (h lsr 1), (m+1), t0) in
+               Node (bs, t0, t1)
              else
-               (*let art = loop.Art.mfn_nart nm''
-                   (nm'', min, e, (BS.prepend 1 bs), (h lsr 1), (m+1), t1) in
-               ignore (Art.force art) ;
-                 Node (bs, t0, Art art)*)
-               let t1 = loop.Art.mfn_data
-                 (nm'', min, e, (BS.prepend 1 bs), (h lsr 1), (m+1), t1) in
-               let t0, t1 = thunk nm' t0, thunk nm'' t1 in
-               Node (bs, Art t0, Art t1)
-           | Art a -> loop.Art.mfn_data (nm, min, e, bs, h, m, (Art.force a))
+               let t1 = loop.Art.mfn_data (nm, min, e, (BS.prepend 1 bs), (h lsr 1), (m+1), t1) in
+               Node (bs, t0, t1)
            | Name (_, Art a) -> (* <-- handling in a single case maintains the invariant *)
-             let nm', nm'' = Name.fork nm in (* that Names always surround Arts  *)
-             Name (nm', Art (loop.Art.mfn_nart nm'' (nm'', min, e, bs, h, m, (Art.force a))))
-             (*loop.Art.mfn_data (nm, min, e, bs, h, m, (Art.force a))*)
-           (* Why does this make sense? Deep add is ensuring that every recursive call, other
-              than this one, is wrapped with a Name (..., (n)Art ...). One iteration before
-              we reach this case, we're guaranteed to be wrapped with a Name (..., (n)Art __),
-              and we need to fill in the __. We don't want another name, nor art, so just
-              force and continue on.
-           *)
-           | Atom _ -> assert false (* <-- Can't happen if the minimum depth is not violated. *)
-           | Root _ -> assert false (* <-- Always unwrap the root in `[n]add`. *)) in
-    (fun nm md t e ->
-       let nm', nm'' = Name.fork nm in
-       Art.force (loop.Art.mfn_nart nm' (nm'', md, e, (0, 0), (E.place e), 1, t)))
+             let nm, nm' = Name.fork nm in (* that Names always surround Arts  *)
+             thunk nm (loop.Art.mfn_data (nm', min, e, bs, h, m, Art.force a))
+           | _ -> assert false
+         (*| Atom _ -> assert false (* <-- Can't happen unless the minimum depth is violated  *)
+           | Root _ -> assert false (* <-- Always unwrap the root in `[n]add`. *)*))
+    in
+    (fun nm md t e -> loop.Art.mfn_data (nm, md, e, (0, 0), E.place e, 1, t))
 
   let rec nadd nm t e = match t with
-    | Root (md, t) -> Root (md, eager_nom_deep_add nm md t e)
-    | Art    a     -> nadd nm (Art.force a) e
-    | Name (nm, t) ->
-      let nm', nm'' = Name.fork nm in
-      Name (nm', nadd nm'' t e)
+    | Name (_, Art a) -> (match Art.force a with
+                          | Root (md, t) ->
+                            let nm, nm' = Name.fork nm in
+                            let t' = nadd_deep nm' md t e in
+                            thunk nm (Root (md, t'))
+                          | t -> failwith ("malformed t: " ^ (string t)))
+    | Root (md, t) ->
+      let nm, nm' = Name.fork nm in
+      let t' = nadd_deep nm' md t e in
+      thunk nm (Root (md, t'))
     | _ -> assert false (* <-- user code can't hold on to just a Node, Atom, or Empty *)
 
   let sadd : t -> elt -> t =
@@ -619,10 +519,18 @@ module MakePlace
     in
     fun t e -> nadd (nm (t, e)) t e
 
-  let singleton ?(min_depth = 1) (e : elt) : t = add (empty ~min_depth) e
+  let singleton ?(min_depth = 1) nm (e : elt) : t = nadd nm (empty ~min_depth) e
 
-  let of_list ?(min_depth = 1) (l : elt list) : t =
-    List.fold_left add (empty ~min_depth) l
+  let of_list ?(min_depth = 1) nm (l : elt list) : t =
+    let out, _ =
+      List.fold_left
+        (fun (out, nm) e ->
+           let nm, nm' = Name.fork nm in
+           (nadd nm out e, nm'))
+        (empty ~min_depth, nm)
+        l
+    in
+    out
 
   let to_list : t -> elt list =
     let fold = 
@@ -647,17 +555,17 @@ module Set = struct
            and  Art : ArtType with type Data.t = Data.t
                                and type Name.t = Name.t
     include GoodDatType with type t = Data.t
+    val top_name : t -> string
     val empty : ?min_depth:int -> t
     val is_empty : t -> bool
     val force : t -> t
-    val singleton : ?min_depth:int -> elt -> t
-    val add : t -> elt -> t
+    val singleton : ?min_depth:int -> Name.t -> elt -> t
     val nadd : Name.t -> t -> elt -> t
     val sadd : t -> elt -> t
     val union : t -> t -> t
     val mem : t -> elt -> bool
     val cardinal : t -> int
-    val of_list : ?min_depth:int -> elt list -> t
+    val of_list : ?min_depth:int -> Name.t -> elt list -> t
     val to_list : t -> elt list
     val fold : ('a -> elt -> 'a) -> 'a -> t -> 'a
     val subsumes : ?order:(elt -> elt -> bool) -> t -> t -> bool
@@ -703,10 +611,10 @@ module Map = struct
     module rec Data : GoodDatType
            and  Art : ArtType with type Data.t = Data.t and type Name.t = Name.t
     include GoodDatType with type t = Data.t
+    val top_name : t -> string
     val empty : ?min_depth:int -> t
     val force : t -> t
-    val singleton : ?min_depth:int -> k -> v -> t
-    val add : t -> k -> v -> t
+    val singleton : ?min_depth:int -> Name.t -> k -> v -> t
     val nadd : Name.t -> t -> k -> v -> t
     val sadd : t -> k -> v -> t
     val union : t -> t -> t
@@ -721,7 +629,7 @@ module Map = struct
        ?atom:(BS.t -> k * v -> 'a -> 'a) ->
        ?node:(BS.t -> 'a  -> 'a -> 'a) ->
       string -> t -> 'a -> 'a
-    val of_list : ?min_depth:int -> (k * v) list -> t
+    val of_list : ?min_depth:int -> Name.t -> (k * v) list -> t
     val to_list : t -> (k * v) list
   end
 
@@ -753,9 +661,8 @@ module Map = struct
     type k = K.t
     type v = V.t
 
-    let singleton ?(min_depth = 1) (k : k) (v : v) : t = singleton ~min_depth (k, v)
+    let singleton ?(min_depth = 1) nm (k : k) (v : v) : t = singleton ~min_depth nm (k, v)
 
-    let add (t : t) (k : k) (v : v) : t = add t (k, v)
     let nadd (n : Name.t) (t : t) (k : k) (v : v) : t = nadd n t (k, v)
     let sadd (t : t) (k : k) (v : v) : t = sadd t (k, v)
 
@@ -781,10 +688,9 @@ module Rel = struct
     type sv
     module Vs : Set.S with type elt = sv
     include Map.S with type v = Vs.t
-    val     join : t -> k -> sv -> t
+    val top_name : t -> string
     val    njoin : Name.t -> t -> k -> sv -> t
     val    sjoin : t -> k -> sv -> t
-    val  clobber : t -> k -> sv -> t
     val nclobber : Name.t -> t -> k -> sv -> t
     val   branch : ('b -> 'a -> 'b) -> 'b -> t -> k -> (sv -> 'a) -> 'b
     val   svfold : ('a -> k -> sv -> 'a) -> 'a -> t -> 'a
@@ -807,32 +713,24 @@ module Rel = struct
       Name.gensym (string_of_int (D.hash (Hashtbl.hash "Trie#name_of_data") d))
 
     let nclobber : Name.t -> t -> k -> sv -> t =
-      fun nm t k v -> nadd nm t k (Vs.singleton v)
-
-    let clobber : t -> k -> sv -> t =
-      fun t k v -> add t k (Vs.singleton v)
+      fun nm t k v ->
+        let nm, nm' = Name.fork nm in
+        nadd nm t k (Vs.force (Vs.singleton nm' v))
 
     let njoin : Name.t -> t -> k -> sv -> t =
       fun nm t k v ->
+        let nm, nm' = Name.fork nm in
         let vs' = match find t k with
-          | Some vs -> Vs.add vs v
-          | None    -> Vs.singleton v
+          | Some vs -> Vs.force (Vs.nadd nm vs v)
+          | None    -> Vs.force (Vs.singleton nm v)
         in
-        nadd nm t k vs'
+        nadd nm' t k vs'
 
     let sjoin : t -> k -> sv -> t =
       let nm : t * k * sv -> Name.t =
         name_of_data (module AdaptonTypes.Tuple3(M)(K)(V))
       in
       fun t k sv -> njoin (nm (t, k, sv)) t k sv
-
-    let join : t -> k -> sv -> t =
-      fun t k v ->
-        let vs' = match find t k with
-          | Some vs -> Vs.add vs v
-          | None    -> Vs.singleton v
-        in
-        add t k vs'
 
     let branch
         (type a)
@@ -857,14 +755,18 @@ module Graph = struct
   module type S = sig
 
     type vertex
-    include Rel.S with type sv = vertex
+    include Rel.S with type  k = vertex
+                   and type sv = vertex
 
+    val top_name : t -> string
     val mem_vertex : t -> vertex -> bool
     val mem_edge   : t -> vertex -> vertex -> bool
-    val add_edge  : t -> vertex -> vertex -> t
     val nadd_edge : Name.t -> t -> vertex -> vertex -> t
     val to_dot : t -> string
-    val fold_edges : ('a -> vertex -> vertex -> 'a) -> 'a -> t -> 'a
+    val fold_edges  : ('a -> vertex -> vertex -> 'a) -> 'a -> t -> 'a
+    val fold_vertex : ('a -> vertex -> 'a) -> 'a -> t -> 'a
+    val nb_edges  : t -> int
+    val nb_vertex : t -> int
 
   end
 
@@ -889,15 +791,14 @@ module Graph = struct
       else
         let nm, nm' = Name.fork nm in
         njoin nm' (nadd nm t v' (Vs.empty ~min_depth:4)) v v'
-    let add_edge t v v' =
-      if mem_vertex t v'
-      then join t v v'
-      else
-        join (add t v' (Vs.empty ~min_depth:4)) v v'
 
     let to_dot _ = failwith "unimplemented"
 
-    let fold_edges (type a) f a t : a = svfold f a t
+    let fold_edges  (type a) f a t : a = svfold f a t
+    let fold_vertex (type a) f a : t -> a = fold (fun a k _ -> f a k) a
+
+    let nb_vertex = cardinal
+    let nb_edges = fold_edges (fun n _ _ -> n+1) 0
 
     let string_of_list ?(sep=" ") ?(border=(fun s -> "(" ^ s ^ ")")) soe l =
       if List.length l > 0 then
@@ -980,7 +881,7 @@ module Test  = struct
 
   module S = Set.Make(Useful(AdaptonTypes.String))(Key)(Grifola.Default.ArtLib)
 
-  let set_suite =
+  (*let set_suite =
     let min_depth = 4 in
     let e001 = "a" in
     let e010 = "d" in
@@ -1044,7 +945,7 @@ module Test  = struct
        S.of_list ~min_depth:3 ["1"; "forty-two"; "five-hundred"],
          S.of_list ~min_depth:3 ["1"; "forty-two"; "500"],
          S.of_list ~min_depth:3 ["five-hundred"; "1"; "forty-two"; "500"]] in
-    "Set" >::: (cardinal_tests@mem_tests@of_list_tests@union_tests@equal_tests@hash_eq_tests)
+    "Set" >::: (cardinal_tests@mem_tests@of_list_tests@union_tests@equal_tests@hash_eq_tests) *)
   let nset_suite =
     let min_depth = 4 in
     let e001 = "a" in
@@ -1052,6 +953,13 @@ module Test  = struct
     let e010'= "j" in
     let e010''= "gah" in
     let t0   = S.empty ~min_depth in
+
+    let u1 = S.nadd (nm()) t0 e001 in
+    let u2 = S.nadd (nm()) u1 e010 in
+    let u1a = S.nadd (nm()) t0 e010' in
+    let u2a = S.nadd (nm()) t0 e010'' in
+
+
     let t1   = S.nadd (nm()) t0  e001 in
     let t2   = S.nadd (nm()) t1  e010 in
     let t3   = S.nadd (nm()) t2  e010 in
@@ -1062,6 +970,21 @@ module Test  = struct
     let t4'  = S.nadd (nm()) t3' e010' in
     let t5'  = S.nadd (nm()) t4' e010' in
     let t6'  = S.nadd (nm()) t5' e010' in
+    let union_tests = binary_tests ~printer:S.string ~eq:(fun a b -> S.equal (S.force a) (S.force b)) "union" S.union
+      [S.of_list ~min_depth (nm()) ["1"; "2"; "3"], t0, S.of_list ~min_depth (nm()) ["1"; "2"; "3"];
+       t0, S.of_list ~min_depth (nm()) ["1"; "2"; "3"], S.of_list ~min_depth (nm()) ["1"; "2"; "3"];
+       (* This is not true for any min depth < 4.
+       S.of_list ~min_depth (nm()):3 ["1"; "2"; "3"], S.singleton ~min_depth:3 "4",
+         S.of_list ~min_depth (nm()):3 ["1"; "2"; "3"; "4"]; *)
+       S.of_list ~min_depth (nm()) ["1"; "2"; "3"], S.singleton ~min_depth (nm()) "4",
+         S.of_list ~min_depth (nm()) ["1"; "2"; "3"; "4"];
+       S.of_list ~min_depth:5 (nm()) ["1"; "2"; "3"], S.singleton ~min_depth:5 (nm()) "4",
+         S.of_list ~min_depth:5 (nm()) ["1"; "2"; "3"; "4"];
+       S.of_list (nm()) ["one"; "42"; "five-hundred"], S.of_list (nm()) ["1"; "forty-two"; "500"],
+         S.of_list (nm()) ["one"; "42"; "five-hundred"; "1"; "forty-two"; "500"];
+       S.of_list ~min_depth:3 (nm()) ["1"; "forty-two"; "five-hundred"],
+         S.of_list ~min_depth:3 (nm()) ["1"; "forty-two"; "500"],
+         S.of_list ~min_depth:3 (nm()) ["five-hundred"; "1"; "forty-two"; "500"]] in
     let cardinal_tests = unary_tests "cardinal" S.cardinal
         [t0, 0; t1, 1; t2, 2; t1', 1; t2', 2; t3, 2; t3', 2; t4, 3; t4', 3] in
     let mem_tests = binary_tests "mem" S.mem
@@ -1088,7 +1011,7 @@ module Test  = struct
        t1', t2, false;
        t1', t2, false;
       ] in
-    "Nominal Set" >::: (cardinal_tests@mem_tests@equal_tests@hash_eq_tests)
+    "Nominal Set" >::: (cardinal_tests@mem_tests@equal_tests@hash_eq_tests@union_tests)
 
   module M = Map.Make(Useful(AdaptonTypes.String))(Useful(AdaptonTypes.Int))(Key)(Grifola.Default.ArtLib)
 
@@ -1128,7 +1051,6 @@ module Test  = struct
 
   let run () =
     run_test_tt_main bs_suite;
-    run_test_tt_main set_suite;
     run_test_tt_main nset_suite;
     run_test_tt_main nmap_suite;
     ()
