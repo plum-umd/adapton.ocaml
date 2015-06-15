@@ -11,3 +11,8 @@ module Name = Key
 module Types = AdaptonTypes
 module Statistics = AdaptonStatistics
 module Structures = Adapton_structures
+
+(* these use an interanl Make(), so the include above doesn't work as intended *)
+module NameLib = Adapton_core.Grifola.Default.ArtLib
+module StructLib = Adapton_core.Grifola.Structural.ArtLib
+module ScratchLib = Adapton_core.Grifola.FromScratch.ArtLib
