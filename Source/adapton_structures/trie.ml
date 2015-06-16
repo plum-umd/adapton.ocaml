@@ -29,6 +29,7 @@ module BS : sig
   val flip    : int -> int -> int
   val is_set  : int -> int -> bool
   val prepend : int -> t -> t
+  val length  : t -> int
 end = struct
   type t = int * int
   let rec equal (lhs0,lhs1) (rhs0,rhs1) =
@@ -55,6 +56,8 @@ end = struct
   let show = string
   let hash = Hashtbl.seeded_hash
   let sanitize x = x
+
+  let length = fst
   
   let rec pow (b : int) : int -> int = function
     | 0 -> 1 | 1 -> b
@@ -319,6 +322,39 @@ module MakePlace
       ignore (Art.force art) ;
       Name (nm, Art art)
 
+  let pthunk : Name.t -> t -> t =
+    let ident =
+      Art.mk_mfn
+        (Name.gensym "Trie.MakePlace#pthunk")
+        (module Data)
+        (fun _ t -> t)
+    in
+    let ifreq = 8 in
+    fun nm t ->
+      if Random.int ifreq = 0
+      then
+        (let art = ident.Art.mfn_nart nm t in
+         ignore (Art.force art) ;
+         Name (nm, Art art))
+      else
+        t
+
+  let pfthunk : int -> Name.t -> t -> t =
+    let ident =
+      Art.mk_mfn
+        (Name.gensym "Trie.MakePlace#pfthunk")
+        (module Data)
+        (fun _ t -> t)
+    in
+    fun ifreq nm t ->
+      if Random.int ifreq = 0
+      then
+        (let art = ident.Art.mfn_nart nm t in
+         ignore (Art.force art) ;
+         Name (nm, Art art))
+      else
+        t
+
   let rec is_empty = function
     | Root (_, t) -> is_empty t
     | Art   a     -> is_empty (Art.force a)
@@ -406,7 +442,7 @@ module MakePlace
       if suffix onebs (E.place (S.choose es)) (* <-- this choice assumes no hash collisions. *)
       then Node (bs, Empty zerobs, Atom (onebs, es))
       else Node (bs, Atom (zerobs, es), Empty onebs)
-    | _ -> assert false
+    | t -> print_endline (string t) ; assert false
       
   let union : t -> t -> t =
     let loop = Art.mk_mfn
@@ -417,6 +453,18 @@ module MakePlace
         | Name (nm, Art a), Name (nm', Art a') ->
           let nm'' = Name.pair nm nm' in
           thunk nm'' (loop.Art.mfn_data (Art.force a, Art.force a'))
+
+        (* Three options here, either recreate narts when they're
+           mismatched, drop narts when they're mismatched, or do it
+           probabilistically again. Let's try the first, first, so I
+           don't have to think about seeding for union yet. *)
+        | Name (nm, Art a), t ->
+          let nm = Name.pair nm (Name.gensym (string t)) in
+          thunk nm (loop.Art.mfn_data (Art.force a, t))
+        | t, Name (nm, Art a) ->
+          let nm = Name.pair nm (Name.gensym (string t)) in
+          thunk nm (loop.Art.mfn_data (t, Art.force a))
+
         | Root (md, t), Root (md', t') when md = md' ->
           Root (md, loop.Art.mfn_data (t, t'))
         | Atom (bs, es), Atom (bs', es')
@@ -433,6 +481,10 @@ module MakePlace
                   loop.Art.mfn_data (onet,  onet'))
           | _ -> assert false (* split atomic only returns Node or Empty *))) in
     (fun t t' -> loop.Art.mfn_data (t, t'))
+
+  let ifreq bs =
+    let sqrtfreq = max 1 (BS.length bs) in
+    sqrtfreq * sqrtfreq
 
   let internal_nadd : Name.t -> elt -> BS.t -> int -> t -> t =
     let loop = Art.mk_mfn
@@ -453,7 +505,7 @@ module MakePlace
         | Name (_, Art a) ->
           let nm, nm' = Name.fork nm in
           let t = loop.Art.mfn_data (nm', e, bs, h, Art.force a) in
-          thunk nm t
+          pfthunk (ifreq bs) nm t
         | (Atom _) as t  -> loop.Art.mfn_data (nm, e, bs, h, split_atomic t)
         | t -> assert false)
     in
@@ -474,12 +526,12 @@ module MakePlace
                let zerobs = BS.prepend 0 bs in
                let t0 = loop.Art.mfn_data (nm'', min, e, zerobs, (h lsr 1), (m+1), (Empty zerobs)) in
                let t1 = Empty (BS.prepend 1 bs) in
-               Node (bs, thunk nm t0, thunk nm' t1)
+               Node (bs, pfthunk (ifreq bs) nm t0, pfthunk (ifreq bs) nm' t1)
              else
                let onebs = BS.prepend 1 bs in
                let t0 = Empty (BS.prepend 0 bs) in
                let t1 = loop.Art.mfn_data (nm'', min, e, onebs, (h lsr 1), (m+1), (Empty onebs)) in
-               Node (bs, thunk nm t0, thunk nm' t1)
+               Node (bs, pfthunk (ifreq bs) nm t0, pfthunk (ifreq bs) nm' t1)
            | Node (bs, t0, t1) ->
              if h mod 2 = 0
              then
@@ -490,12 +542,15 @@ module MakePlace
                Node (bs, t0, t1)
            | Name (_, Art a) -> (* <-- handling in a single case maintains the invariant *)
              let nm, nm' = Name.fork nm in (* that Names always surround Arts  *)
-             thunk nm (loop.Art.mfn_data (nm', min, e, bs, h, m, Art.force a))
+             pfthunk (ifreq bs) nm (loop.Art.mfn_data (nm', min, e, bs, h, m, Art.force a))
            | _ -> assert false
          (*| Atom _ -> assert false (* <-- Can't happen unless the minimum depth is violated  *)
            | Root _ -> assert false (* <-- Always unwrap the root in `[n]add`. *)*))
     in
-    (fun nm md t e -> loop.Art.mfn_data (nm, md, e, (0, 0), E.place e, 1, t))
+    (fun nm md t e ->
+      let h = E.place e in
+      Random.init (Name.hash 42 nm) ; (* seed pthunk based on the just name? should the elem be included? *)
+      loop.Art.mfn_data (nm, md, e, (0, 0), h, 1, t))
 
   let rec nadd nm t e = match t with
     | Name (_, Art a) -> (match Art.force a with
@@ -507,7 +562,7 @@ module MakePlace
     | Root (md, t) ->
       let nm, nm' = Name.fork nm in
       let t' = nadd_deep nm' md t e in
-      thunk nm (Root (md, t'))
+      Root (md, t')
     | _ -> assert false (* <-- user code can't hold on to just a Node, Atom, or Empty *)
 
   let sadd : t -> elt -> t =
@@ -712,14 +767,14 @@ module Rel = struct
     let nclobber : Name.t -> t -> k -> sv -> t =
       fun nm t k v ->
         let nm, nm' = Name.fork nm in
-        nadd nm t k (Vs.force (Vs.singleton nm' v))
+        nadd nm t k (Vs.singleton nm' v)
 
     let njoin : Name.t -> t -> k -> sv -> t =
       fun nm t k v ->
         let nm, nm' = Name.fork nm in
         let vs' = match find t k with
-          | Some vs -> Vs.force (Vs.nadd nm vs v)
-          | None    -> Vs.force (Vs.singleton nm v)
+          | Some vs -> Vs.nadd nm vs v
+          | None    -> Vs.singleton nm v
         in
         nadd nm' t k vs'
 
