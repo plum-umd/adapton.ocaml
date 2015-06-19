@@ -6,7 +6,7 @@ module N = Adapton.Name
 module T = Adapton.Types
 module Point = T.Tuple2(T.Int)(T.Int)
 
-(* setup adapton list for snake body *)
+(* setup adapton list for no reason *)
 open Adapton.Structures.SpreadTree
 module PointST = MakeSpreadTree(Adapton.NameLib)(N)(Point)
 module PointSeq = MakeSeq(PointST)
