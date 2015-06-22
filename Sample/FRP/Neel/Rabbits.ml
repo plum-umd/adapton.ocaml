@@ -1,3 +1,12 @@
+(*
+A first attempt at using something like the form of Neel's FRP from:
+https://www.mpi-sws.org/~neelk/simple-frp.pdf
+But this is incorrect, there is no mutual recursion in his construction
+
+Adapton is not actually used, though it is there to typecheck in preparation for it's use
+*)
+
+
 (* use Adapton *)
 open Adapton_lib
 
