@@ -16,6 +16,10 @@ test: clean
 	cd script && ./test-oopsla15.sh
 	./testTrie.native
 
+test-correctness: clean
+	$(OCB) src/test/experiments.native
+	./script/test-correctness.sh
+
 install:
 	opam pin -y add adapton .
 

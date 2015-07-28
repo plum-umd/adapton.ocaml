@@ -15,7 +15,7 @@ hline=-----------------------
 hline=$hline$hline$hline$hline$hline$hline
 for e in $experiments; do
     for ver in _name _arggen _sac; do
-        cmd="./experiments.byte\
+        cmd="./experiments.native\
             --experiment $e$ver\
             --n 100\
             --test-flags"
