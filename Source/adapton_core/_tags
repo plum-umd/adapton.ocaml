@@ -1,3 +1,0 @@
-true: for-pack(Adapton_lib.Adapton_core)
-<Grifola.*>: package(core)
-<AdaptonTypes.*>: package(str)

@@ -1,5 +1,0 @@
-<Adapton.*>: for-pack(Adapton_lib)
-<Adapton_logging.*>: for-pack(Adapton_lib)
-<adapton_core.*>: for-pack(Adapton_lib)
-<adapton_core_logging.*>: for-pack(Adapton_lib)
-<adapton_structures.*>: for-pack(Adapton_lib)

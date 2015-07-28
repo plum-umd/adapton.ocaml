@@ -1,1 +1,7 @@
-true: thread,pp(camlp4of)
+<src> : include
+<src/core> : include
+<src/core/*> : for-pack(Adapton)
+<src/structures> : include
+<src/structures/*> : for-pack(Adapton)
+true: package(core, unix, num, ppx_deriving.std)
+true: thread, debug

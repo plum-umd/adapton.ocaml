@@ -2,8 +2,8 @@
 
 #coordinate this with 'Makefile', 'adapton.install'
 
-requires = "core"
+requires = "num unix core ppx_deriving"
 description = "Adapton incremental computation engine"
 version = "0.1-dev"
-archive(byte) = "adapton_lib.cma"
-archive(native) = "adapton_lib.cmxa"
+archive(byte) = "adapton.cma"
+archive(native) = "adapton.cmxa"
