@@ -74,7 +74,14 @@
     defined and used separately from the usual cases of the structure,
     which are defined in the usual (eager) fashion.
 *)
-open Shared
+(* http://en.wikipedia.org/wiki/Find_first_set *)
+let rec ffs x =
+  if x = 0 then 0
+  else
+    let rec loop t r =
+      if (x land t) = 0 then r
+      else loop (t lsl 1) (r + 1)
+    in loop 1 0
 
 module type S = sig
   type elt
@@ -594,7 +601,7 @@ struct
          ( match list with
            | `Nil -> (`Nil, rev)
            | `Cons(x, xs) ->
-              let hd_lev = Shared.ffs (Elt.hash 0 x) in
+              let hd_lev = ffs (Elt.hash 0 x) in
               if lo <= hd_lev && hd_lev <= hi then (
                 match no with
                 | None ->
