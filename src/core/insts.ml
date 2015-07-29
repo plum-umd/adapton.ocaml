@@ -6,8 +6,8 @@
 
 module Structural : ArtLib.S =
 struct
-  module C = Nominal.Make(struct
-    include Nominal.Default_params
+  module C = Engine.Make(struct
+    include Engine.Default_params
     let disable_names  = true
     let generative_ids = true
     end)
@@ -22,7 +22,7 @@ end
 
 module Nominal : ArtLib.S =
 struct
-  include Nominal.Make(Nominal.Default_params)
+  include Engine.Make(Engine.Default_params)
   let sac_refresh () = ()
   type lib_id
 end

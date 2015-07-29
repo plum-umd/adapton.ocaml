@@ -1095,24 +1095,24 @@ end
 (* ----------------------------------------------------------------------------------------------------- *)
 
 module Engines = struct
-  module Nominal_name = Nominal.Make(
+  module Nominal_name = Engine.Make(
     struct
-      include Nominal.Default_params
+      include Engine.Default_params
     end )
-  module Nominal_arg = Nominal.Make(
+  module Nominal_arg = Engine.Make(
     struct
-      include Nominal.Default_params
+      include Engine.Default_params
       let disable_names = true
     end )
-  module Nominal_arggen = Nominal.Make(
+  module Nominal_arggen = Engine.Make(
     struct
-      include Nominal.Default_params
+      include Engine.Default_params
       let disable_names = true
       let generative_ids = true
     end )
-  module Nominal_nocheck = Nominal.Make(
+  module Nominal_nocheck = Engine.Make(
     struct
-      include Nominal.Default_params
+      include Engine.Default_params
       let check_receipt = false
     end )
   module EagerNonInc = Alternatives.EagerNonInc
