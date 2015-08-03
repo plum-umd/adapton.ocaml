@@ -1,4 +1,4 @@
-(** Grifola: Clean rewrite of the original Adapton module.
+(** Engine (previously Grifola): Clean rewrite of the original Adapton module.
 
     (Named after this: http://en.wikipedia.org/wiki/Grifola_frondosa).
 
@@ -16,9 +16,9 @@
     ref-counting to address the consistency issue related to weak refs
     and GC.
 
-    - Grifola implements the old API (see module type AType).
+    - Grifola implements the old API (see module type ??? No such thing as AType).
 
-    - Grifola implements the new API (see module type GrifolaType).
+    - Grifola implements the new API (see module type ArtLib.S).
 **)
 
 module type DataS = Data.S
@@ -592,7 +592,7 @@ module Make (Params:AParamsType) = struct
     (Data : Data.S) 
     : Art.S with type name = Name.t
              and type data = Data.t 
-             and type t = Data.t node   = 
+             and type t = Data.t node =
   struct
     type name = Name.t
     type data = Data.t

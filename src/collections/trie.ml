@@ -1,6 +1,7 @@
 (* Adapted from Pugh POPL '89 *)
 
 module type DataS = Data.S
+module type ArtS = Art.S
 
 (* Used to deterministically place elements in a Trie. *)
 let _PLACEMENT_SEED = 42
@@ -59,14 +60,7 @@ end
 module type S = sig
   
   type elt
-
-  type name
-         
-  module rec D : Data.S
-         and A : Art.S with type data = D.t
-                        and type name = name
-
-  include Data.S with type t = D.t
+  include Articulated.S
 
   val top_name : t -> name
   val is_empty : t -> bool
@@ -217,11 +211,11 @@ struct
       ((fun (a : int)  -> fun b  -> Pervasives.compare a b))
         (to_int lhs) (to_int rhs)
 
-  module rec D : Data.S with type t = A.t _t = struct
+  module rec D : Data.S with type t = Art.t _t = struct
 
-    type t = A.t _t
+    type t = Art.t _t
 
-    let rec compare = compare__t A.compare
+    let rec compare = compare__t Art.compare
 
     let equal = ""
     
@@ -235,7 +229,7 @@ struct
       | Empty bs, Empty bs' -> BS.equal bs bs'
       | Root (md, t), Root (md', t') ->
         md = md' && equal t t'
-      | Art a, Art a' -> A.equal a a'
+      | Art a, Art a' -> Art.equal a a'
       | Name (nm, t), Name (nm', t') ->
         Name.equal nm nm'  && equal t t'
       | _ -> false
@@ -251,7 +245,7 @@ struct
         | Empty bs         -> ""
         | Root (md, t)     -> "{"^(loop t)^"\n}"
         | Name (nm, t)     -> (Name.show nm) ^ ":" ^ (loop t)
-        |  Art   a         -> (*loop (Art.force a)*) A.show a
+        |  Art   a         -> (*loop (Art.force a)*) Art.show a
       in
       loop
 
@@ -265,7 +259,7 @@ struct
         | Empty bs         -> BS.hash seed bs
         | Root (md, t)     -> Hashtbl.seeded_hash (hash seed t) md
         | Name (nm, t)     -> Name.hash (hash seed t) nm
-        |  Art  a          -> A.hash seed a
+        |  Art  a          -> Art.hash seed a
       in
       hash
 
@@ -274,14 +268,14 @@ struct
       | (Empty _ as t)   -> t
       | Root (md, t)     -> Root (md, sanitize t)
       | Name (nm, t)     -> Name (nm, sanitize t)
-      |  Art   a         -> Art (A.sanitize a)
+      |  Art   a         -> Art (Art.sanitize a)
       | Atom (bs, es)    ->
         let es' = S.fold (fun e -> S.add (E.sanitize e)) es S.empty in
         Atom (bs, es')
 
   end
-  and A : Art.S with type data = D.t
-                 and type name = Name.t = AL.MakeArt(Name)(D)
+  and Art : ArtS with type data = D.t
+                  and type name = Name.t = AL.MakeArt(Name)(D)
 
   include D
 
@@ -290,21 +284,21 @@ struct
         (Name.t -> t -> t) *
         (int -> Name.t -> t -> t)) =
     let ident =
-      A.mk_mfn
+      Art.mk_mfn
         (Name.gensym "Trie.MakePlace#thunk")
         (module D)
         (fun _ t -> t)
     in
     let pfreq = 4 in
     (fun nm t ->
-      let art = ident.A.mfn_nart nm t in
-      ignore (A.force art) ;
+      let art = ident.Art.mfn_nart nm t in
+      ignore (Art.force art) ;
       Name (nm, Art art)),
     (fun nm t ->
       if Random.int pfreq = 0
       then
-        (let art = ident.A.mfn_nart nm t in
-         ignore (A.force art) ;
+        (let art = ident.Art.mfn_nart nm t in
+         ignore (Art.force art) ;
          Name (nm, Art art))
       else
         t),
@@ -312,15 +306,15 @@ struct
       let ifreq = if ifreq <= 0 then 1 else ifreq in
       if Random.int ifreq = 0
       then
-        (let art = ident.A.mfn_nart nm t in
-         ignore (A.force art) ;
+        (let art = ident.Art.mfn_nart nm t in
+         ignore (Art.force art) ;
          Name (nm, Art art))
       else
         t)
 
   let rec is_empty = function
     | Root (_, t) -> is_empty t
-    | Art   a     -> is_empty (A.force a)
+    | Art   a     -> is_empty (Art.force a)
     | Name (_, t) -> is_empty t
     | Empty _     -> true
     | _           -> false
@@ -328,7 +322,7 @@ struct
   let rec force x = match x with
     | Root (md, t) -> Root (md, force t)
     | Node (bs, t, t') -> Node (bs, force t, force t')
-    | Art   a      -> force (A.force a)
+    | Art   a      -> force (Art.force a)
     | Name (_, t)  -> force t
     | Empty _      -> x
     | Atom _       -> x
@@ -353,7 +347,7 @@ struct
     let rec loop h = function
       | Empty bs         -> None
       | Node (bs, t, t') -> loop (h lsr 1) (if h mod 2 = 0 then t else t')
-      |  Art   a         -> loop h (A.force a)
+      |  Art   a         -> loop h (Art.force a)
       | Atom (bs, es)    ->
         S.fold (fun n -> function None when pred n -> Some n | a -> a) es None
       | Name (_,  t) | Root (_, t) -> loop h t
@@ -365,7 +359,7 @@ struct
     | Empty _         -> a
     | Atom (_, es)    -> S.fold (fun n a -> f a n) es a
     | Root (_, t)     -> fold f a t
-    |  Art  ar        -> fold f a (A.force ar)
+    |  Art  ar        -> fold f a (Art.force ar)
     | Name (_, t)     -> fold f a t
 
   let structural_fold
@@ -385,7 +379,7 @@ struct
            | Empty bs         -> empty bs o
            | Atom (bs, es)    -> S.fold (atom bs) es o
            | Root (_, t)     -> loop.IO.mfn_data (o, t)
-           |  Art   a         -> loop.IO.mfn_data (o, A.force a)
+           |  Art   a         -> loop.IO.mfn_data (o, Art.force a)
            | Name (nm, t)     ->
              IO.force (loop.IO.mfn_nart nm (o, t)))
     in
@@ -421,13 +415,13 @@ struct
       | t, t' when equal t t' -> t'
       | Name (nm, Art a), Name (nm', Art a') ->
         let nm'' = Name.pair nm nm' in
-        thunk nm'' (loop (A.force a, A.force a'))
+        thunk nm'' (loop (Art.force a, Art.force a'))
       | Name (nm, Art a), t ->
         let nm = Name.pair nm (Name.gensym (show t)) in
-        thunk nm (loop (A.force a, t))
+        thunk nm (loop (Art.force a, t))
       | t, Name (nm, Art a) ->
         let nm = Name.pair nm (Name.gensym (show t)) in
-        thunk nm (loop (t, A.force a))
+        thunk nm (loop (t, Art.force a))
       | Root (md, t), Root (md', t') when md = md' ->
         Root (md, loop (t, t'))
       | Atom (bs, es), Atom (bs', es')
@@ -452,13 +446,13 @@ struct
       | Empty _, t | t, Empty _ -> t
       | Name (_, Art a), Name (_, Art a') ->
         let nm, nm' = Name.fork nm in
-        pthunk nm (loop nm' (A.force a, A.force a'))
+        pthunk nm (loop nm' (Art.force a, Art.force a'))
       | Name (_, Art a), t ->
         let nm, nm' = Name.fork nm in
-        pthunk nm (loop nm' (A.force a, t))
+        pthunk nm (loop nm' (Art.force a, t))
       | t, Name (nm, Art a) ->
         let nm, nm' = Name.fork nm in
-        pthunk nm (loop nm' (t, A.force a))
+        pthunk nm (loop nm' (t, Art.force a))
       | Root (md, t), Root (md', t') when md = md' ->
         Root (md, loop nm (t, t'))
       | Atom (bs, es), Atom (bs', es')
@@ -532,7 +526,7 @@ struct
         Atom (bs, S.add e (S.filter (fun e' -> E.place e' <> E.place e) es))
       | Name (_, Art a) ->
         let nm, nm' = Name.fork nm in
-        let t = loop (nm', e, bs, h, A.force a) in
+        let t = loop (nm', e, bs, h, Art.force a) in
         pfthunk (ifreq bs) nm t
       | (Atom _) as t  -> loop (nm, e, bs, h, split_atomic t)
       | t -> assert false
@@ -567,7 +561,7 @@ struct
           Node (bs, t0, t1)
       | Name (_, Art a) -> (* <-- handling in a single case maintains the invariant *)
         let nm, nm' = Name.fork nm in (* that Names always surround As  *)
-        pfthunk (ifreq bs) nm (loop (nm', min, e, bs, h, m, A.force a))
+        pfthunk (ifreq bs) nm (loop (nm', min, e, bs, h, m, Art.force a))
       | _ -> assert false
     (*| Atom _ -> assert false (* <-- Can't happen unless the minimum depth is violated  *)
       | Root _ -> assert false (* <-- Always unwrap the root in `[n]add`. *)*)
@@ -578,7 +572,7 @@ struct
       loop (nm, md, e, (0, 0), h, 1, t)
 
   let rec nadd nm t e = match t with
-    | Name (_, Art a) -> (match A.force a with
+    | Name (_, Art a) -> (match Art.force a with
                           | Root (md, t) ->
                             let nm, nm' = Name.fork nm in
                             let t' = nadd_deep nm' md t e in
@@ -714,11 +708,7 @@ module Map = struct
   module type S = sig
     type k
     type v
-    type name
-    module rec D : Data.S
-    and A : Art.S with type data = D.t
-                   and type name = name
-    include Data.S with type t = D.t
+    include Articulated.S
 
     val top_name : t -> name
     val is_empty : t -> bool

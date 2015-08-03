@@ -109,13 +109,13 @@ module type S = sig
   | `Name of name * ('one,'art) art_rope
   ]
 
-  module rec List : Adapted.S with type    t = List.Art.t art_list
+  module rec List : Articulated.S with type    t = List.Art.t art_list
                                and type name = name
 
-  module rec Tree : Adapted.S with type    t = (List.t, Tree.Art.t) art_tree
+  module rec Tree : Articulated.S with type    t = (List.t, Tree.Art.t) art_tree
                                and type name = name
 
-  module rec Rope : Adapted.S with type    t = (elt, Rope.Art.t) art_rope
+  module rec Rope : Articulated.S with type    t = (elt, Rope.Art.t) art_rope
                                and type name = name
 
 end
@@ -156,7 +156,7 @@ struct
   ]
   [@@deriving eq, ord, show]
 
-  module rec List : (Adapted.S with type    t = List.Art.t art_list
+  module rec List : (Articulated.S with type    t = List.Art.t art_list
                                 and type name = Name.t) =
   struct
     type name = Name.t
@@ -184,7 +184,7 @@ struct
     include Data
   end
 
-  module rec Tree : (Adapted.S with type    t = (List.t, Tree.Art.t) art_tree
+  module rec Tree : (Articulated.S with type    t = (List.t, Tree.Art.t) art_tree
                                 and type name = Name.t) =
   struct
     type name = Name.t
@@ -212,7 +212,7 @@ struct
     include Data
   end
 
-  module rec Rope : (Adapted.S with type    t = (elt, Rope.Art.t) art_rope
+  module rec Rope : (Articulated.S with type    t = (elt, Rope.Art.t) art_rope
                                 and type name = Name.t) =
   struct
     type name = Name.t
@@ -448,7 +448,7 @@ struct
     fun tree list -> mfn.LArt.mfn_data (tree, list)
 
   let rope_of_list_rec : name option -> int -> int -> St.Rope.t -> St.List.t -> St.Rope.t * St.List.t =
-    let module P = Adapted.ArtTuple2(ArtLib)(Name)(St.Rope)(St.List) in
+    let module P = Articulated.ArtTuple2(ArtLib)(Name)(St.Rope)(St.List) in
     let rope_of_list_rec =
       let mfn = P.Art.mk_mfn (Name.gensym "rope_of_list_rec")
         (module Types.Tuple5(Types.Option(Name))(Types.Int)(Types.Int)(St.Rope)(St.List))
@@ -1099,7 +1099,7 @@ struct
     )
 
   let rec list_remove : KeySt.List.t -> Key.t -> (Key.t option) * KeySt.List.t =
-    let module M = Adapted.ArtTuple2(ArtLib)(Name)(KeyOptAdpt)(KeySt.List) in
+    let module M = Articulated.ArtTuple2(ArtLib)(Name)(KeyOptAdpt)(KeySt.List) in
     let mfn = M.Art.mk_mfn (Name.gensym "list_remove")
       (module (Types.Tuple2(KeySt.List)(Key)))
       (fun r (list, target) ->
@@ -1125,7 +1125,7 @@ struct
     fun list target -> mfn.M.Art.mfn_data (list, target)
 
   let rec tree_remove : KeySt.Tree.t -> Key.t -> (Key.t option) * KeySt.Tree.t =
-    let module M = Adapted.ArtTuple2(ArtLib)(Name)(KeyOptAdpt)(KeySt.Tree) in
+    let module M = Articulated.ArtTuple2(ArtLib)(Name)(KeyOptAdpt)(KeySt.Tree) in
     let mfn = M.Art.mk_mfn (Name.gensym "tree_remove")
       (module (Types.Tuple2(KeySt.Tree)(Key)))
       (fun r (tree, target) ->
