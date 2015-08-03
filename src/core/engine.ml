@@ -956,7 +956,7 @@ module Make (Params:AParamsType) = struct
             { mfn_data = (fun arg -> user_function mfn arg) ;
               mfn_art  = (fun arg -> 
                 if Params.disable_mfns then
-                  cell (Name.nondet()) (user_function mfn arg)
+                  cell (Name.gensym ()) (user_function mfn arg)
                 else
                   if Params.generative_ids then
                     Susp_ptr(Rec.create_susp_ptr_arggen arg)
@@ -965,7 +965,7 @@ module Make (Params:AParamsType) = struct
               ) ;
               mfn_nart = (fun nm arg -> 
                 if Params.disable_mfns then
-                  cell (Name.nondet()) (user_function mfn arg)
+                  cell (Name.gensym ()) (user_function mfn arg)
                 else
                   if Params.disable_names then (
                     if Params.generative_ids then

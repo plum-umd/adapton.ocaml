@@ -12,11 +12,11 @@ let rec ffs x =
 module type S =
 sig
   include Data.S
-  val nondet : unit -> t   (* System chooses a fresh name; may be nondeterministic. *)
-  val gensym : string -> t (* User takes affinity into their own hands when choosing strings.. *)
-  val pair   : t -> t -> t (* For creating conjunctive names *)
-  val fork   : t -> t * t  (* Input name determines two distinct output names. *)
-  val height : t -> int    (* (1) Drawn from a negative binomial distro, (2) Should be fixed for all forked ancestors. *)
+  val gensym    : unit -> t   (* System chooses a fresh name; may be nondeterministic. *)
+  val of_string : string -> t (* User takes affinity into their own hands when choosing strings.. *)
+  val pair      : t -> t -> t (* For creating conjunctive names *)
+  val fork      : t -> t * t  (* Input name determines two distinct output names. *)
+  val height    : t -> int    (* (1) Drawn from a negative binomial distro, (2) Should be fixed for all forked ancestors. *)
 end
 
 module Key : S =
@@ -36,7 +36,7 @@ struct
              height:int;
              tree:tree}
   
-  let gensym s = 
+  let of_string s = 
     let h = Hashtbl.hash (Symbol s) in
     { hash = h ; 
       height = ffs h ; 
@@ -75,7 +75,7 @@ struct
         height = ffs hash ;
         tree = Label ( l, seed ) }
       
-  let nondet = make_nondet 0
+  let gensym = make_nondet 0
   
   let fork k =
     let k1_hash = Hashtbl.seeded_hash 1111 k.hash in

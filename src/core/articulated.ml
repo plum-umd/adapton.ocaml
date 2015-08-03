@@ -36,9 +36,13 @@ struct
                      and type     t = DS.t
                      and module Art = A
 
-  type name = N.t
-  module Art = A
-  include DS
+  module Impl : S =
+  struct
+    type name = N.t
+    module Art = A
+    include DS
+  end
+  include Impl
 
 end
 
@@ -70,8 +74,8 @@ struct
   module Adpt2 = Adpt2
   module Art = ArtLib.MakeArt(Name)(Types.Tuple2(Adpt1)(Adpt2))
 
-  let mfn_fst = Adpt1.Art.mk_mfn (Name.gensym "fst") (module Art) (fun r art -> fst (Art.force art))
-  let mfn_snd = Adpt2.Art.mk_mfn (Name.gensym "snd") (module Art) (fun r art -> snd (Art.force art))
+  let mfn_fst = Adpt1.Art.mk_mfn (Name.of_string "fst") (module Art) (fun r art -> fst (Art.force art))
+  let mfn_snd = Adpt2.Art.mk_mfn (Name.of_string "snd") (module Art) (fun r art -> snd (Art.force art))
       
   let fst nm art = if true then mfn_fst.Adpt1.Art.mfn_art art else mfn_fst.Adpt1.Art.mfn_nart nm art
   let snd nm art = if true then mfn_snd.Adpt2.Art.mfn_art art else mfn_snd.Adpt2.Art.mfn_nart nm art

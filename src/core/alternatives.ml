@@ -144,8 +144,8 @@ module EagerNonInc = struct
       let rec mfn =
         (* incr Statistics.Counts.evaluate;  *)
         { mfn_data = (fun arg -> user_function mfn arg)
-        ; mfn_art  = (fun arg -> cell (Name.nondet()) (user_function mfn arg))
-        ; mfn_nart = (fun _ arg -> cell (Name.nondet()) (user_function mfn arg))
+        ; mfn_art  = (fun arg -> cell (Name.gensym ()) (user_function mfn arg))
+        ; mfn_nart = (fun _ arg -> cell (Name.gensym ()) (user_function mfn arg))
         }
       in mfn
   end
@@ -225,8 +225,8 @@ module LazyNonInc = struct
       (* incr Statistics.Counts.evaluate;  *)
         { 
           mfn_data = (fun arg -> user_function mfn arg) ;
-          mfn_art  = (fun arg -> cell (Name.nondet()) (user_function mfn arg)) ;
-          mfn_nart = (fun _ arg -> cell (Name.nondet()) (user_function mfn arg)) ;
+          mfn_art  = (fun arg -> cell (Name.gensym ()) (user_function mfn arg)) ;
+          mfn_nart = (fun _ arg -> cell (Name.gensym ()) (user_function mfn arg)) ;
         }
       in mfn
   end

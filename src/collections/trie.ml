@@ -104,7 +104,7 @@ struct
 
   type name = Name.t
   let name_of_data (type d) (module D : Data.S with type t = d) (d : d) : Name.t =
-    Name.gensym (string_of_int (D.hash (Hashtbl.hash "Trie#name_of_data") d))
+    Name.of_string (string_of_int (D.hash (Hashtbl.hash "Trie#name_of_data") d))
                
   module S = struct
     include Set.Make(E)
@@ -285,7 +285,7 @@ struct
         (int -> Name.t -> t -> t)) =
     let ident =
       Art.mk_mfn
-        (Name.gensym "Trie.MakePlace#thunk")
+        (Name.of_string "Trie.MakePlace#thunk")
         (module D)
         (fun _ t -> t)
     in
@@ -330,7 +330,7 @@ struct
   let nempty : ?min_depth:int -> t =
     (fun ?(min_depth=1) ->
       let md = min_depth mod 32 in
-      let nm0 = Name.gensym ("Adapton.Trie#empty" ^ (string_of_int md)) in
+      let nm0 = Name.of_string ("Adapton.Trie#empty" ^ (string_of_int md)) in
       let nm1, nm2 = Name.fork nm0 in
       pfthunk 0 nm1 (Root (md, pfthunk 0 nm2 (Empty (0, 0)))))[@warning "-16"]
 
@@ -372,7 +372,7 @@ struct
     : t -> o -> o =
     let module IO = AL.MakeArt(Name)(Out) in
     let loop = IO.mk_mfn
-        (Name.gensym ("Trie.MakeInc#structural_fold#"^namespace))
+        (Name.of_string ("Trie.MakeInc#structural_fold#"^namespace))
         (module Types.Tuple2(Out)(D))
         (fun loop (o, t) -> match t with
            | Node (bs, t, t') -> node bs (loop.IO.mfn_data (o, t)) (loop.IO.mfn_data (o, t'))
@@ -417,10 +417,10 @@ struct
         let nm'' = Name.pair nm nm' in
         thunk nm'' (loop (Art.force a, Art.force a'))
       | Name (nm, Art a), t ->
-        let nm = Name.pair nm (Name.gensym (show t)) in
+        let nm = Name.pair nm (Name.of_string (show t)) in
         thunk nm (loop (Art.force a, t))
       | t, Name (nm, Art a) ->
-        let nm = Name.pair nm (Name.gensym (show t)) in
+        let nm = Name.pair nm (Name.of_string (show t)) in
         thunk nm (loop (t, Art.force a))
       | Root (md, t), Root (md', t') when md = md' ->
         Root (md, loop (t, t'))
@@ -482,10 +482,10 @@ struct
         let nm'' = Name.pair nm nm' in
         thunk nm'' (loop (Art.force a, Art.force a'))
       | Name (nm, Art a), t ->
-        let nm = Name.pair nm (Name.gensym (show t)) in
+        let nm = Name.pair nm (Name.of_string (show t)) in
         thunk nm (loop (Art.force a, t))
       | t, Name (nm, Art a) ->
-        let nm = Name.pair nm (Name.gensym (show t)) in
+        let nm = Name.pair nm (Name.of_string (show t)) in
         thunk nm (loop (t, Art.force a))
 
       | Root (md, t), Root (md', t') when md = md' ->
@@ -818,7 +818,7 @@ module Rel = struct
     module M = Map.Make(N)(A)(K)(Vs)
     include M
     let name_of_data (type d) (module D : DataS with type t = d) (d : d) : name =
-      N.gensym (string_of_int (D.hash (Hashtbl.hash "Trie#name_of_data") d))
+      N.of_string (string_of_int (D.hash (Hashtbl.hash "Trie#name_of_data") d))
 
     let nclobber : name -> t -> k -> sv -> t =
       fun nm t k v ->

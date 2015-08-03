@@ -366,7 +366,7 @@ struct
     let rec create_nil_art elt =
       match elt with
       | `Nil ->
-        let nm1, nm2 = Name.fork (Name.nondet()) in
+        let nm1, nm2 = Name.fork (Name.gensym ()) in
         `Name(nm1, `Art(LArt.cell nm2 `Nil))
       | `Cons(x,xs) -> `Cons(x, create_nil_art xs)
       | `Art(a) -> failwith "two last arts!"
@@ -401,7 +401,7 @@ struct
 
   let list_length : St.List.t -> int =
     let module Len = ArtLib.MakeArt(Name)(Types.Int) in
-    let mfn = Len.mk_mfn (Name.gensym "list_length")
+    let mfn = Len.mk_mfn (Name.of_string "list_length")
       (module St.List)
       (fun r l ->
         let len l = r.Len.mfn_data l in
@@ -417,7 +417,7 @@ struct
 
 
   let list_append =
-    let mfn = LArt.mk_mfn (Name.gensym "list_append")
+    let mfn = LArt.mk_mfn (Name.of_string "list_append")
       (module Types.Tuple2(St.List)(St.List))
       (fun r (xs, ys) ->
         let list_append xs ys = r.LArt.mfn_data (xs,ys) in
@@ -433,7 +433,7 @@ struct
     fun xs ys -> mfn.LArt.mfn_data (xs, ys)
 
   let list_of_tree : St.Tree.t -> St.List.t -> St.List.t =
-    let mfn = LArt.mk_mfn (Name.gensym "list_of_tree")
+    let mfn = LArt.mk_mfn (Name.of_string "list_of_tree")
       (module Types.Tuple2(St.Tree)(St.List))
       (fun r (tree, rest) ->
         let list_of_tree tree list = r.LArt.mfn_data (tree, list) in
@@ -450,7 +450,7 @@ struct
   let rope_of_list_rec : name option -> int -> int -> St.Rope.t -> St.List.t -> St.Rope.t * St.List.t =
     let module P = Articulated.ArtTuple2(ArtLib)(Name)(St.Rope)(St.List) in
     let rope_of_list_rec =
-      let mfn = P.Art.mk_mfn (Name.gensym "rope_of_list_rec")
+      let mfn = P.Art.mk_mfn (Name.of_string "rope_of_list_rec")
         (module Types.Tuple5(Types.Option(Name))(Types.Int)(Types.Int)(St.Rope)(St.List))
 
         (fun r (nm_opt, parent_lev, rope_lev, rope, list) ->
@@ -495,7 +495,7 @@ struct
       rope
 
   let list_of_rope : St.Rope.t -> St.List.t -> St.List.t =
-    let mfn = LArt.mk_mfn (Name.gensym "list_of_rope")
+    let mfn = LArt.mk_mfn (Name.of_string "list_of_rope")
       (module Types.Tuple2(St.Rope)(St.List))
       (fun r (rope, rest) ->
         let list_of_rope rope list = r.LArt.mfn_data (rope, list) in
@@ -512,7 +512,7 @@ struct
 
   let rope_length : St.Rope.t -> int =
     let module Len = ArtLib.MakeArt(Name)(Types.Int) in
-    let mfn = Len.mk_mfn (Name.gensym "rope_length")
+    let mfn = Len.mk_mfn (Name.of_string "rope_length")
       (module St.Rope)
       (fun r rope ->
         let len rope = r.Len.mfn_data rope in
@@ -530,7 +530,7 @@ struct
   let rope_not_empty : name -> St.Rope.t -> bool =
     fun (namespace : name) ->
     let module M = ArtLib.MakeArt(Name)(Types.Bool) in
-    let fnn = Name.pair (Name.gensym "rope_empty") namespace in
+    let fnn = Name.pair (Name.of_string "rope_empty") namespace in
     let mfn = M.mk_mfn fnn
       (module St.Rope)
       (fun r rope ->
@@ -566,7 +566,7 @@ struct
     rope_nth rope n
 
   let list_reverse : St.List.t -> St.List.t -> St.List.t =
-    let mfn = LArt.mk_mfn (Name.gensym "list_reverse")
+    let mfn = LArt.mk_mfn (Name.of_string "list_reverse")
       (module Types.Tuple2(St.List)(St.List))
       (fun r (list, rev) ->
         let list_reverse list rev = r.LArt.mfn_data (list,rev) in
@@ -584,7 +584,7 @@ struct
     let debug = false in
     let accum =
       LArt.mk_mfn
-        (Name.gensym "list_reverse_accum")
+        (Name.of_string "list_reverse_accum")
         (module St.List)
         (fun _ list ->
            (if debug then Printf.printf "... accum=(%s)\n" (St.List.show list));
@@ -594,7 +594,7 @@ struct
     let module Arg = Types.Tuple5(Types.Option(Name))(Types.Int)(Types.Int)(St.List)(St.List) in
     let mfn =
       Res.mk_mfn
-        (Name.gensym "list_reverse")(module Arg)
+        (Name.of_string "list_reverse")(module Arg)
         (fun r ((no, lo, hi, list, rev) as arg) ->
          (if debug then Printf.printf "... list_reverse:args=(%s)\n%!" (Arg.show arg)) ;
          let list_reverse no lo hi list rev = r.Res.mfn_data (no,lo,hi,list,rev) in
@@ -638,7 +638,7 @@ struct
     | _, _ -> failwith "list_reverse: impossible"
 
   let rec rope_reverse =
-    let mfn = RArt.mk_mfn (Name.gensym "rope_reverse")
+    let mfn = RArt.mk_mfn (Name.of_string "rope_reverse")
       (module St.Rope)
       (fun r rope -> let rope_reverse = r.RArt.mfn_data in
         ( match rope with
@@ -660,7 +660,7 @@ struct
     (op_nm : name)
     (op : Elt.t -> bool)
     : St.Rope.t -> St.Rope.t = 
-    let fnn = Name.pair (Name.gensym "rope_filter") op_nm in
+    let fnn = Name.pair (Name.of_string "rope_filter") op_nm in
     let mfn = RArt.mk_mfn fnn
       (module St.Rope)
       (fun r rope ->
@@ -681,7 +681,7 @@ struct
     (op_nm : name)
     (op : Elt.t -> bool)
     : St.List.t -> St.List.t = 
-    let fnn = Name.pair (Name.gensym "list_filter") op_nm in
+    let fnn = Name.pair (Name.of_string "list_filter") op_nm in
     let mfn = LArt.mk_mfn fnn
       (module St.List)
       (fun r list -> 
@@ -703,7 +703,7 @@ struct
     (op_nm : name)
     (op : Elt.t -> Elt.t)
     : St.List.t -> St.List.t = 
-    let fnn = Name.pair (Name.gensym "list_map") op_nm in
+    let fnn = Name.pair (Name.of_string "list_map") op_nm in
     let mfn = LArt.mk_mfn fnn
       (module St.List)
       (fun r list -> 
@@ -721,7 +721,7 @@ struct
 
   let list_ref_cell
     : name -> St.List.t -> St.List.Art.t = 
-    let fnn = Name.gensym "list_ref_cell" in
+    let fnn = Name.of_string "list_ref_cell" in
     let mfn = LArt.mk_mfn fnn
       (module St.List)
       (fun r list -> list)
@@ -732,7 +732,7 @@ struct
     (op_nm : name)
     (op : Elt.t -> Elt.t)
     : St.List.t -> St.List.t = 
-    let fnn = Name.pair (Name.gensym "list_map") op_nm in
+    let fnn = Name.pair (Name.of_string "list_map") op_nm in
     let mfn = LArt.mk_mfn fnn
       (module St.List)
       (fun r list -> 
@@ -757,7 +757,7 @@ struct
     (op_nm : name)
     (op : Elt.t -> bool)
     : St.List.t -> St.List.t = 
-    let fnn = Name.pair (Name.gensym "list_filter") op_nm in
+    let fnn = Name.pair (Name.of_string "list_filter") op_nm in
     let mfn = LArt.mk_mfn fnn
       (module St.List)
       (fun r list -> 
@@ -784,7 +784,7 @@ struct
     (op_nm : name)
     (op : Elt.t -> Elt.t -> Elt.t)
     : St.List.t -> St.List.t =
-    let fnn = Name.pair (Name.gensym "list_map_paired") op_nm in
+    let fnn = Name.pair (Name.of_string "list_map_paired") op_nm in
     let mfn = LArt.mk_mfn fnn
       (module St.List)
       (fun r list ->
@@ -834,7 +834,7 @@ struct
       ( op_nm : St.name )
       ( op : Elt.t -> Elt.t -> Elt.t )
       : St.Rope.t -> Elt.t option =
-    let fnn = Name.pair (Name.gensym "rope_reduce") op_nm in
+    let fnn = Name.pair (Name.of_string "rope_reduce") op_nm in
     let mfn = AEltOption.mk_mfn fnn
       (module St.Rope)
       (fun r rope ->
@@ -864,7 +864,7 @@ struct
     ( op_nm : St.name )
     ( op : Elt.t -> Elt.t -> Elt.t )
     : St.Rope.t -> Elt.t option * name option =
-    let fnn = Name.pair (Name.gensym "rope_reduce_name") op_nm in
+    let fnn = Name.pair (Name.of_string "rope_reduce_name") op_nm in
     let module M =
       ArtLib.MakeArt
         (Name)
@@ -913,7 +913,7 @@ struct
         name option ->
         St.List.t ->
         St.List.t -> St.List.t =
-    let fnn = Name.pair (Name.gensym "list_merge") compare_nm in
+    let fnn = Name.pair (Name.of_string "list_merge") compare_nm in
     let mfn = LArt.mk_mfn fnn
       (module Types.Tuple4
           (Types.Option(Name))
@@ -961,7 +961,7 @@ struct
       ( compare_nm : St.name )
       ( compare : Elt.t -> Elt.t -> int )
       : St.Rope.t -> St.List.t =
-    let fnn = Name.pair (Name.gensym "rope_mergesort") compare_nm in
+    let fnn = Name.pair (Name.of_string "rope_mergesort") compare_nm in
     let merge = list_merge_full compare_nm compare in
     let mfn = St.List.Art.mk_mfn fnn
       (module Types.Tuple2(Types.Option(Name))(St.Rope))
@@ -1045,7 +1045,7 @@ struct
   module LArt    = KeySt.List.Art
 
   let rec is_bst : Key.t * Key.t  -> KeySt.Tree.t -> bool =
-    let mfn = ABool.mk_mfn (Name.gensym "is_bst")
+    let mfn = ABool.mk_mfn (Name.of_string "is_bst")
       (module (Types.Tuple3(Key)(Key)(KeySt.Tree)))
       (fun r (lo,hi,tree) ->
         let is_bst (lo,hi) tree = r.ABool.mfn_data (lo,hi,tree) in
@@ -1100,7 +1100,7 @@ struct
 
   let rec list_remove : KeySt.List.t -> Key.t -> (Key.t option) * KeySt.List.t =
     let module M = Articulated.ArtTuple2(ArtLib)(Name)(KeyOptAdpt)(KeySt.List) in
-    let mfn = M.Art.mk_mfn (Name.gensym "list_remove")
+    let mfn = M.Art.mk_mfn (Name.of_string "list_remove")
       (module (Types.Tuple2(KeySt.List)(Key)))
       (fun r (list, target) ->
         let list_remove list target = r.M.Art.mfn_data (list, target) in
@@ -1126,7 +1126,7 @@ struct
 
   let rec tree_remove : KeySt.Tree.t -> Key.t -> (Key.t option) * KeySt.Tree.t =
     let module M = Articulated.ArtTuple2(ArtLib)(Name)(KeyOptAdpt)(KeySt.Tree) in
-    let mfn = M.Art.mk_mfn (Name.gensym "tree_remove")
+    let mfn = M.Art.mk_mfn (Name.of_string "tree_remove")
       (module (Types.Tuple2(KeySt.Tree)(Key)))
       (fun r (tree, target) ->
         let tree_remove tree target = r.M.Art.mfn_data (tree, target) in
@@ -1154,7 +1154,7 @@ struct
 
   let tree_height : KeySt.Tree.t -> int =
     let module M = ArtLib.MakeArt(Name)(Types.Int) in
-    let mfn = M.mk_mfn (Name.gensym "tree_height")
+    let mfn = M.mk_mfn (Name.of_string "tree_height")
       (module KeySt.Tree)
       (fun r tree ->
         let tree_height tree = r.M.mfn_data tree in
@@ -1180,7 +1180,7 @@ struct
     )
 
   let rotate_right : KeySt.Tree.t -> KeySt.Tree.t =
-    let mfn = TArt.mk_mfn (Name.gensym "rotate_right")
+    let mfn = TArt.mk_mfn (Name.of_string "rotate_right")
       (module KeySt.Tree)
       ( fun r tree ->
         let rotate_right t = r.TArt.mfn_data t in
@@ -1204,7 +1204,7 @@ struct
     fun tree -> mfn.TArt.mfn_data tree
 
   let rec rotate_left : KeySt.Tree.t -> KeySt.Tree.t =
-    let mfn = TArt.mk_mfn (Name.gensym "rotate_left")
+    let mfn = TArt.mk_mfn (Name.of_string "rotate_left")
       (module KeySt.Tree)
       ( fun r tree ->
         let rotate_left t = r.TArt.mfn_data t in
@@ -1229,7 +1229,7 @@ struct
     fun tree -> mfn.TArt.mfn_data tree
 
   let nm_tree : Name.t -> KeySt.Tree.t -> KeySt.Tree.t =
-    let mfn = TArt.mk_mfn (Name.gensym "nm_tree")
+    let mfn = TArt.mk_mfn (Name.of_string "nm_tree")
       (module KeySt.Tree)
       (fun r tree -> tree)
     in
@@ -1239,7 +1239,7 @@ struct
 
   let rec avl_insert : Name.t -> KeySt.Tree.t -> Key.t -> KeySt.Tree.t
     =
-    let mfn = TArt.mk_mfn (Name.gensym "avl_insert")
+    let mfn = TArt.mk_mfn (Name.of_string "avl_insert")
       (module (Types.Tuple3(Name)(KeySt.Tree)(Key)))
       (fun r (insert_nm,tree,kv) ->
         let avl_insert nm tree kv = r.TArt.mfn_data (nm,tree,kv) in
@@ -1295,7 +1295,7 @@ struct
 
   let avl_tree_of_rope : Name.t -> KeySt.Rope.t -> KeySt.Tree.t -> KeySt.Tree.t
     =
-    let mfn = TArt.mk_mfn (Name.gensym "avl_tree_of_rope")
+    let mfn = TArt.mk_mfn (Name.of_string "avl_tree_of_rope")
       (module Types.Tuple3(Name)(KeySt.Rope)(KeySt.Tree))
       (fun r (nm, rope, tree) ->
         let avl_tree_of_rope nm rope tree = r.TArt.mfn_data (nm, rope, tree) in
@@ -1316,7 +1316,7 @@ struct
 
   let avl_tree_of_list : Name.t -> KeySt.List.t -> KeySt.Tree.t -> KeySt.Tree.t
     =
-    let mfn = TArt.mk_mfn (Name.gensym "avl_tree_of_list")
+    let mfn = TArt.mk_mfn (Name.of_string "avl_tree_of_list")
       (module Types.Tuple3(Name)(KeySt.List)(KeySt.Tree))
       (fun r (nm, list, tree) ->
         let avl_tree_of_list nm list tree = r.TArt.mfn_data (nm, list, tree) in
@@ -1556,7 +1556,7 @@ module ExprLang = struct
 
     let eval_big : nm -> env -> expr -> value option
       =
-      let mfn = VOptionArt.mk_mfn (Name.gensym "eval_big")
+      let mfn = VOptionArt.mk_mfn (Name.of_string "eval_big")
         (module Types.Tuple3(Name)(Env.KeySt.Tree.Data)(Expr.Data))
         (fun r (nm,env,expr) ->
           let eval nm env exp = r.VOptionArt.mfn_data (nm,env,exp) in
@@ -1616,7 +1616,7 @@ module ExprLang = struct
 
     let eval_small : nm -> cxt -> env -> expr -> (cxt, env, expr) option
       =
-      let mfn = VOptionArt.mk_mfn (Name.gensym "eval")
+      let mfn = VOptionArt.mk_mfn (Name.of_string "eval")
         (module Types.Tuple3(Name)(Env.KeySt.Tree.Data)(Expr.Data))
         (fun r (nm,cxt,env,expr) ->
           let eval nm env exp = r.VOptionArt.mfn_data (nm,cxt,env,exp) in
