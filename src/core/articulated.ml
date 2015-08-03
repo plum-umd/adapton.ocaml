@@ -7,6 +7,42 @@ sig
 end
 
 
+module Make(ArtLib : ArtLib.S)(N : Name.S)(D : Data.S)
+  : S with type        t = D.t
+       and type     name = N.t
+       and type Art.data = D.t
+       and type Art.name = N.t =
+struct
+  type name = N.t
+  module Art = ArtLib.MakeArt(N)(D)
+  include D
+end
+
+
+module Fix(ArtLib : ArtLib.S)(N : Name.S)(DP : Data.P) =
+struct
+
+  module rec DS : Data.S with type t = A.t DP.t =
+  struct
+    type t = A.t DP.t [@@deriving eq, ord, show]
+    let hash     = DP.hash A.hash
+    let sanitize = DP.sanitize A.sanitize
+  end
+  and A : Art.S with type data = DS.t
+                 and type name = N.t =
+    ArtLib.MakeArt(N)(DS)
+
+  module type S = S with type  name = N.t
+                     and type     t = DS.t
+                     and module Art = A
+
+  type name = N.t
+  module Art = A
+  include DS
+
+end
+
+
 module type ArtTuple2S = sig
   type name
   module Adpt1 : S with type name = name

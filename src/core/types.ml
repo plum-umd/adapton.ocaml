@@ -246,18 +246,11 @@ let makeFunction (type a) (type b) () : (module Data.S with type t = a -> b) =
 
 module Sum2 (A : Data.S) (B : Data.S) = struct
   type t = InL of A.t | InR of B.t
-  let rec equal lhs rhs =
-    match (lhs, rhs) with
-    | (InL lhs0,InL rhs0) -> A.equal lhs0 rhs0
-    | (InR lhs0,InR rhs0) -> B.equal lhs0 rhs0
-    | _ -> false
+  [@@deriving eq, ord, show]
   let hash seed = function
     | InL a -> A.hash seed a
     | InR b -> B.hash seed b
   let sanitize = function
     | InL a -> InL (A.sanitize a)
     | InR b -> InR (B.sanitize b)
-  let string = function
-    | InL a -> Printf.sprintf "InL (%s)" (A.show a)
-    | InR b -> Printf.sprintf "InR (%s)" (B.show b)
 end
