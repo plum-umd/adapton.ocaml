@@ -2,10 +2,9 @@ Adapton
 =======
 
 (Nominal) Adapton for OCaml.
-Yit's original mecurial repo is here:
-  https://bitbucket.org/khooyp/adapton.ocaml
 
 Adapton provides tools to build programs that compute incrementally.
+See [adapton.org](adapton.org) for more information about Adapton generally, including its contributors, publications and alternative implementations.
 
 Adapton requires:
 - OCaml version 4.02.0+
