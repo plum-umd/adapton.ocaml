@@ -1,44 +1,32 @@
-#Using myocamlbuild to take care of dependencies, so all targets are .PHONYs
-.PHONY: lib test opam-pin opam-remove clean clean-all update
+.PHONY = all,debug,clean
 
-#coordinate this with adapton.install for opam use
-LIBS=a cma cmo cmi cmx cmxa
+OCB = ocamlbuild -use-ocamlfind
+OPTOPTS = $(OCB) -ocamlopt 'ocamlopt -inline 20'
+POPTOPTS = $(OCB) -ocamlopt 'ocamlopt -p -g'
+LIBS=a cma cmi cmo cmx cmxa
 
-lib:
+all: clean
 	for ext in $(LIBS); do \
-		ocamlbuild Source/adapton_lib.$$ext; \
+		$(OCB) adapton.$$ext || exit 1 ; \
 	done
 
-update:
-	git pull
-	make opam-remove
-	make opam-pin
+test: clean
+	$(OCB) src/test/experiments.native
+	$(OCB) src/test/testTrie.native
+	cd script && ./test-oopsla15.sh
+	./testTrie.native
 
-imp:
-	ocamlbuild Sample/Implang/implang.native
+test-correctness: clean
+	$(OCB) src/test/experiments.native
+	./script/test-correctness.sh
 
-#ocamlbuild will put an alias to binaries in the root directory
-test:
-	ocamlbuild Source/test/experiments.native
-
-test-db:
-	ocamlbuild -cflag '-g' -lflag '-g' Source/test/experiments.byte
-
-# this doesn't work yet
-test-log:
-	ocamlbuild -cflags -ppopt,"-DADAPTON_LOG" Source/test/experiments.native -verbose 1
-
-opam-pin:
+install:
 	opam pin -y add adapton .
 
-opam-remove:
+uninstall :
 	opam pin -y remove adapton
 
-opam-reload: opam-remove opam-pin
+reinstall: uninstall install
 
 clean:
 	ocamlbuild -clean
-
-#clean up more for push to repo
-clean-all: clean
-	rm -f *.gmv out/*.gmv out/*.csv script/*.gmv

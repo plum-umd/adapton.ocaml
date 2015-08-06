@@ -3,11 +3,11 @@
 #coordinate these with 'Makefile'
 lib: [
   "META"
-  "_build/Source/adapton_lib.a"
-  "_build/Source/adapton_lib.cmo"
-  "_build/Source/adapton_lib.cmi"
-  "_build/Source/adapton_lib.cma"
-  "_build/Source/adapton_lib.cmx"
-  "_build/Source/adapton_lib.cmxa"
+  "_build/src/adapton.a"
+  "_build/src/adapton.cmo"
+  "_build/src/adapton.cmi"
+  "_build/src/adapton.cma"
+  "_build/src/adapton.cmx"
+  "_build/src/adapton.cmxa"
   ]
   

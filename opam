@@ -3,7 +3,7 @@
 opam-version: "1.2"
 name: "adapton"
 version: "0.1-dev"
-maintainer: "Kyle Headley <kheadley@umd.edu>"
+maintainer: "Nicholas Labich <labichn@cs.umd.edu>"
 authors: "Matthew Hammer <hammer@cs.umd.edu>"
 build: [
   [make]

@@ -1,0 +1,2 @@
+true : thread
+true : package(adapton, ppx_deriving.std)
