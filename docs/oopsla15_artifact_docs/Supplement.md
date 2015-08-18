@@ -10,7 +10,7 @@ There are two ways to use this repository. One is as a library, and the other is
 
 See the readme file in the main directory for some examples of library use. There are currently no major examples in the repository.
 
-We have been developing a number of list-based example programs within an extension to Adapton located in the `Source/adapton_structures` directory. This is a currently incomplete list library, where having names as first-class values within data can be very beneficial.
+We have been developing a number of list-based example programs within an extension to Adapton located in the `src/collections` directory. This includes trie-based set, map, and graph implementations and a currently incomplete list library, where having names as first-class values within data can be very beneficial.
 
 There are a number of internal examples set up for testing purposes.  They can all be run with `experiments.native`, which has many parameters available. Calling this executable with `--help` will give a simple list of parameters, and calling it with `--experiment [anyletter]` will fail but generate a list of available experiments to run.
 
@@ -113,13 +113,7 @@ what they mean:
 * tables - count of active memo tables
 * granularity - From (`--gran`)
 
-There are a couple of excel files in the template directory that can be used to visualize the CSV results data. They initially contain sample data from the 'simplemerge.sh' script. Any of the generated CSV files can be loaded and many parameters can be adjusted. Often we concatenate several results files so that we can compare tests after a code change. You will want to modify the test name so that the different runs can be distinguished. A simple command to do this is `sed 's/[old]/[new]/g' [input.csv] > [output.csv]`, changing only characters inside `[]`. We have, for example, changed Rope_mergesort_name to old_Rope_mergesort_name to compare.
-
-`template/Charts.xlsx` contains a number of data tables, charts and adjustable parameters. You can load data by switching to the 'data' sheet and selecting 'Data->Refresh Data' from the menu. If you end up importing a new sheet, the important options are to choose are delimiters of both comma and tab, and to treat consecutive delimiters as one. The 'Summary' sheet will be updated with all the new data, and has parameters labeled in green that can be modified. The 'average' sheet does all the main calculations, but does include adjustments for the sample numbers, in case you used something different than 1-7.
-
-The `Charts.xlsx` excel file is designed to compare multiple tests. There is a pale green option bar across the top with the potential values from the initial data. This data does not automatically refresh, but can be used for communication purposes. The bright green labels are for entering parameters. They are labeled with their effects. The initial run is the test to extract initial list creation data from. We usually use an Adapton alternative like lazyrecalc. This can be generated independent of interactions with a command like: `experiments.native --experiment [exp]_lazyrecalc --0` as in the `test-gran.sh` script.
-
-The rest of the parameters are more straight forward. There is a table for the name of test and label in the chart. Up to 5 entries can be used. Unused lines may appear in the chart if it is not manually restricted to the first few entries. The rest of the parameters apply to their sections, selecting one parameter per set, like the interaction 'id-insert', and the rest are incorporated in the data. One section plots against list length, the next plots against granularity (though that data is excluded in the simple test set), the final section plots against interaction. There are two bar charts with the same data, but grouped differently.
+The CSV results data is summarized into three data points for each test: the from-scratch run time and the relative speeds of the Adapton and Nominal Adapton second runs compared to the from-scratch run time. These values are reported in the top-level table{1,2}-results.txt files (if you are using the OOPSLA artifact).
 
 Programmer's Guide for *Incremental Computation with Names* (**ICwN**)
 ======================================================================
@@ -134,19 +128,19 @@ Noteworthy modules:
 
 The `Source` paths below are relative to the `adapton.ocaml` repository.  The HTTP links point to the `master` branch on `github.com`:
 
- * The [GrifolaType module (Source/adapton_core/GrifolaType.ml)](http://github.com/plum-umd/adapton.ocaml/tree/master/Source/adapton_core/GrifolaType.ml) gives the OCaml programming API for Nominal Adapton.
+ * The [ArtLib module (Source/adapton_core/GrifolaType.ml)](http://github.com/plum-umd/adapton.ocaml/tree/master/src/core/artLib.ml) gives the OCaml programming API for Nominal Adapton.
  
- * The [SpreadTree module (Source/adapton_structures/SpreadTree.ml)](http://github.com/plum-umd/adapton.ocaml/tree/master/Source/adapton_structures/SpreadTree.ml) uses the API above to define basic tree and list data structures.
+ * The [SpreadTree module (Source/adapton_structures/spreadTree.ml)](http://github.com/plum-umd/adapton.ocaml/tree/master/src/collections/spreadTree.ml) uses the API above to define basic tree and list data structures.
 
   (Ropes versus trees: In the implementation, we refer to binary trees
   as **ropes** when all their elements are restricted to leaf
   positions.  Other binary trees that store elements at internal nodes
   are simply **trees**.  This distinction is absent in **ICwN**.)
 
- * The [Quickhull module (Source/test/quickhull.ml)](http://github.com/plum-umd/adapton.ocaml/tree/master/Source/test/quickhull.ml)
+ * The [Quickhull module (Source/test/quickhull.ml)](http://github.com/plum-umd/adapton.ocaml/tree/master/src/test/quickhull.ml)
 uses tree and list definitions above to define the quickhull algorithm for convex hulls.
 
- * The [Experiments module (Source/test/experiments.ml)](http://github.com/plum-umd/adapton.ocaml/tree/master/Source/test/experiments.ml) 
+ * The [Experiments module (Source/test/experiments.ml)](http://github.com/plum-umd/adapton.ocaml/tree/master/src/test/experiments.ml) 
 defines experiments using the modules above.
 
 ICwN Sec 2: Overview
