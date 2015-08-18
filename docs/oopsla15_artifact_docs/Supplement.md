@@ -10,7 +10,7 @@ There are two ways to use this repository. One is as a library, and the other is
 
 See the readme file in the main directory for some examples of library use. There are currently no major examples in the repository.
 
-We have been developing a number of list-based example programs within an extension to Adapton located in the `src/collections` directory. This includes trie-based set, map, and graph implementations and a currently incomplete list library, where having names as first-class values within data can be very beneficial.
+We have been developing a number of list-based example programs within an extension to Adapton located in the `Source/adapton_structures` directory. This is a currently incomplete list library, where having names as first-class values within data can be very beneficial.
 
 There are a number of internal examples set up for testing purposes.  They can all be run with `experiments.native`, which has many parameters available. Calling this executable with `--help` will give a simple list of parameters, and calling it with `--experiment [anyletter]` will fail but generate a list of available experiments to run.
 
@@ -121,27 +121,26 @@ Programmer's Guide for *Incremental Computation with Names* (**ICwN**)
 The **ICwN** paper describes incremental programming in **Nominal
 Adapton** in a somewhat idealized manner.  This document connects that
 discussion to the OCaml code of our implementation, which is publicly
-available on github (`http://github.com/plum-umd/adapton.ocaml/`).
+available on github (`https://github.com/plum-umd/adapton.ocaml/`).
 
 Noteworthy modules:
 -------------------
 
-The `Source` paths below are relative to the `adapton.ocaml` repository.  The HTTP links point to the `master` branch on `github.com`:
+The paths below are relative to the `~/adapton.ocaml/Source` directory in the artifact:
 
- * The [ArtLib module (Source/adapton_core/GrifolaType.ml)](http://github.com/plum-umd/adapton.ocaml/tree/master/src/core/artLib.ml) gives the OCaml programming API for Nominal Adapton.
+ * The ArtLib module (adapton_core/GrifolaType.ml) gives the OCaml programming API for Nominal Adapton.
  
- * The [SpreadTree module (Source/adapton_structures/spreadTree.ml)](http://github.com/plum-umd/adapton.ocaml/tree/master/src/collections/spreadTree.ml) uses the API above to define basic tree and list data structures.
+ * The SpreadTree module (adapton_structures/spreadTree.ml) uses the API above to define basic tree and list data structures.
 
   (Ropes versus trees: In the implementation, we refer to binary trees
   as **ropes** when all their elements are restricted to leaf
   positions.  Other binary trees that store elements at internal nodes
   are simply **trees**.  This distinction is absent in **ICwN**.)
 
- * The [Quickhull module (Source/test/quickhull.ml)](http://github.com/plum-umd/adapton.ocaml/tree/master/src/test/quickhull.ml)
+ * The Quickhull module (test/quickhull.ml)
 uses tree and list definitions above to define the quickhull algorithm for convex hulls.
 
- * The [Experiments module (Source/test/experiments.ml)](http://github.com/plum-umd/adapton.ocaml/tree/master/src/test/experiments.ml) 
-defines experiments using the modules above.
+ * The Experiments module (test/experiments.ml) defines experiments using the modules above.
 
 ICwN Sec 2: Overview
 ----------------------

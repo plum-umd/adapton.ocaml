@@ -563,7 +563,7 @@ module Make_experiment ( ListApp : ListAppType ) = struct
       Printf.printf "%s: Initial run:\t{dirty:%d; clean:%d; eval:%d; create:%d; tables:%d}\n%!"
         line_prefix s.Stats.dirty s.Stats.clean s.Stats.evaluate s.Stats.create s.Stats.tables ;
       (*Memotables.print_stats stdout ;*)
-      let (in_str,out_str) =
+      let (_,_) =
         if Params.Flags.print_inout then
           (string_of_list (demand_list input None)),
           (string_of_list (demand_list output None))
@@ -615,8 +615,8 @@ struct
   let of_list x gran =
     Seq.mut_elts_of_list
       (* ~c=false *) (* true/default: Cons-Name-Art, false: Name-Cons-Art *)
-      (Key.nondet())
-      (List.map (fun x -> (x, Key.nondet())) x)
+      (Key.gensym())
+      (List.map (fun x -> (x, Key.gensym())) x)
       fst snd gran
 
   let next x = Seq.next_art (St.List.Art.force x)
@@ -665,8 +665,8 @@ struct
   type elt = Data.t
 
   let of_list x =
-    KvMap.KeySeq.mut_elts_of_list (Name.nondet())
-      (List.map (fun x -> (x, Name.nondet())) x)
+    KvMap.KeySeq.mut_elts_of_list (Name.gensym())
+      (List.map (fun x -> (x, Name.gensym())) x)
       fst snd
 
   let next x = KvMap.KeySeq.next_art (KvMap.KeySt.List.Art.force x)
@@ -705,7 +705,7 @@ module Linear = struct
     module ListRep = SpreadTreeRep (AL )
     let filter_even x = x mod 2 = 0
     let compute inp =
-      let nm1, nm2 = Key.fork (Key.nondet()) in
+      let nm1, nm2 = Key.fork (Key.gensym()) in
       let filter = ListRep.Seq.list_filter nm1 filter_even in
       ListRep.St.List.Art.thunk nm2 ( fun () -> 
         filter (ListRep.St.List.Art.force inp)
@@ -721,7 +721,7 @@ module Linear = struct
     module ListRep = SpreadTreeRep (AL )
     let filter_even x = x mod 2 = 0
     let compute inp =
-      let nm1, nm2 = Key.fork (Key.nondet()) in
+      let nm1, nm2 = Key.fork (Key.gensym()) in
       let filter = ListRep.Seq.list_eager_filter nm1 filter_even in
       ListRep.St.List.Art.thunk nm2 ( fun () -> 
         filter (ListRep.St.List.Art.force inp)
@@ -737,7 +737,7 @@ module Linear = struct
     module ListRep = SpreadTreeRep (AL )
     let almost_triple x = x * 2 - 1
     let compute inp =
-      let nm1, nm2 = Key.fork (Key.nondet()) in
+      let nm1, nm2 = Key.fork (Key.gensym()) in
       let map = ListRep.Seq.list_map nm1 almost_triple in
       ListRep.St.List.Art.thunk nm2 ( fun () -> 
         map (ListRep.St.List.Art.force inp)
@@ -753,7 +753,7 @@ module Linear = struct
     module ListRep = SpreadTreeRep (AL )
     let almost_triple x = x * 2 - 1
     let compute inp =
-      let nm1, nm2 = Key.fork (Key.nondet()) in
+      let nm1, nm2 = Key.fork (Key.gensym()) in
       let map = ListRep.Seq.list_eager_map nm1 almost_triple in
       ListRep.St.List.Art.thunk nm2 ( fun () -> 
         map (ListRep.St.List.Art.force inp)
@@ -768,7 +768,7 @@ module Linear = struct
     let name = "List_map_paired_" ^ N.name
     module ListRep = SpreadTreeRep (AL )
     let compute inp =
-      let nm1, nm2 = Key.fork (Key.nondet()) in
+      let nm1, nm2 = Key.fork (Key.gensym()) in
       let map = ListRep.Seq.list_map_paired nm1 (+) in
       ListRep.St.List.Art.thunk nm2 ( fun () -> 
         map (ListRep.St.List.Art.force inp)
@@ -793,7 +793,7 @@ module Linear = struct
     module U = Unique.Make(AL)(Name)(Int)(ListRep.St)
     let unique = U.list_unique (0,1)
     let compute inp =
-      ListRep.St.List.Art.thunk (Name.gensym "List_unique.compute")
+      ListRep.St.List.Art.thunk (Name.of_string "List_unique.compute")
                                 ( fun () -> unique                                  
                                     ( ListRep.St.List.Art.force inp ) )
     module S = Set.Make(struct type t = int let compare = compare end)
@@ -818,7 +818,7 @@ module Reverse = struct
     let int_compare : int -> int -> int = Pervasives.compare
     module ListRep = SpreadTreeRep ( AL )
     let compute inp =
-      let nm = (Key.nondet ()) in
+      let nm = (Key.gensym ()) in
       let rev = ListRep.Seq.rope_reverse in
       let to_rope = ListRep.Seq.rope_of_list in
       let to_list = ListRep.Seq.list_of_rope in
@@ -837,7 +837,7 @@ module Reverse = struct
     let int_compare : int -> int -> int = Pervasives.compare
     module ListRep = SpreadTreeRep ( AL )
     let compute inp =
-      let nm = (Key.nondet ()) in
+      let nm = (Key.gensym ()) in
       let rev = ListRep.Seq.list_reverse_balanced in
       let force = ListRep.St.List.Art.force in
       ListRep.St.List.Art.thunk nm ( fun () ->
@@ -859,7 +859,7 @@ module Mergesorts = struct
     let int_compare : int -> int -> int = Pervasives.compare
     module ListRep = SpreadTreeRep ( AL )
     let compute inp =
-      let nm = Key.fork (Key.nondet ()) in
+      let nm = Key.fork (Key.gensym ()) in
       let mergesort = ListRep.Seq.list_to_rope_mergesort
                         (fst nm) int_compare in
       ListRep.St.List.Art.thunk (snd nm) ( fun () ->
@@ -880,7 +880,7 @@ module Median = struct
     let int_compare : int -> int -> int = Pervasives.compare
     module ListRep = SpreadTreeRep ( AL )
     let compute inp =
-      let nm1, nm2 = Key.fork (Key.nondet()) in
+      let nm1, nm2 = Key.fork (Key.gensym()) in
       let mergesort = ListRep.Seq.rope_mergesort nm1 int_compare in
       let rope_of_list = ListRep.Seq.rope_of_list in
       let rope_nth = ListRep.Seq.rope_nth in
@@ -910,7 +910,7 @@ module Median = struct
     let int_compare : int -> int -> int = Pervasives.compare
     module ListRep = SpreadTreeRep ( AL )
     let compute inp =
-      let nm1 = Key.nondet() in
+      let nm1 = Key.gensym() in
       let rope_of_list = ListRep.Seq.rope_of_list in
       let rope_median = ListRep.Seq.rope_median in
       ListRep.St.List.Art.thunk (nm1) ( fun() ->
@@ -939,7 +939,7 @@ module Pointcloud = struct
     module ListRep = SpreadTreeRep(AL)
     module QH = Quickhull.Make(AL)(Name)(ListRep.St)
     let compute inp =
-      let nm1, nm2 = Key.fork (Key.nondet()) in
+      let nm1, nm2 = Key.fork (Key.gensym()) in
       let quickhull = QH.list_quickhull in
       ListRep.St.List.Art.thunk nm1 ( fun () -> 
         quickhull nm2 (ListRep.St.List.Art.force inp)
@@ -955,7 +955,7 @@ module Pointcloud = struct
     module ListRep = SpreadTreeRep(AL)
     module QH = Quickhull.Make(AL)(Name)(ListRep.St)
     let compute inp =
-      let nm1, nm2 = Key.fork (Key.nondet()) in
+      let nm1, nm2 = Key.fork (Key.gensym()) in
       let list_max = QH.list_max_dist in
       ListRep.St.List.Art.thunk nm1 ( fun () -> 
         list_max nm2 (ListRep.St.List.Art.force inp)
@@ -975,7 +975,7 @@ module Iteration = struct
     let compute inp =
       let rope_of_list = ListRep.Seq.rope_of_list in
       let list_of_rope = ListRep.Seq.list_of_rope in
-      ListRep.St.List.Art.thunk (Key.nondet ()) (
+      ListRep.St.List.Art.thunk (Key.gensym ()) (
         fun () ->
           let rope = rope_of_list (ListRep.St.List.Art.force inp) in
           list_of_rope rope `Nil
@@ -1006,8 +1006,8 @@ module Reduction = struct
       Monoid.bin x y
     )
     let compute inp =
-      let rope_reduce = ListRep.Seq.rope_reduce (Key.nondet()) min_of_ints in
-      ListRep.St.List.Art.thunk (Key.nondet ()) ( fun () ->
+      let rope_reduce = ListRep.Seq.rope_reduce (Key.gensym()) min_of_ints in
+      ListRep.St.List.Art.thunk (Key.gensym ()) ( fun () ->
           let rope = ListRep.Seq.rope_of_list (`Art inp) in
           match rope_reduce rope with
           | None -> `Nil
@@ -1051,8 +1051,8 @@ module Reduction = struct
     module ListRep = RepOfSpreadTree(AL)(Key)(St)
     let compute inp =
       let rope_of_list = ListRep.KvMap.KeySeq.rope_of_list in
-      let name = (Key.nondet()) in
-      ListRep.KvMap.KeySt.List.Art.thunk (Key.nondet ()) ( fun () ->
+      let name = (Key.gensym()) in
+      ListRep.KvMap.KeySt.List.Art.thunk (Key.gensym ()) ( fun () ->
         let rope = rope_of_list (`Art inp) in
         let avl = ListRep.KvMap.avl_tree_of_rope name rope (`Leaf `Nil) in
         (ListRep.KvMap.KeySeq.list_of_tree avl `Nil)

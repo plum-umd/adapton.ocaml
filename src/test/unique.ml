@@ -15,7 +15,7 @@ module Make
    *)
   let list_unique : (Elt.t * Elt.t) -> List.t -> List.t =
     fun (zero, one) ->
-    let loop = List.Art.mk_mfn (Name.gensym "Unique#list_unique")
+    let loop = List.Art.mk_mfn (Name.of_string "Unique#list_unique")
     (module Types.Tuple3(Name)(List)(Set))
     (fun loop (nm, l, s) -> match l with
     | `Nil -> `Nil
@@ -26,15 +26,15 @@ module Make
         then one, s
         else zero, Set.nadd nm1 s i
       in
-      `Cons (i', loop.mfn_data (nm2, l', s'))
+      `Cons (i', loop.List.Art.mfn_data (nm2, l', s'))
     )
-    | `Art a -> loop.mfn_data (nm, List.Art.force a, s)
+    | `Art a -> loop.List.Art.mfn_data (nm, List.Art.force a, s)
     | `Name (nm, l') ->
        let nm1, nm = Name.fork nm in
        let nm2, nm3 = Name.fork nm in
-      `Name (nm1, `Art (loop.mfn_nart nm2 (nm3, l', s))))
+      `Name (nm1, `Art (loop.List.Art.mfn_nart nm2 (nm3, l', s))))
   in
-  (fun l -> loop.mfn_data (Name.gensym "Unique.list_unique#root_nm", l, Set.empty ~min_depth))
+  (fun l -> loop.List.Art.mfn_data (Name.of_string "Unique.list_unique#root_nm", l, Set.empty ~min_depth))
 end
          
                                               (*
@@ -44,7 +44,7 @@ let list_map
 (op_nm : Name.t)
 (op : Elt.t -> Elt.t)
 : St.Listx.Data.t -> St.List.Data.t = 
-let fnn = Name.pair (Name.gensym "list_map") op_nm in
+let fnn = Name.pair (Name.of_string "list_map") op_nm in
 let mfn = LArt.mk_mfn fnn
       (module St.List.Data)
       (fun r list -> 
@@ -97,7 +97,7 @@ let min_depth = 4
    `Name (_, `Art _) pattern (as the list_map above seems to).
  *)
 let list_unique : List.Data.t -> List.Data.t =
-  let loop = List.Art.mk_mfn (Key.gensym "Unique#list_unique")
+  let loop = List.Art.mk_mfn (Key.of_string "Unique#list_unique")
     (module AdaptonTypes.Tuple3(Key)(List.Data)(Set))
     (fun loop (nm, l, s) -> match l with
     | `Nil -> `Nil
@@ -114,10 +114,10 @@ let list_unique : List.Data.t -> List.Data.t =
       let nm', nm'' = Key.fork nm in
       `Name (nm', `Art (loop.mfn_nart nm'' (nm'', l', s))))
   in
-  (fun l -> loop.mfn_data (Key.gensym "Unique.list_unique#root_nm", l, Set.empty ~min_depth))
+  (fun l -> loop.mfn_data (Key.of_string "Unique.list_unique#root_nm", l, Set.empty ~min_depth))
 
 let lthunk : List.Data.t -> List.Art.t =
-  let ident = List.Art.mk_mfn (Key.gensym "Unique#lthunk") (module List.Data)
+  let ident = List.Art.mk_mfn (Key.of_string "Unique#lthunk") (module List.Data)
     (fun _ l -> l)
   in
   ident.mfn_art

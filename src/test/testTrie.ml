@@ -25,7 +25,7 @@ let binary_tests (type i) (type j) (type o)
        nm >:: (fun ctxt -> assert_equal ~printer ~cmp:eq ~ctxt o (f i0 i1)))
     l
 
-let nm = Name.nondet
+let nm = Name.gensym
 
 let bs_suite =
   let pow_tests  =
@@ -134,9 +134,9 @@ let nset_suite =
   let t0   = S.empty ~min_depth in
 
   let u1 = S.nadd (nm()) t0 e001 in
-  let u2 = S.nadd (nm()) u1 e010 in
-  let u1a = S.nadd (nm()) t0 e010' in
-  let u2a = S.nadd (nm()) t0 e010'' in
+  let _ = S.nadd (nm()) u1 e010 in
+  let _ = S.nadd (nm()) t0 e010' in
+  let _ = S.nadd (nm()) t0 e010'' in
 
 
   let t1   = S.nadd (nm()) t0  e001 in
@@ -207,7 +207,7 @@ let nmap_suite =
       [(*nt0, 0; nt1, 1; nt1', 1; nt2, 2; nt2', 2; nt3, 3; nt3', 3; nt4, 4; nt4', 4; nt5, 4*)] in
   let nmem_tests = binary_tests "mem" M.mem
       [nt0, k0, false; nt0, k1, false;
-       M.nadd (Name.nondet ()) nt1 k0 v1, k0, true;
+       M.nadd (Name.gensym ()) nt1 k0 v1, k0, true;
        nt1, k0, true; nt1', k0, false; nt1', k1, true;
        nt2, k1, true; nt2', k1, true; nt2', k0, true;
        nt3, k0, true; nt3', k0, true; nt3, k2, true;

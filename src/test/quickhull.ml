@@ -234,7 +234,7 @@ struct
   let accum_cell =
     let fakecell =
       AccumList.Art.mk_mfn
-        (Name.gensym "Accumulator_cells")
+        (Name.of_string "Accumulator_cells")
         (module AccumList)
         (fun r data -> data)
     in
@@ -244,7 +244,7 @@ struct
     fun namespace ->
       let fakecell =
         PointRope.Art.mk_mfn
-          (Name.pair (Name.gensym "PointRope_cells") namespace)
+          (Name.pair (Name.of_string "PointRope_cells") namespace)
           (module PointRope)
           (fun r data -> data)
       in
@@ -255,7 +255,7 @@ struct
     fun xo yo ->
     let module LArt = IntSt.List.Art in
     let module PArt = PointsSt.List.Art in
-    let mfn = PArt.mk_mfn (Name.gensym "points_of_ints")
+    let mfn = PArt.mk_mfn (Name.of_string "points_of_ints")
       (module IntSt.List)
       (fun r list -> 
         let list_map = r.PArt.mfn_data in
@@ -276,7 +276,7 @@ struct
     fun xo yo ->
     let module LArt = IntSt.List.Art in
     let module PArt = PointsSt.List.Art in
-    let mfn = LArt.mk_mfn (Name.gensym "ints_of_points")
+    let mfn = LArt.mk_mfn (Name.of_string "ints_of_points")
       (module PointsSt.List)
       (fun r list -> 
         let list_map = r.LArt.mfn_data in
@@ -307,7 +307,7 @@ struct
   let divide_line : Name.t -> line -> Point.t -> PointRope.t -> Name.t * PointRope.t * PointRope.t =
     fun (namespace : Name.t) ->
     let points_cell = make_points_cell namespace in
-    let fnn = Name.pair (Name.gensym "divide_line") namespace in
+    let fnn = Name.pair (Name.of_string "divide_line") namespace in
     let module M = ArtLib.MakeArt(Name)(Types.Tuple3
       (Types.Option(Name))(PointRope)(PointRope)
                                        ) in
@@ -345,7 +345,7 @@ struct
       )
     in
     fun (pl,pr) pm pts -> 
-      match mfn.M.mfn_data (Name.gensym "initial_name", pl, pm, pr, pts) with
+      match mfn.M.mfn_data (Name.of_string "initial_name", pl, pm, pr, pts) with
       | Some(nm), a, b -> nm, a, b
       | None, _, _ -> failwith "pivot not found"
 
@@ -353,7 +353,7 @@ struct
   (* TODO: optimize, compact zeros *)
   let above_line : Name.t -> line -> PointRope.t -> PointRope.t =
     fun nm ->
-    let fnn = Name.pair (Name.gensym "above_line") nm in
+    let fnn = Name.pair (Name.of_string "above_line") nm in
     let mfn = PointRope.Art.mk_mfn fnn
         (module Types.Tuple2(Types.Tuple2(Point)(Point))(PointRope))
         (fun r (line, pts) ->
@@ -375,7 +375,7 @@ struct
     : Name.t -> line -> PointRope.t -> Point.t option * Name.t option =
     fun (namespace : Name.t) ->
     let max_point = max_point_from_line in
-    let fnn = Name.pair (Name.gensym "find_furthest") namespace in
+    let fnn = Name.pair (Name.of_string "find_furthest") namespace in
     let module M = ArtLib.MakeArt(Name)(Types.Tuple2
       (Types.Option(Point))(Types.Option(Name))
     ) in
@@ -445,8 +445,8 @@ struct
   (* // List Version // *)
   (* ////////////////// *)
 
-  let above_line_l = above_line (Name.gensym "l")
-  let above_line_r = above_line (Name.gensym "r")
+  let above_line_l = above_line (Name.of_string "l")
+  let above_line_r = above_line (Name.of_string "r")
                                   
   let quickhull_rec : Name.t -> line -> PointRope.t -> AccumList.t -> AccumList.t =
     (* Adapton: Use a memo table here.  Our accumulator, hull_accum, is
@@ -458,7 +458,7 @@ struct
     let divide_line = divide_line namespace in
     let rope_empty rp = not (not_empty rp) in   
     let module AA = AccumList.Art in
-    let mfn = AA.mk_mfn (Name.pair (Name.gensym "quick_hull") namespace)
+    let mfn = AA.mk_mfn (Name.pair (Name.of_string "quick_hull") namespace)
       (module Types.Tuple3
         (Types.Tuple2(Point)(Point))
         (PointRope)
@@ -496,10 +496,10 @@ struct
 
   let quickhull : Name.t -> PointRope.t -> AccumList.t =
     (* Allocate these memoized tables *statically* *)
-    let qh_upper = quickhull_rec (Name.gensym "upper") in
-    let qh_lower = quickhull_rec (Name.gensym "lower") in
-    let min = Seq.rope_reduce (Name.gensym "points_min") x_min in
-    let max = Seq.rope_reduce (Name.gensym "points_max") x_max in
+    let qh_upper = quickhull_rec (Name.of_string "upper") in
+    let qh_lower = quickhull_rec (Name.of_string "lower") in
+    let min = Seq.rope_reduce (Name.of_string "points_min") x_min in
+    let max = Seq.rope_reduce (Name.of_string "points_max") x_max in
     (* A convex hull consists of an upper and lower hull, each computed
        recursively using quickhull_rec.  We distinguish these two
        sub-hulls using an initial line that is defined by the points
