@@ -1,6 +1,6 @@
 #for use with ocamlfind
 
-#coordinate this with 'Makefile', 'adapton.install'
+#coordinate this with 'Makefile'
 
 requires = "num unix core ppx_deriving"
 description = "Adapton incremental computation engine"

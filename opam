@@ -11,10 +11,9 @@ build: [
 homepage: "https://github.com/plum-umd/adapton.ocaml"
 dev-repo: "https://github.com/plum-umd/adapton.ocaml.git"
 bug-reports: "https://github.com/plum-umd/adapton.ocaml/issues"
-#using adapton.install
-#install: [make "install"]
 remove: ["ocamlfind" "remove" "adapton"]
 depends: [
   "ocamlfind" {build}
   "core"
+  "ppx_deriving"
   ]
