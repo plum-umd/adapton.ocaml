@@ -74,15 +74,6 @@
     defined and used separately from the usual cases of the structure,
     which are defined in the usual (eager) fashion.
 *)
-(* http://en.wikipedia.org/wiki/Find_first_set *)
-let rec ffs x =
-  if x = 0 then 0
-  else
-    let rec loop t r =
-      if (x land t) = 0 then r
-      else loop (t lsl 1) (r + 1)
-    in loop 1 0
-
 module type S = sig
   type elt
   type name
@@ -278,7 +269,7 @@ struct
       match list with
       | [] -> `Nil
       | x :: xs ->
-        if ffs (Elt.hash 0 (data_of x)) >= gran_level then
+        if Bits.ffs0 (Elt.hash 0 (data_of x)) >= gran_level then
           let nm1, nm2 = Name.fork (name_of x) in
           if cons_first then
             `Cons((data_of x), `Name(nm1, `Art (St.List.Art.cell nm2 (loop xs))))
@@ -458,7 +449,7 @@ struct
           ( match list with
           | `Nil -> rope, `Nil
           | `Cons (hd, tl) ->
-            let hd_lev = ffs (Elt.hash 0 hd) in
+            let hd_lev = Bits.ffs0 (Elt.hash 0 hd) in
             if rope_lev <= hd_lev && hd_lev <= parent_lev then (
               match nm_opt with
               | None ->
@@ -601,7 +592,7 @@ struct
          ( match list with
            | `Nil -> (`Nil, rev)
            | `Cons(x, xs) ->
-              let hd_lev = ffs (Elt.hash 0 x) in
+              let hd_lev = Bits.ffs0 (Elt.hash 0 x) in
               if lo <= hd_lev && hd_lev <= hi then (
                 match no with
                 | None ->

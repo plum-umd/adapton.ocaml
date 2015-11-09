@@ -1,14 +1,3 @@
-(* http://en.wikipedia.org/wiki/Find_first_set *)
-(* TODO: Find a faster way to do this that's still portable;
-   e.g., on x86 there's a special machine instruction. *)
-let rec ffs x =
-  if x = 0 then 0
-  else
-    let rec loop t r =
-      if (x land t) = 0 then r
-      else loop (t lsl 1) (r + 1)
-    in loop 1 0
-
 module type S =
 sig
   include Data.S
@@ -39,7 +28,7 @@ struct
   let of_string s = 
     let h = Hashtbl.hash (Symbol s) in
     { hash = h ; 
-      height = ffs h ; 
+      height = Bits.ffs0 h ;
       tree=Symbol s }
     
   let pair k1 k2 =     
@@ -72,7 +61,7 @@ struct
       assert ( !next_label > l ) ; (* Overflow is an error. *)
       let hash = Hashtbl.hash (Label (l, seed)) in
       { hash = hash ;
-        height = ffs hash ;
+        height = Bits.ffs0 hash ;
         tree = Label ( l, seed ) }
       
   let gensym = make_nondet 0
