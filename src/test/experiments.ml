@@ -182,7 +182,7 @@ module Make_experiment ( ListApp : ListAppType ) = struct
     List.fold_right (fun x y -> string_of_int x ^ "::" ^ y) xs "[]"
 
   let run (params:(module ParamsType)) = (
-    let graphout = open_out ("graphmovie."^ ListApp.name ^".gmv") in
+    (* let graphout = open_out ("graphmovie."^ ListApp.name ^".gmv") in *)
     let module Params = (val params) in
 
     (* note: the 0o666 below gives rw-r--r-- permissions, as does 0o664, I don't understand it, but it's sufficent *)
@@ -191,7 +191,7 @@ module Make_experiment ( ListApp : ListAppType ) = struct
     (* let random_input_int ()   = Random.int (Params.n * 32) in *)
     let random_new_elt_int () = (Params.n * 128) + (Random.int (Params.n * 32)) in
 
-    let benchmark_demand name n roundi handle graphout l computation final_art initial_dcg_size =
+    let benchmark_demand name n roundi handle l computation final_art initial_dcg_size =
       let input_art = l in
       let output_art = computation in
 
@@ -577,10 +577,10 @@ module Make_experiment ( ListApp : ListAppType ) = struct
         Printf.printf "--------------------\n%s: Interacting..\n%!" line_prefix ;
         let interact_begin_time = Unix.gettimeofday () in
         if true then
-          benchmark_demand name Params.n i handle graphout input output final_art total_size
+          benchmark_demand name Params.n i handle input output final_art total_size
         else
           (try
-             benchmark_demand name Params.n i handle graphout input output final_art total_size
+             benchmark_demand name Params.n i handle input output final_art total_size
            with
            | exn -> raise exn) ;
         let interact_end_time = Unix.gettimeofday () in

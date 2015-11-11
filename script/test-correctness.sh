@@ -31,6 +31,8 @@ for e in $experiments; do
     done
 done
 
+./testTrie.native
+
 echo $hline
 echo "Success! All tests passed:"
 for e in $experiments; do
