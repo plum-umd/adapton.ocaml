@@ -63,24 +63,40 @@ module Meta =
 struct
   module Freq =
   struct
-    type t = [ `Never | `Depth of int | `Const of int ]
+    type t = [ `Never
+             | `Depth of int * int
+             | `First of int
+             | `Const of int
+             ]
     [@@deriving eq, ord]
     let show = function
       | `Never   -> "0"
-      | `Depth i -> "f(depth.v" ^ (string_of_int i) ^ ")"
+      | `Depth (i, j) -> Printf.sprintf "(depth^%i)/%i" i j
+      | `First n -> "first " ^ (string_of_int n)
       | `Const i -> string_of_int i
     let pp fmt s = Format.fprintf fmt "%s" (show s)
     let hash s = function
       | `Never   -> Hashtbl.seeded_hash s
                       "Adapton.Trie.Meta.Freq#`Never"
-      | `Depth i -> Hashtbl.seeded_hash
+      | `Depth (i, j) -> Hashtbl.seeded_hash
+                           (Hashtbl.seeded_hash
+                              (Hashtbl.seeded_hash s
+                                 "Adapton.Trie.Meta.Freq#`Depth")
+                              i)
+                           j
+      | `First i -> Hashtbl.seeded_hash
                       (Hashtbl.seeded_hash s
-                         "Adapton.Trie.Meta.Freq#`Depth")
+                         "Adapton.Trie.Meta.Freq#`First")
                       i
       | `Const i -> Hashtbl.seeded_hash
                       (Hashtbl.seeded_hash s
                          "Adapton.Trie.Meta.Freq#`Const")
                       i
+    let ifreq bs = function
+      | `Never        -> 0
+      | `Depth (i, j) -> (BS.pow (BS.length bs) i) / j
+      | `First  i     -> if i <= (BS.length bs) then 1 else 0
+      | `Const  i     -> i
   end
   type t =
     { min_depth : int
@@ -192,19 +208,19 @@ struct
     [@@deriving ord]
 
     let show : t -> string =
-      let rec loop = function
-        | Node (bs, t, t') -> (loop t)^" "^(loop t')
+      let rec loop path = function
+        | Node (bs, t, t') -> (loop (path ^ "0") t)^" "^(loop (path ^ "1") t')
         | Atom (bs, es)    ->
           let esstr = S.string es in
           if String.length esstr > 4
-          then "\n  "^(BS.show bs)^" "^esstr
+          then "\n  "^path^" "^esstr
           else String.sub esstr 2 ((String.length esstr)-2)
         | Empty bs         -> ""
-        | Root (md, t)     -> "{"^(loop t)^"\n}"
-        | Name (nm, t)     -> (Name.show nm) ^ ":" ^ (loop t)
-        |  Art   a         -> (*loop (Art.force a)*) Art.show a
+        | Root (md, t)     -> "{"^(loop path t)^"\n}"
+        | Name (nm, t)     -> loop path t
+        |  Art   a         -> loop (path ^ "@") (Art.force a)
       in
-      loop
+      loop ""
 
     let pp fmt s = Format.fprintf fmt "%s" (show s)
     
@@ -454,10 +470,6 @@ struct
 
   let empty : ?art_ifreq:Meta.Freq.t -> ?min_depth:int -> Name.t -> t =
     (fun ?(art_ifreq=`Const 1) ?(min_depth=1) nm ->
-       (assert (match art_ifreq with
-            | `Const i -> i > 0
-            | `Depth _ -> true
-            | _        -> false)) ;
        (assert (min_depth > 0)) ;
        (if min_depth > BS.max_len then
           (Printf.printf "Cannot make Adapton.Trie with min_depth > %i (given %i)."
@@ -520,26 +532,8 @@ struct
     let module In =
       Types.Tuple6(Name)(Meta)(BS)(Types.Int)(D)(E)
     in
-    let rec ifreq { Meta.min_depth=md ; Meta.art_ifreq=fq } bs t = match fq with
-      | `Never       -> 0
-      | `Const ifreq -> ifreq
-      (* depth v1: prob of art placement is 1/depth *)
-      | `Depth 1     -> max 1 (BS.length bs)
-      (* depth v2: prob of art placement is 1/(depth^2) *)
-      | `Depth 2     -> let depth = BS.length bs in
-                        max 1 (depth * depth)
-      (* depth v3: prob of art placement is 1/(depth/2) *)
-      | `Depth 3     -> max 1 ((BS.length bs) / 2)
-      (* negative versions ensure that all Atoms are wrapped with
-         arts, else stays consistent with `Depth |n| *)
-      | `Depth n when n < 0 ->
-        (match t with
-         | (Atom _ | Empty _) when md <= (BS.length bs) -> 1
-         | t -> ifreq { Meta.min_depth=md ; Meta.art_ifreq=`Depth (0-n) } bs t)
-      | `Depth n  -> failwith (Printf.sprintf "unknown depth variant: %i\n%!" n)
-    in
     let pmfn mfn (_, m,  bs,  _,  t,  _) ((nm', m', bs', h', t', e') as i') =
-      let ifreq = ifreq m bs t' in
+      let ifreq = Meta.Freq.ifreq bs m.Meta.art_ifreq in
       if ifreq > 0 && Random.int ifreq = 0
       then let nm, nm' = Name.fork nm' in
            let a = mfn.Art.mfn_nart nm (nm', m', bs', h', t', e') in
@@ -570,10 +564,8 @@ struct
            | Empty _ -> Atom (bs, S.singleton e)
            | Atom (_, es) ->
              let depth = BS.length bs in
-             if depth = BS.max_len
-             then Atom (bs, S.add e es)
-             else if S.exists (E.equal e) es
-             then t
+             if depth >= BS.max_len
+             then Atom (bs, S.add e (S.filter (let pe = E.place e in fun e' -> E.place e' <> pe) es))
              else if depth < BS.max_len
              then mfn.Art.mfn_data (nm, m, bs, h, split_atomic t, e)
              else (Printf.printf "Bad value found in nadd:\n%s\n" (show t) ; assert false)

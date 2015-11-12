@@ -12,11 +12,12 @@ struct
   sig
     type t
     type elt = int
-    val mt : t
+    val mt : unit -> t
     val add : t -> elt -> t
     val fold : ('a -> elt -> 'a) -> 'a -> t -> 'a
     val to_list : t -> elt list
     val name : string
+    val show : t -> string
   end
   
   module NTrie : TSET =
@@ -24,33 +25,36 @@ struct
     module S = Trie.Set.MakeInc(Name)(Insts.Nominal)(Types.Int)
     type t = S.t
     type elt = int
-    let mt = S.empty ~art_ifreq:!art_ifreq ~min_depth:!min_depth (nm())
+    let mt () = S.empty ~art_ifreq:!art_ifreq ~min_depth:!min_depth (nm())
     let add t e = S.add (nm()) t e
     let fold = S.fold
     let to_list = S.to_list
     let name = "ntrie-set"
+    let show = S.show
   end
   module FSTrie : TSET =
   struct
     module S = Trie.Set.MakeNonInc(Name)(Insts.FromScratch)(Types.Int)
     type t = S.t
     type elt = int
-    let mt = S.empty ~min_depth:!min_depth
+    let mt () = S.empty ~min_depth:!min_depth
     let add = S.add
     let fold = S.fold
     let to_list = S.to_list
     let name = "trie-set"
+    let show = S.show
   end
   module OCaml : TSET =
   struct
     module S = Set.Make(Types.Int)
     type t = S.t
     type elt = int
-    let mt = S.empty
+    let mt () = S.empty
     let add t e = S.add e t
     let fold f a t = S.fold (fun n a -> f a n) t a
     let to_list t = S.fold (fun n a -> n::a) t []
     let name = "ocaml-set"
+    let show = fun _ -> "ocaml-set!"
   end
 
   module Test(S : TSET) =
@@ -61,11 +65,12 @@ struct
       let rec loop acc = function
         | n when n > 0 ->
           (if !verbose && n mod check = 0 then
-             Printf.printf "filled %i.\n%!" (!size-n)) ;
+             (Printf.printf "filled %i.\n%!" (!size-n))
+          ) ;
           loop (S.add acc n) (n-1)
         | n -> acc
       in
-      loop S.mt
+      loop (S.mt ())
 
     module OS = Set.Make(Types.Int)
 
@@ -120,11 +125,16 @@ let main () =
       try
         let len = String.length s in
         if len > 0 && s.[0] = 'd' then
-          `Depth (int_of_string (String.sub s 1 (len-1)))
+          let i = String.index s ',' in
+          `Depth (int_of_string (String.sub s 1 (i-1)),
+                  int_of_string (String.sub s (i+1) (len-i-1)))
+        else if len > 0 && s.[0] = 'f' then
+          `First (int_of_string (String.sub s 1 (len-1)))
         else `Const (int_of_string s)
       with _ ->
         failwith ("Bad art_ifreq, expected positive int or \"depth\", but got " ^ s)
     in
+    Printf.printf "HANDLEIFREQ: %s => %s" s (Trie.Meta.Freq.show ifreq) ;
     art_ifreq := ifreq
   in
   let _ =

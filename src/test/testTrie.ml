@@ -318,7 +318,7 @@ let nmap_suite ~art_ifreq ~min_depth =
       ~show_in:(fun t -> IM.show (IM.force t))
       ~show_out:string_of_int
       IM.cardinal
-      [nt0, 0; nt1, 1; nt1', 1; nt2, 2; nt2', 2; nt3, 3; nt3', 3; nt4, 4; nt4', 4; nt5, 5] in
+      [nt0, 0; nt1, 1; nt1', 1; nt2, 2; nt2', 2; nt3, 3; nt3', 3; nt4, 4; nt4', 4; nt5, 4] in
   let nmem_tests = binary_tests ~name:"mem"
       ~show_in:(fun t -> Printf.sprintf "%s %s" (IM.show (IM.force t)))
       ~show_out:string_of_bool
@@ -343,7 +343,10 @@ let nmap_suite ~art_ifreq ~min_depth =
        nt3, k2, Some v2; nt3', k2, Some v2;
        nt5, k0, Some v5; nt5', k1, Some v1;
        nt5, k1, Some v1; nt5', k0, Some v5;
-       nt5, k2, Some v2; nt5', k2, Some v2;]
+       nt5, k2, Some v2; nt5', k2, Some v2;
+       IM.add (nm ()) nt1 k0 v1, k0, Some v1;
+       IM.add (nm ()) (IM.add (nm ()) nt1 k0 v1) k0 v2, k0, Some v2;
+      ]
   in
   let nequal_tests = binary_tests ~name:"equal"
       ~show_in:(fun t t' -> Printf.sprintf "%s %s" (IM.show (IM.force t)) (IM.show (IM.force t')))
@@ -365,7 +368,7 @@ let run () =
       []
       xs
   in
-  let fold_down f a n =
+  let fold_down ?(step=(fun n -> n+1)) f a n =
     let rec loop acc = function
       | n when n > 0 -> let n' = n-1 in loop (f acc n') n'
       | _ -> acc
@@ -373,8 +376,12 @@ let run () =
     loop a (n-1)
   in
   let freqs =
-    (fold_down (fun a i -> (`Const (i+1))::a) [] 8)
-  @ (fold_down (fun a i -> (`Depth (i+1))::(`Depth (0-(i+1)))::a) [] 3)
+    (fold_down (fun a i -> (`Const ((i+1) * (i+1)))::a) [] 4)
+  @ (fold_down (fun a i -> (`First ((i+1) * (i+1)))::a) [] 4)
+  @ (fold_down
+       (fun a i -> fold_down (fun a j -> (`Depth (i+2, j+1))::a) a 3)
+       []
+       3)
   in
   let mds = fold_down (fun a n -> (n+1)::a) [] 8 in
   run_suite bs_suite;

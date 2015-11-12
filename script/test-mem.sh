@@ -16,9 +16,9 @@ HEADER="size,type,min_depth,art_ifreq,time,space"
 [ -d $OUTDIR ] || mkdir -p $OUTDIR
 echo "$HEADER" >> "$CSVFILE"
 
-REPS="1"
+REPS="5"
 MINDEPTHS="1 2 4 8 16"
-ARTIFREQS="d-1 d-2 d-3 d1 d2 d3 1 2 4 8"
+ARTIFREQS="f1 f2 f3 f4 f5 d2,1 d2,1 d2,1 d3,1 1 2 4 8"
 TYPES="ocaml-set trie-set ntrie-set"
 SIZES="100 1000 10000 100000"
 CMD=""
