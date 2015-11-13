@@ -303,7 +303,58 @@ let nset_suite ~art_ifreq ~min_depth =
       ] in
   "Nominal Set", (cardinal_tests@mem_tests@equal_tests@hash_eq_tests@union_tests)
 
+module NIM = Map.MakeNonInc(Name)(Insts.FromScratch)(Types.String)(Types.Int)
 module IM = Map.MakeInc(Name)(Insts.Nominal)(Types.String)(Types.Int)
+
+let map_suite ~min_depth = 
+  let k0, k1, k2, k3, k4     = "a", "c", "d", "j", "gah"   in
+  let v0, v1, v2, v3, v4, v5 =  1,   3,   4,   5,    6,  7 in
+  let nt0 = NIM.empty ~min_depth in
+  let nt1, nt1' = NIM.add nt0 k0 v0, NIM.add nt0  k1 v1 in
+  let nt2, nt2' = NIM.add nt1 k1 v1, NIM.add nt1' k0 v0 in
+  let nt3, nt3' = NIM.add nt2 k2 v2, NIM.add nt2' k2 v2 in
+  let nt4, nt4' = NIM.add nt3 k3 v3, NIM.add nt3' k3 v3 in
+  let nt5, nt5' = NIM.add nt4 k0 v5, NIM.add nt4' k0 v5 in
+  let ncardinal_tests = unary_tests ~name:"cardinal"
+      ~show_in:(fun t -> NIM.show (NIM.force t))
+      ~show_out:string_of_int
+      NIM.cardinal
+      [nt0, 0; nt1, 1; nt1', 1; nt2, 2; nt2', 2; nt3, 3; nt3', 3; nt4, 4; nt4', 4; nt5, 4] in
+  let nmem_tests = binary_tests ~name:"mem"
+      ~show_in:(fun t -> Printf.sprintf "%s %s" (NIM.show (NIM.force t)))
+      ~show_out:string_of_bool
+      NIM.mem
+      [nt0, k0, false; nt0, k1, false;
+       NIM.add nt1 k0 v1, k0, true;
+       nt1, k0, true; nt1', k0, false; nt1', k1, true;
+       nt2, k1, true; nt2', k1, true; nt2', k0, true;
+       nt3, k0, true; nt3', k0, true; nt3, k2, true;
+       nt3', k2, true; nt3, k3, false; nt3', k3, false]
+  in
+  let nfind_tests = binary_tests
+      ~name:"find"
+      ~show_in:(fun t -> Printf.sprintf "%s %s" (NIM.show (NIM.force t)))
+      ~show_out:(function Some v -> string_of_int v | None -> "*not found*")
+      NIM.find
+      [nt1, k0, Some v0; nt1', k1, Some v1;
+       nt2, k0, Some v0; nt2', k1, Some v1;
+       nt2, k1, Some v1; nt2', k0, Some v0;
+       nt3, k0, Some v0; nt3', k1, Some v1;
+       nt3, k1, Some v1; nt3', k0, Some v0;
+       nt3, k2, Some v2; nt3', k2, Some v2;
+       nt5, k0, Some v5; nt5', k1, Some v1;
+       nt5, k1, Some v1; nt5', k0, Some v5;
+       nt5, k2, Some v2; nt5', k2, Some v2;
+       NIM.add nt1 k0 v1, k0, Some v1;
+       NIM.add (NIM.add nt1 k0 v1) k0 v2, k0, Some v2;
+      ]
+  in
+  let nequal_tests = binary_tests ~name:"equal"
+      ~show_in:(fun t t' -> Printf.sprintf "%s %s" (NIM.show (NIM.force t)) (NIM.show (NIM.force t')))
+      ~show_out:string_of_bool NIM.equal
+      [(NIM.force nt5), (NIM.force nt4), false]
+  in
+  "Trie Map", (ncardinal_tests@nmem_tests@nfind_tests@nequal_tests)
 
 let nmap_suite ~art_ifreq ~min_depth = 
   let k0, k1, k2, k3, k4     = "a", "c", "d", "j", "gah"   in
@@ -386,6 +437,9 @@ let run () =
   let mds = fold_down (fun a n -> (n+1)::a) [] 8 in
   run_suite bs_suite;
   run_suite set_suite;
+  List.iter
+    (fun min_depth -> run_suite (map_suite ~min_depth))
+    mds ;
   List.iter
     (fun (art_ifreq, min_depth) ->
        run_suite (nset_suite ~art_ifreq ~min_depth))

@@ -782,7 +782,7 @@ module Map = struct
 
     let place (k, _) = K.hash _PLACEMENT_SEED k
 
-    include MakeNonInc
+    include MakeNonIncPlace
     (N)
     (A)
     (struct
@@ -791,7 +791,8 @@ module Map = struct
       let pp fmt s = Format.fprintf fmt "%s" (show s)
       let equal (k, v) (k', v') = K.equal k k' && V.equal v v'
       let hash seed (k, v) = K.hash (V.hash seed v) k
-      let place = place
+      let place_hash = place
+      let place_equal (k, _) (k', _) = K.equal k k'
       let compare t t' = Pervasives.compare (hash 42 t) (hash 42 t')
     end)
         
