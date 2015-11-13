@@ -11,80 +11,102 @@ struct
   module type TSET =
   sig
     type t
-    type elt = int
+    type elt
     val mt : unit -> t
     val add : t -> elt -> t
+    val mem : t -> elt -> bool
+    val cardinal : t -> int
     val fold : ('a -> elt -> 'a) -> 'a -> t -> 'a
     val to_list : t -> elt list
     val name : string
     val show : t -> string
   end
-  
-  module NTrie : TSET =
+
+  module NTrie =
   struct
     module S = Trie.Set.MakeInc(Name)(Insts.Nominal)(Types.Int)
     type t = S.t
     type elt = int
+    let cardinal = S.cardinal
     let mt () = S.empty ~art_ifreq:!art_ifreq ~min_depth:!min_depth (nm())
     let add t e = S.add (nm()) t e
+    let mem = S.mem
     let fold = S.fold
     let to_list = S.to_list
     let name = "ntrie-set"
     let show = S.show
   end
-  module FSTrie : TSET =
+  module FSTrie =
   struct
     module S = Trie.Set.MakeNonInc(Name)(Insts.FromScratch)(Types.Int)
     type t = S.t
     type elt = int
+    let cardinal = S.cardinal
     let mt () = S.empty ~min_depth:!min_depth
+    let mem = S.mem
     let add = S.add
     let fold = S.fold
     let to_list = S.to_list
     let name = "trie-set"
     let show = S.show
   end
-  module OCaml : TSET =
+  module OCaml =
   struct
     module S = Set.Make(Types.Int)
     type t = S.t
     type elt = int
     let mt () = S.empty
+    let cardinal = S.cardinal
     let add t e = S.add e t
+    let mem t e = S.mem e t
     let fold f a t = S.fold (fun n a -> f a n) t a
     let to_list t = S.fold (fun n a -> n::a) t []
     let name = "ocaml-set"
     let show = fun _ -> "ocaml-set!"
   end
 
-  module Test(S : TSET) =
+  module Test(S : TSET with type elt = int * string) =
   struct
+
+    let fold_up f a n =
+      let rec loop a = function
+        | m when m < n -> loop (f a m) (m+1)
+        | _ -> a
+      in
+      loop a 0
 
     let fill =
       let check = !size / 10 in
-      let rec loop acc = function
-        | n when n > 0 ->
-          (if !verbose && n mod check = 0 then
-             (Printf.printf "filled %i.\n%!" (!size-n))
-          ) ;
-          loop (S.add acc n) (n-1)
-        | n -> acc
-      in
-      loop (S.mt ())
+      fold_up
+        (fun acc n ->
+           (if n mod check = 0 then
+              Printf.printf "filled %i.\n%!" n) ;
+           S.add acc n)
+        (S.mt ())
 
-    module OS = Set.Make(Types.Int)
+    module OS = Set.Make(Types.Tuple2(Types.Int)(Types.String))
 
     let test () =
       (if !verbose then
          Printf.printf "Filling %s (md=%i, af=%s) set with %i elements.\n%!"
            S.name !min_depth (Trie.Meta.Freq.show !art_ifreq) !size) ;
-      let s = fill !size  in
-      let os = S.fold (fun a n -> OS.add n a) OS.empty s in
-      let cos = OS.cardinal os in
+
+      let s = fill !size in
+      let c = S.fold (fun a _ -> a+1) 0 s in
+
       (if !verbose then
-         Printf.printf "%s : found %i / %i elements\n%!"
-           (if cos = !size then "SUCCESS" else "FAILURE")
-           cos !size)
+                   Printf.printf "%s : found %i / %i elements\n%!"
+                   (if c = !size then "SUCCESS" else "FAILURE")
+                   c !size) ;
+      (if c <> !size then
+         let c =(fold_up
+            (fun c n ->
+              (if not (S.mem s (n, string_of_int n))
+               then Printf.printf "Missing %i\n%!" (n+1)) ;
+                c+1)
+            0
+            !size)
+         in Printf.printf "Checked %i\n%!" c)
       (* ignore (S.fold (fun _ n -> Printf.printf "found: %i\n%!" n) () s) *)
       (* Printf.printf "Converting to list to check size.\n%!" ;
       let l = S.to_list s in
@@ -95,18 +117,15 @@ struct
   end
 
   let run () =
-    let ocamlset = (module OCaml : TSET) in
+    let ocamlset = (module OCaml : TSET with type elt = int) in
     let insts =
-      [ NTrie.name,  (module  NTrie : TSET)
-      ; FSTrie.name, (module FSTrie : TSET)
+      [    NTrie.name, (module NTrie    : TSET with type elt = int)
+      ; NTrieMap.name, (module NTrieMap : TSET with type elt = int)
+      ;   FSTrie.name, (module FSTrie   : TSET with type elt = int)
       ]
     in
     let module S =
-      (val
-        (List.fold_left
-           (fun a (nm, s) -> if nm = !data_type then s else a)
-           ocamlset
-           insts))
+      (val try List.assoc !data_type insts with Not_found -> ocamlset)
     in
     let module T = Test (S) in
     T.test ()

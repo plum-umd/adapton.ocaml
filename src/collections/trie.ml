@@ -95,7 +95,7 @@ struct
     let ifreq bs = function
       | `Never        -> 0
       | `Depth (i, j) -> (BS.pow (BS.length bs) i) / j
-      | `First  i     -> if i <= (BS.length bs) then 1 else 0
+      | `First  i     -> if i > (BS.length bs) then 1 else 0
       | `Const  i     -> i
   end
   type t =
@@ -174,7 +174,12 @@ end
 module MakePlace
   (Name: Name.S)
   (AL : ArtLib.S)
-  (E : sig include Data.S val place : t -> int end) =
+  (E :
+   sig
+     include Data.S
+     val place_hash  : t -> int
+     val place_equal : t -> t -> bool
+   end) =
 struct
   
   type elt = E.t
@@ -182,7 +187,12 @@ struct
   type name = Name.t
                
   module S = struct
-    include Set.Make(E)
+    include Set.Make(struct
+        type t = E.t
+        let compare a b =
+          if E.place_equal a b then 0
+          else E.compare a b
+      end)
     let string s =
       let sep = ", " in
       let n, elts = fold (fun x (n, a) -> (n+1, (E.show x)^sep^a)) s (0, "") in
@@ -336,7 +346,7 @@ struct
     | Atom (bs, es) ->
       let zerobs = BS.prepend 0 bs in
       let  onebs = BS.prepend 1 bs in
-      if suffix onebs (E.place (S.choose es)) (* <-- this choice assumes no hash collisions. *)
+      if suffix onebs (E.place_hash (S.choose es))
       then Node (bs, Empty zerobs, Atom (onebs, es))
       else Node (bs, Atom (zerobs, es), Empty onebs)
     | Name (_, Art _) as t -> print_endline (show t) ; assert false
@@ -366,7 +376,12 @@ end
 module MakeNonIncPlace
   (Name: Name.S)
   (AL : ArtLib.S)
-  (E : sig include Data.S val place : t -> int end) =
+  (E :
+   sig
+     include Data.S
+     val place_hash  : t -> int
+     val place_equal : t -> t -> bool
+   end) =
 struct
 
   include MakePlace(Name)(AL)(E)
@@ -390,9 +405,7 @@ struct
         failwith "Cannot union tries with different metadata."
       | Root (md, t), Root (md', t') when Meta.equal md md' ->
         Root (md, loop (t, t'))
-      | Atom (bs, es), Atom (bs', es')
-        (* these choices assume no hash collisions *)
-        when E.place (S.choose es) = E.place (S.choose es') ->
+      | Atom (bs, es), Atom (bs', es') when S.equal es es' ->
         Atom (bs, es')
       | Empty _, t | t, Empty _ -> t
       | t, t' ->
@@ -426,17 +439,15 @@ struct
       | Empty _ -> Atom (bs, S.singleton e)
       | Atom (_, es) ->
         let depth = BS.length bs in
-        if depth = BS.max_len
-        then Atom (bs, S.add e es)
-        else if S.exists (E.equal e) es
-        then t
+        if depth >= BS.max_len || S.exists (E.place_equal e) es
+        then Atom (bs, S.add e (S.filter (fun e' -> not (E.place_equal e e')) es))
         else if depth < BS.max_len
         then loop m bs h (split_atomic t) e
         else (Printf.printf "Bad value found in add:\n%s\n" (show t) ; assert false)
       | t -> Printf.printf "Bad value found in add:\n%s\n" (show t) ; assert false
     in
     fun t e -> match t with
-      | Root (m, t) -> Root (m, loop m (0, 0) (E.place e) t e)
+      | Root (m, t) -> Root (m, loop m (0, 0) (E.place_hash e) t e)
       | _ -> Printf.printf "Bad value found in add:\n%s\n" (show t) ; assert false
 
   let singleton ?(min_depth = 1) (e : elt) : t =
@@ -451,7 +462,12 @@ end
 module MakeIncPlace
   (Name: Name.S)
   (AL : ArtLib.S)
-  (E : sig include Data.S val place : t -> int end) =
+  (E :
+   sig
+     include Data.S
+     val place_hash  : t -> int
+     val place_equal : t -> t -> bool
+   end) =
 struct
 
   include MakePlace(Name)(AL)(E)
@@ -510,9 +526,7 @@ struct
              Name (nm, Art a)
            | Root (md, t), Root (md', t') when md = md' ->
              Root (md, mfn.Art.mfn_data (nm, t, t'))
-           | Atom (bs, es), Atom (bs', es')
-             (* these choices assume no hash collisions *)
-             when E.place (S.choose es) = E.place (S.choose es') ->
+           | Atom (bs, es), Atom (bs', es') when S.equal es es' ->
              Atom (bs, es')
            | t, t' ->
              (match split_atomic t, split_atomic t' with
@@ -533,7 +547,7 @@ struct
       Types.Tuple6(Name)(Meta)(BS)(Types.Int)(D)(E)
     in
     let pmfn mfn (_, m,  bs,  _,  t,  _) ((nm', m', bs', h', t', e') as i') =
-      let ifreq = Meta.Freq.ifreq bs m.Meta.art_ifreq in
+      let ifreq = Meta.Freq.ifreq bs' m.Meta.art_ifreq in
       if ifreq > 0 && Random.int ifreq = 0
       then let nm, nm' = Name.fork nm' in
            let a = mfn.Art.mfn_nart nm (nm', m', bs', h', t', e') in
@@ -564,8 +578,8 @@ struct
            | Empty _ -> Atom (bs, S.singleton e)
            | Atom (_, es) ->
              let depth = BS.length bs in
-             if depth >= BS.max_len
-             then Atom (bs, S.add e (S.filter (let pe = E.place e in fun e' -> E.place e' <> pe) es))
+             if depth >= BS.max_len || S.exists (E.place_equal e) es
+             then Atom (bs, S.add e (S.filter (fun e' -> not (E.place_equal e e')) es))
              else if depth < BS.max_len
              then mfn.Art.mfn_data (nm, m, bs, h, split_atomic t, e)
              else (Printf.printf "Bad value found in nadd:\n%s\n" (show t) ; assert false)
@@ -581,7 +595,7 @@ struct
              (match Art.force a with
               | Root (m, t') ->
                 let nm,  nm'  = Name.fork nm in
-                let i = (nm', m, (0, 0), (E.place e), t', e) in
+                let i = (nm', m, (0, 0), (E.place_hash e), t', e) in
                 let a = mfn.Art.mfn_nart nm i in
                 ignore (Art.force a) ;
                 Root (m, Name (nm, Art a))
@@ -619,12 +633,20 @@ end
 module MakeNonInc(N : Name.S)(A : ArtLib.S)(E : Data.S)
   : NonIncS with type name = N.t
              and type  elt = E.t =
-  MakeNonIncPlace(N)(A)(struct include E let place t = hash _PLACEMENT_SEED t end)
+  MakeNonIncPlace(N)(A)(struct
+    include E
+    let place_hash t = hash _PLACEMENT_SEED t
+    let place_equal = equal
+  end)
 
 module MakeInc(N : Name.S)(A : ArtLib.S)(E : Data.S)
   : IncS with type name = N.t
           and type  elt = E.t =
-  MakeIncPlace(N)(A)(struct include E let place t = hash _PLACEMENT_SEED t end)
+  MakeIncPlace(N)(A)(struct
+    include E
+    let place_hash t = hash _PLACEMENT_SEED t
+    let place_equal = equal
+  end)
 
 module Set =
 struct
@@ -814,7 +836,8 @@ module Map = struct
       let pp fmt s = Format.fprintf fmt "%s" (show s)
       let equal (k, v) (k', v') = K.equal k k' && V.equal v v'
       let hash seed (k, v) = K.hash (V.hash seed v) k
-      let place = place
+      let place_hash = place
+      let place_equal (k, _) (k', _) = K.equal k k'
       let compare t t' = Pervasives.compare (hash 42 t) (hash 42 t')
     end)
         

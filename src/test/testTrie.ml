@@ -120,7 +120,7 @@ let bs_suite =
   "bit strings", pow_tests@flip_tests@is_set_tests@prepend_tests
 
 module NIS = Set.MakeNonInc(Name)(Insts.Nominal)(Types.String)
-module IS = Set.MakeInc(Name)(Insts.Nominal)(Types.String)
+module IS = Set.MakeInc(Name)(Insts.FromScratch)(Types.String)
 
 let set_suite =
   let min_depth = 4 in
