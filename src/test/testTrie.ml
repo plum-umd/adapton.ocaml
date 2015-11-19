@@ -120,7 +120,7 @@ let bs_suite =
   "bit strings", pow_tests@flip_tests@is_set_tests@prepend_tests
 
 module NIS = Set.MakeNonInc(Name)(Insts.Nominal)(Types.String)
-module IS = Set.MakeInc(Name)(Insts.FromScratch)(Types.String)
+module IS = Set.Make(Name)(Insts.FromScratch)(Types.String)
 
 let set_suite =
   let min_depth = 4 in
@@ -225,7 +225,7 @@ let nset_suite ~art_ifreq ~min_depth =
   let singleton = IS.singleton ~art_ifreq ~min_depth in
   let of_list = IS.of_list ~art_ifreq ~min_depth in
   
-  let t0   = IS.empty ~art_ifreq ~min_depth (nm()) in
+  let t0   = IS.empty ~art_ifreq ~min_depth in
 
   let u1 = IS.add (nm()) t0 e001 in
   let _ = IS.add (nm()) u1 e010 in
@@ -304,7 +304,7 @@ let nset_suite ~art_ifreq ~min_depth =
   "Nominal Set", (cardinal_tests@mem_tests@equal_tests@hash_eq_tests@union_tests)
 
 module NIM = Map.MakeNonInc(Name)(Insts.FromScratch)(Types.String)(Types.Int)
-module IM = Map.MakeInc(Name)(Insts.Nominal)(Types.String)(Types.Int)
+module IM = Map.Make(Name)(Insts.Nominal)(Types.String)(Types.Int)
 
 let map_suite ~min_depth = 
   let k0, k1, k2, k3, k4     = "a", "c", "d", "j", "gah"   in
@@ -359,7 +359,7 @@ let map_suite ~min_depth =
 let nmap_suite ~art_ifreq ~min_depth = 
   let k0, k1, k2, k3, k4     = "a", "c", "d", "j", "gah"   in
   let v0, v1, v2, v3, v4, v5 =  1,   3,   4,   5,    6,  7 in
-  let nt0 = IM.empty ~art_ifreq ~min_depth (nm ()) in
+  let nt0 = IM.empty ~art_ifreq ~min_depth in
   let nt1, nt1' = IM.add (nm()) nt0 k0 v0, IM.add (nm()) nt0  k1 v1 in
   let nt2, nt2' = IM.add (nm()) nt1 k1 v1, IM.add (nm()) nt1' k0 v0 in
   let nt3, nt3' = IM.add (nm()) nt2 k2 v2, IM.add (nm()) nt2' k2 v2 in

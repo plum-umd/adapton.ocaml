@@ -24,11 +24,11 @@ struct
 
   module NTrie =
   struct
-    module S = Trie.Set.MakeInc(Name)(Insts.Nominal)(Types.Int)
+    module S = Trie.Set.Make(Name)(Insts.Nominal)(Types.Int)
     type t = S.t
     type elt = int
     let cardinal = S.cardinal
-    let mt () = S.empty ~art_ifreq:!art_ifreq ~min_depth:!min_depth (nm())
+    let mt () = S.empty ~art_ifreq:!art_ifreq ~min_depth:!min_depth
     let add t e = S.add (nm()) t e
     let mem = S.mem
     let fold = S.fold
@@ -65,7 +65,7 @@ struct
     let show = fun _ -> "ocaml-set!"
   end
 
-  module Test(S : TSET with type elt = int * string) =
+  module Test(S : TSET with type elt = int) =
   struct
 
     let fold_up f a n =
@@ -101,7 +101,7 @@ struct
       (if c <> !size then
          let c =(fold_up
             (fun c n ->
-              (if not (S.mem s (n, string_of_int n))
+              (if not (S.mem s n)
                then Printf.printf "Missing %i\n%!" (n+1)) ;
                 c+1)
             0
@@ -120,7 +120,6 @@ struct
     let ocamlset = (module OCaml : TSET with type elt = int) in
     let insts =
       [    NTrie.name, (module NTrie    : TSET with type elt = int)
-      ; NTrieMap.name, (module NTrieMap : TSET with type elt = int)
       ;   FSTrie.name, (module FSTrie   : TSET with type elt = int)
       ]
     in

@@ -24,7 +24,7 @@ module Make
       let i', s' =
         if Set.mem s i
         then one, s
-        else zero, Set.nadd nm1 s i
+        else zero, Set.add nm1 s i
       in
       `Cons (i', loop.List.Art.mfn_data (nm2, l', s'))
     )
@@ -34,7 +34,7 @@ module Make
        let nm2, nm3 = Name.fork nm in
       `Name (nm1, `Art (loop.List.Art.mfn_nart nm2 (nm3, l', s))))
   in
-  (fun l -> loop.List.Art.mfn_data (Name.of_string "Unique.list_unique#root_nm", l, Set.empty ~min_depth))
+  (fun l -> loop.List.Art.mfn_data (Name.of_string "Unique.list_unique#root_nm", l, Set.empty ~min_depth ?art_ifreq:None))
 end
          
                                               (*
