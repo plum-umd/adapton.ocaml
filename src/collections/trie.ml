@@ -151,7 +151,7 @@ sig
   val force : t -> t
   val cardinal : t -> int
 
-  val empty : ?art_ifreq:Meta.Freq.t -> ?min_depth:int -> name -> t
+  val empty : ?art_ifreq:Meta.Freq.t -> ?min_depth:int -> t
   val singleton : ?art_ifreq:Meta.Freq.t -> ?min_depth:int -> name -> elt -> t
   val add : name -> t -> elt -> t
   val union : name -> t -> t -> t    
@@ -171,7 +171,7 @@ sig
 end
   
 
-module MakePlace
+module MakeBase
   (Name: Name.S)
   (AL : ArtLib.S)
   (E :
@@ -384,7 +384,7 @@ module MakeNonIncPlace
    end) =
 struct
 
-  include MakePlace(Name)(AL)(E)
+  include MakeBase(Name)(AL)(E)
 
   let empty : ?min_depth:int -> t =
     (fun ?(min_depth=1) ->
@@ -459,7 +459,7 @@ struct
 end
   
 
-module MakeIncPlace
+module MakePlace
   (Name: Name.S)
   (AL : ArtLib.S)
   (E :
@@ -470,12 +470,12 @@ module MakeIncPlace
    end) =
 struct
 
-  include MakePlace(Name)(AL)(E)
+  include MakeBase(Name)(AL)(E)
 
   let thunk : Name.t -> t -> t =
     let ident =
       Art.mk_mfn
-        (Name.of_string "Trie.MakeIncPlace#thunk")
+        (Name.of_string "Trie.MakePlace#thunk")
         (module D)
         (fun _ t -> t)
     in
@@ -484,8 +484,8 @@ struct
       ignore (Art.force art) ;
       Name (nm, Art art)
 
-  let empty : ?art_ifreq:Meta.Freq.t -> ?min_depth:int -> Name.t -> t =
-    (fun ?(art_ifreq=`Const 1) ?(min_depth=1) nm ->
+  let empty : ?art_ifreq:Meta.Freq.t -> ?min_depth:int -> t =
+    (fun ?(art_ifreq=`Const 1) ?(min_depth=1) ->
        (assert (min_depth > 0)) ;
        (if min_depth > BS.max_len then
           (Printf.printf "Cannot make Adapton.Trie with min_depth > %i (given %i)."
@@ -497,14 +497,14 @@ struct
            (Printf.sprintf "Adapton.Trie#empty:af=%s:md=%i"
               (Meta.Freq.show art_ifreq) min_depth)
        in
-       let nm1, nm2 = Name.fork (Name.pair nm0 nm) in
+       let nm1, nm2 = Name.fork nm0 in
        let mtbs = (0, 0) in
        thunk nm1 (Root (meta, thunk nm2 (Empty mtbs))))
       [@warning "-16"]
 
   let union : Name.t -> t -> t -> t =
     let mfn = Art.mk_mfn
-        (Name.of_string "Trie.MakeIncPlace.nunion#mfn")
+        (Name.of_string "Trie.MakePlace.nunion#mfn")
         (module Types.Tuple3(Name)(D)(D))
         (fun mfn (nm, t, t') -> match t, t' with
            | t, t' when equal t t' -> t'
@@ -556,7 +556,7 @@ struct
       else mfn.Art.mfn_data i'
     in
     let mfn = Art.mk_mfn
-        (Name.of_string "Trie.MakeIncPlace.internal_add#mfn")
+        (Name.of_string "Trie.MakePlace.internal_add#mfn")
         (module In)
         (fun mfn ((nm, ({ Meta.min_depth=md ; Meta.art_ifreq=ai } as m), bs, h, t, e) as i) ->
            match t with
@@ -587,7 +587,7 @@ struct
         )
     in
     let root_mfn = Art.mk_mfn
-        (Name.of_string "Trie.MakeIncPlace.nadd#root_mfn")
+        (Name.of_string "Trie.MakePlace.nadd#root_mfn")
         (module Types.Tuple3(Name)(D)(E))
         (fun _ (nm, t, e) -> 
            match t with
@@ -599,9 +599,9 @@ struct
                 let a = mfn.Art.mfn_nart nm i in
                 ignore (Art.force a) ;
                 Root (m, Name (nm, Art a))
-         | t -> failwith (Printf.sprintf "Non-root node at entry to `Trie.MakeIncPlace.nadd':\n%s"
+         | t -> failwith (Printf.sprintf "Non-root node at entry to `Trie.MakePlace.nadd':\n%s"
                             (show t)))
-      | _ -> failwith (Printf.sprintf "Non-name node at entry to `Trie.MakeIncPlace.nadd':\n%s"
+      | _ -> failwith (Printf.sprintf "Non-name node at entry to `Trie.MakePlace.nadd':\n%s"
                          (show t)))
     in
     fun nm t e ->
@@ -613,17 +613,15 @@ struct
       Name (nm, Art a)
 
   let singleton ?(art_ifreq=`Const 1) ?(min_depth = 1) nm (e : elt) : t =
-    let nm, nm' = Name.fork nm in
-    add nm' (empty ~art_ifreq ~min_depth nm) e
+    add nm (empty ~art_ifreq ~min_depth) e
 
   let of_list ?(art_ifreq=`Const 1) ?(min_depth = 1) nm (l : elt list) : t =
-    let nm, nm' = Name.fork nm in
     let out, _ =
       List.fold_left
         (fun (out, nm) e ->
            let nm, nm' = Name.fork nm in
            (add nm out e, nm'))
-        (empty ~art_ifreq ~min_depth nm, nm')
+        (empty ~art_ifreq ~min_depth, nm)
         l
     in
     out
@@ -639,10 +637,10 @@ module MakeNonInc(N : Name.S)(A : ArtLib.S)(E : Data.S)
     let place_equal = equal
   end)
 
-module MakeInc(N : Name.S)(A : ArtLib.S)(E : Data.S)
+module Make(N : Name.S)(A : ArtLib.S)(E : Data.S)
   : IncS with type name = N.t
           and type  elt = E.t =
-  MakeIncPlace(N)(A)(struct
+  MakePlace(N)(A)(struct
     include E
     let place_hash t = hash _PLACEMENT_SEED t
     let place_equal = equal
@@ -686,12 +684,12 @@ struct
         
   end
 
-  module MakeInc(Name : Name.S)(A : ArtLib.S)(E : Data.S)
+  module Make(Name : Name.S)(A : ArtLib.S)(E : Data.S)
     : IncS with type elt = E.t
             and type name = Name.t =
   struct
 
-    include MakeInc(Name)(A)(E)
+    include Make(Name)(A)(E)
 
     let mem (t : t) : elt -> bool =
       (fun e -> match find (E.equal e) t (E.hash _PLACEMENT_SEED e) with
@@ -752,7 +750,7 @@ module Map = struct
     val force : t -> t
     val cardinal : t -> int
 
-    val empty : ?art_ifreq:Meta.Freq.t -> ?min_depth:int -> name -> t
+    val empty : ?art_ifreq:Meta.Freq.t -> ?min_depth:int -> t
     val singleton : ?art_ifreq:Meta.Freq.t -> ?min_depth:int -> name -> k -> v -> t
     val add : name -> t -> k -> v -> t
     val union : name -> t -> t -> t    
@@ -817,7 +815,7 @@ module Map = struct
 
   end
 
-  module MakeInc
+  module Make
     (N : Name.S)
     (A : ArtLib.S)
     (K : Data.S)
@@ -828,7 +826,7 @@ module Map = struct
 
     let place (k, _) = K.hash _PLACEMENT_SEED k
 
-    include MakeIncPlace
+    include MakePlace
     (N)
     (A)
     (struct
@@ -936,7 +934,7 @@ module Rel = struct
 
   end
 
-  module MakeInc
+  module Make
     (N : Name.S)
     (A : ArtLib.S)
     (K : Data.S)
@@ -946,8 +944,8 @@ module Rel = struct
             and type name = N.t = struct
     
     type sv = V.t
-    module Vs = Set.MakeInc(N)(A)(V)
-    module M = Map.MakeInc(N)(A)(K)(Vs)
+    module Vs = Set.Make(N)(A)(V)
+    module M = Map.Make(N)(A)(K)(Vs)
     include M
 
     let clobber : name -> t -> k -> sv -> t =
@@ -1085,7 +1083,7 @@ module Graph = struct
 
   end
 
-  module MakeInc
+  module Make
     (N : Name.S)
     (A : ArtLib.S)
     (V : Data.S)
@@ -1093,7 +1091,7 @@ module Graph = struct
             and type name = N.t = struct
     
     type vertex = V.t
-    include Rel.MakeInc(N)(A)(V)(V)
+    include Rel.Make(N)(A)(V)(V)
 
     let mem_edge t v v' = match find t v with
       | Some vs -> Vs.fold (fun a v'' -> a || V.equal v' v'') false vs
@@ -1104,9 +1102,8 @@ module Graph = struct
       if mem_vertex t v'
       then join nm t v v'
       else
-        let nm, nm'   = N.fork nm  in
-        let nm', nm'' = N.fork nm' in
-        join nm'' (add nm' t v' (Vs.empty ~min_depth:1 nm)) v v'
+        let nm, nm' = N.fork nm  in
+        join nm' (add nm t v' (Vs.empty ~min_depth:1 ?art_ifreq:None)) v v'
 
     let fold_edges  (type a) f a t : a = svfold f a t
     let fold_vertex (type a) f a : t -> a = fold (fun a k _ -> f a k) a
