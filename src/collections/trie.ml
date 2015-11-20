@@ -163,7 +163,7 @@ sig
 end
 
 
-module type IncS =
+module type S =
 sig
   
   type elt
@@ -666,7 +666,7 @@ module MakeNonInc(N : Name.S)(A : ArtLib.S)(E : Data.S)
   end)
 
 module Make(N : Name.S)(A : ArtLib.S)(E : Data.S)
-  : IncS with type name = N.t
+  : S with type name = N.t
           and type  elt = E.t =
   MakePlace(N)(A)(struct
     include E
@@ -683,8 +683,8 @@ struct
     val subsumes : ?order:(elt -> elt -> bool) -> t -> t -> bool
   end
 
-  module type IncS = sig
-    include IncS
+  module type S = sig
+    include S
     val mem : t -> elt -> bool
     val subsumes : ?order:(elt -> elt -> bool) -> t -> t -> bool
   end
@@ -713,7 +713,7 @@ struct
   end
 
   module Make(Name : Name.S)(A : ArtLib.S)(E : Data.S)
-    : IncS with type elt = E.t
+    : S with type elt = E.t
             and type name = Name.t =
   struct
 
@@ -768,7 +768,7 @@ module Map = struct
       string -> t -> 'a -> 'a
   end
 
-  module type IncS = sig
+  module type S = sig
     type k
     type v
     include Articulated.S
@@ -848,7 +848,7 @@ module Map = struct
     (A : ArtLib.S)
     (K : Data.S)
     (V : Data.S)
-    : IncS with type k = K.t
+    : S with type k = K.t
             and type v = V.t
             and type name = N.t = struct 
 
@@ -907,13 +907,13 @@ module Rel = struct
     val  svfold : ('a -> k -> sv -> 'a) -> 'a -> t -> 'a
   end
 
-  module type IncS = sig
+  module type S = sig
     type sv
     type name
-    module Vs : Set.IncS with type  elt = sv
-                          and type name = name
-    include Map.IncS with type    v  = Vs.t
-                      and type name := name
+    module Vs : Set.S with type  elt = sv
+                       and type name = name
+    include Map.S with type    v  = Vs.t
+                   and type name := name
     val top_name : t -> name
     val     join : name -> t -> k -> sv -> t
     val  clobber : name -> t -> k -> sv -> t
@@ -967,7 +967,7 @@ module Rel = struct
     (A : ArtLib.S)
     (K : Data.S)
     (V : Data.S)
-    : IncS with type k = K.t
+    : S with type k = K.t
             and type sv = V.t
             and type name = N.t = struct
     
@@ -1027,11 +1027,11 @@ module Graph = struct
 
   end
 
-  module type IncS = sig
+  module type S = sig
 
     type vertex
-    include Rel.IncS with type  k = vertex
-                      and type sv = vertex
+    include Rel.S with type  k = vertex
+                   and type sv = vertex
 
     val top_name : t -> name
     val mem_vertex : t -> vertex -> bool
@@ -1115,7 +1115,7 @@ module Graph = struct
     (N : Name.S)
     (A : ArtLib.S)
     (V : Data.S)
-    : IncS with type vertex = V.t
+    : S with type vertex = V.t
             and type name = N.t = struct
     
     type vertex = V.t

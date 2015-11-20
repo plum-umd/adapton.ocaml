@@ -1,5 +1,5 @@
 let min_depth : int ref              = ref 1
-let art_ifreq : Trie.Meta.Freq.t ref = ref (`Const 1)
+let art_ifreq : Trie.Meta.Freq.t ref = ref (`Const 1.)
 let size      : int ref              = ref 10
 let data_type : string ref           = ref "ocaml-set"
 let verbose   : bool ref             = ref false
@@ -148,7 +148,7 @@ let main () =
                   int_of_string (String.sub s (i+1) (len-i-1)))
         else if len > 0 && s.[0] = 'f' then
           `First (int_of_string (String.sub s 1 (len-1)))
-        else `Const (int_of_string s)
+        else `Const (float_of_string s)
       with _ ->
         failwith ("Bad art_ifreq, expected positive int or \"depth\", but got " ^ s)
     in
