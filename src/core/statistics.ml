@@ -1,6 +1,22 @@
 (** Adapton performance statistics and measurement function. *)
 
-module Counts = struct
+module Counts :
+sig
+    val create : int ref
+    val hit : int ref
+    val miss : int ref
+    val update : int ref
+    val dirty : int ref
+    val clean : int ref
+    val evaluate : int ref
+    val tables : int ref
+    val evict : int ref
+    val destroy : int ref
+    val destroy_refc : int ref
+    val destroy_evict : int ref
+    val unit_cost : int ref
+    val reset : unit -> unit
+end = struct
     let create = ref 0
     let hit = ref 0
     let miss = ref 0
@@ -26,7 +42,16 @@ end
 
 (* Count operations that compute information about node equivalence classes *)
 (* Changing the representations of nodes requires considering how important different computations over equivalence classes are. *)
-module Count_eq = struct
+module Count_eq : sig
+  val id            : int ref
+  val hash          : int ref
+  val mut_cell      : int ref
+  val one_pre_force : int ref
+  val post_force    : int ref
+  val one_obsolete  : int ref
+  val both_obsolete : int ref
+  val reset : unit -> unit
+end = struct
   let id            = ref 0 (* To support tableless uneval'd thunks, need this to be zero (!) *)
   let hash          = ref 0 (* This can be arbitrarily high, since we can cache hashes in the repr. *)
   let mut_cell      = ref 0 (* Cheap: test for physical equality. *)
