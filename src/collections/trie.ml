@@ -59,21 +59,36 @@ end = struct
 end
 
 (* metadata held by the root node *)
-module Meta =
-struct
+module Meta :
+sig
+  module Freq :
+  sig
+    type t = [ `Never
+             | `Depth of int * int
+             | `First of int
+             | `Const of float
+             ] [@@deriving eq, ord]
+    include Data.S with type t := t
+    val ifreq : BS.t -> t -> float
+  end
+  type t =
+    { min_depth : int
+    ; art_ifreq  : Freq.t
+    }
+  include Data.S with type t := t
+end = struct
   module Freq =
   struct
     type t = [ `Never
              | `Depth of int * int
              | `First of int
-             | `Const of int
-             ]
-    [@@deriving eq, ord]
+             | `Const of float
+             ] [@@deriving eq, ord]
     let show = function
       | `Never   -> "0"
       | `Depth (i, j) -> Printf.sprintf "(depth^%i)/%i" i j
       | `First n -> "first " ^ (string_of_int n)
-      | `Const i -> string_of_int i
+      | `Const i -> string_of_float i
     let pp fmt s = Format.fprintf fmt "%s" (show s)
     let hash s = function
       | `Never   -> Hashtbl.seeded_hash s
@@ -92,11 +107,18 @@ struct
                       (Hashtbl.seeded_hash s
                          "Adapton.Trie.Meta.Freq#`Const")
                       i
-    let ifreq bs = function
-      | `Never        -> 0
-      | `Depth (i, j) -> (BS.pow (BS.length bs) i) / j
-      | `First  i     -> if i > (BS.length bs) then 1 else 0
-      | `Const  i     -> i
+    let sanitize = function
+      | `Never        -> `Never
+      | `Depth (i, j) -> `Depth (i, j)
+      | `First n      -> `First n
+      | `Const i      -> `Const i
+    let ifreq =
+      let foi = float_of_int in
+      fun bs -> function
+        | `Never        -> 0.
+        | `Depth (i, j) -> foi (BS.pow (BS.length bs) i) /. (foi j)
+        | `First  i     -> foi (if i > (BS.length bs) then 1 else 0)
+        | `Const  f     -> f
   end
   type t =
     { min_depth : int
@@ -485,7 +507,7 @@ struct
       Name (nm, Art art)
 
   let empty : ?art_ifreq:Meta.Freq.t -> ?min_depth:int -> t =
-    (fun ?(art_ifreq=`Const 1) ?(min_depth=1) ->
+    (fun ?(art_ifreq=`Const 1.) ?(min_depth=1) ->
        (assert (min_depth > 0)) ;
        (if min_depth > BS.max_len then
           (Printf.printf "Cannot make Adapton.Trie with min_depth > %i (given %i)."
@@ -546,9 +568,15 @@ struct
     let module In =
       Types.Tuple6(Name)(Meta)(BS)(Types.Int)(D)(E)
     in
+    let (=.) : float -> float -> bool =
+      let eps = 1.0e-10 in
+      fun a b -> (abs_float (a-.b)) < eps
+    in
+    let scale  = 1000  in
+    let scalef = 1000. in
     let pmfn mfn (_, m,  bs,  _,  t,  _) ((nm', m', bs', h', t', e') as i') =
       let ifreq = Meta.Freq.ifreq bs' m.Meta.art_ifreq in
-      if ifreq > 0 && Random.int ifreq = 0
+      if not (ifreq =. 0.) && Random.int (int_of_float (ifreq *. scalef)) < scale
       then let nm, nm' = Name.fork nm' in
            let a = mfn.Art.mfn_nart nm (nm', m', bs', h', t', e') in
            (ignore (Art.force a) ;
@@ -612,10 +640,10 @@ struct
       ignore (Art.force a) ;
       Name (nm, Art a)
 
-  let singleton ?(art_ifreq=`Const 1) ?(min_depth = 1) nm (e : elt) : t =
+  let singleton ?(art_ifreq=`Const 1.) ?(min_depth = 1) nm (e : elt) : t =
     add nm (empty ~art_ifreq ~min_depth) e
 
-  let of_list ?(art_ifreq=`Const 1) ?(min_depth = 1) nm (l : elt list) : t =
+  let of_list ?(art_ifreq=`Const 1.) ?(min_depth = 1) nm (l : elt list) : t =
     let out, _ =
       List.fold_left
         (fun (out, nm) e ->
@@ -843,7 +871,7 @@ module Map = struct
     type k = K.t
     type v = V.t
 
-    let singleton ?(art_ifreq = `Const 1) ?(min_depth = 1) nm (k : k) (v : v) : t =
+    let singleton ?(art_ifreq = `Const 1.) ?(min_depth = 1) nm (k : k) (v : v) : t =
       singleton ~art_ifreq ~min_depth nm (k, v)
 
     let add (n : name) (t : t) (k : k) (v : v) : t = add n t (k, v)

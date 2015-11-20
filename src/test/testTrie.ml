@@ -281,7 +281,7 @@ let nset_suite ~art_ifreq ~min_depth =
   let equal_tests = binary_tests ~name:"equal"
       ~show_in:(fun t t' -> Printf.sprintf "%s %s" (IS.show (IS.force t)) (IS.show (IS.force t')))
       ~show_out:string_of_bool
-      IS.equal
+      (fun t t' -> Printf.printf "%s %s\n%!" (IS.show t) (IS.show t') ; IS.equal t t')
       [t0, t0, true;
        t0, t1, false;
        t1, t1, true;
@@ -419,15 +419,22 @@ let run () =
       []
       xs
   in
-  let fold_down ?(step=(fun n -> n+1)) f a n =
+  let fold_down ?(stride=1) f a n =
     let rec loop acc = function
-      | n when n > 0 -> let n' = n-1 in loop (f acc n') n'
+      | n when n > 0 -> let n' = n-stride in loop (f acc n') n'
       | _ -> acc
     in
-    loop a (n-1)
+    loop a (n-stride)
+  in
+  let fold_down_float ?(stride=1.) f a n =
+    let rec loop acc = function
+      | n when n > 0. -> let n' = n-.stride in loop (f acc n') n'
+      | _ -> acc
+    in
+    loop a (n-.stride)
   in
   let freqs =
-    (fold_down (fun a i -> (`Const ((i+1) * (i+1)))::a) [] 4)
+    (fold_down_float (fun a f -> (`Const ((f+.1.) *. (f+.1.)))::a) [] 4.)
   @ (fold_down (fun a i -> (`First ((i+1) * (i+1)))::a) [] 4)
   @ (fold_down
        (fun a i -> fold_down (fun a j -> (`Depth (i+2, j+1))::a) a 3)
