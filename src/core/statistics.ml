@@ -17,6 +17,11 @@ module Counts = struct
     let destroy_evict = ref 0
 
     let unit_cost = ref 0
+
+    let reset () =
+      create := 0 ; hit := 0 ; miss := 0 ; update := 0 ; dirty := 0 ;
+      clean := 0 ; evaluate := 0 ; tables := 0 ; evict := 0 ; destroy := 0 ;
+      destroy_refc := 0 ; destroy_evict := 0 ; unit_cost := 0
 end
 
 (* Count operations that compute information about node equivalence classes *)
@@ -30,6 +35,10 @@ module Count_eq = struct
   let post_force    = ref 0 (* Both are evaluated. Cheap for nominal and non-nominal: test for physical equality. *)
   let one_obsolete  = ref 0
   let both_obsolete = ref 0
+
+  let reset () =
+    id := 0 ; hash := 0 ; mut_cell := 0 ; one_pre_force := 0 ;
+    post_force := 0 ; one_obsolete := 0 ; both_obsolete := 0
 end
 
 let fprintf_count_eq out =
