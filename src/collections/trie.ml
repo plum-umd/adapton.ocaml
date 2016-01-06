@@ -503,7 +503,6 @@ struct
     in
     fun nm t ->
       let art = ident.Art.mfn_nart nm t in
-      ignore (Art.force art) ;
       Name (nm, Art art)
 
   let empty : ?art_ifreq:Meta.Freq.t -> ?min_depth:int -> t =
@@ -534,17 +533,14 @@ struct
            | Name (_, Art a), Name (_, Art a') ->
              let nm, nm' = Name.fork nm in
              let a = mfn.Art.mfn_nart nm (nm', Art.force a, Art.force a') in
-             ignore (Art.force a) ;
              Name (nm, Art a)
            | Name (_, Art a), t ->
              let nm, nm' = Name.fork nm in
              let a = mfn.Art.mfn_nart nm (nm', Art.force a, t) in
-             ignore (Art.force a) ;
              Name (nm, Art a)
            | t, Name (nm, Art a) ->
              let nm, nm' = Name.fork nm in
              let a = mfn.Art.mfn_nart nm (nm', t, Art.force a) in
-             ignore (Art.force a) ;
              Name (nm, Art a)
            | Root (md, t), Root (md', t') when md = md' ->
              Root (md, mfn.Art.mfn_data (nm, t, t'))
@@ -579,8 +575,7 @@ struct
       if not (ifreq =. 0.) && Random.int (int_of_float (ifreq *. scalef)) < scale
       then let nm, nm' = Name.fork nm' in
            let a = mfn.Art.mfn_nart nm (nm', m', bs', h', t', e') in
-           (ignore (Art.force a) ;
-            Name (nm, Art a))
+           Name (nm, Art a)
       else mfn.Art.mfn_data i'
     in
     let mfn = Art.mk_mfn
@@ -625,7 +620,6 @@ struct
                 let nm,  nm'  = Name.fork nm in
                 let i = (nm', m, (0, 0), (E.place_hash e), t', e) in
                 let a = mfn.Art.mfn_nart nm i in
-                ignore (Art.force a) ;
                 Root (m, Name (nm, Art a))
          | t -> failwith (Printf.sprintf "Non-root node at entry to `Trie.MakePlace.nadd':\n%s"
                             (show t)))
@@ -637,7 +631,6 @@ struct
       Random.init (Name.hash 42 nm) ;
       let nm, nm' = Name.fork nm in
       let a = root_mfn.Art.mfn_nart nm (nm', t, e) in
-      ignore (Art.force a) ;
       Name (nm, Art a)
 
   let singleton ?(art_ifreq=`Const 1.) ?(min_depth = 1) nm (e : elt) : t =
