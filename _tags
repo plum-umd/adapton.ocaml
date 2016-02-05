@@ -4,5 +4,5 @@
 <src/collections> : include
 <src/collections/*> : for-pack(Adapton)
 <misc> : -traverse
-true: package(core, unix, num, ppx_deriving.std)
+true: package(unix, num, ppx_deriving.std)
 true: thread, debug
