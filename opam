@@ -14,6 +14,5 @@ bug-reports: "https://github.com/plum-umd/adapton.ocaml/issues"
 remove: ["ocamlfind" "remove" "adapton"]
 depends: [
   "ocamlfind" {build}
-  "core"
   "ppx_deriving"
   ]

@@ -8,7 +8,7 @@ See [adapton.org](http://adapton.org) for more information about Adapton general
 
 Adapton requires:
 - OCaml version 4.02.0+
-- OPAM packages: core, ppx_deriving
+- OPAM packages: ppx_deriving
 
 To build Adapton, just run `make`.
 
