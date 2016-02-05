@@ -10,6 +10,7 @@ PROFDIR = $(CURDIR)/profile
 TIME := $(shell date +"%Y.%m.%d-%H.%M.%S")
 
 all: clean
+	eval $(shell opam config env)
 	for ext in $(LIBS); do \
 		$(OCB) adapton.$$ext || exit 1 ; \
 	done
