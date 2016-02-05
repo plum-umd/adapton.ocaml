@@ -15,18 +15,18 @@ all: clean
 	done
 
 test: clean
-	$(OCB) src/test/experiments.native
-	$(OCB) src/test/testTrie.native
+	eval $$(opam config env) $(OCB) src/test/experiments.native
+	eval $$(opam config env) $(OCB) src/test/testTrie.native
 	cd script && ./test-oopsla15.sh
 	./testTrie.native
 
 test-correctness: clean
-	$(OCB) src/test/experiments.native
-	$(OCB) src/test/testTrie.native
+	eval $$(opam config env) $(OCB) src/test/experiments.native
+	eval $$(opam config env) $(OCB) src/test/testTrie.native
 	./script/test-correctness.sh
 
 test-mem:
-	$(OCB) $(OPTOPTS) src/test/sparseTrie.native
+	eval $$(opam config env) $(OCB) $(OPTOPTS) src/test/sparseTrie.native
 	./script/test-mem.sh
 
 src/test/sparseTrie.p.native:
