@@ -123,5 +123,6 @@ echo OPAM_SWITCH=$OPAM_SWITCH     >> .travis-ocaml.env
 ocaml -version
 opam --version
 
-opam install ppx_deriving
+opam install ocamlfind
+eval $(opam config env)
 opam pin add ppx_deriving git://github.com/whitequark/ppx_deriving.git
