@@ -1,0 +1,9 @@
+language: c
+sudo: required
+install: bash -ex script/travis-install.sh
+script: make
+after_success: make test-correctness
+env:
+  - OCAML_VERSION=4.02
+os:
+  - linux

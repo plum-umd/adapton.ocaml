@@ -1,4 +1,4 @@
-Adapton
+Adapton [![Build Status](https://travis-ci.org/plum-umd/adapton.ocaml.svg?branch=master)](https://travis-ci.org/plum-umd/adapton.ocaml)
 =======
 
 (Nominal) Adapton for OCaml.
